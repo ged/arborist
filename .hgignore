@@ -1,0 +1,5 @@
+coverage/
+\.esproj/
+\.yml$
+\.lock$
+\.devel$

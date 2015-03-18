@@ -1,0 +1,116 @@
+
+# Monitoring featureset
+
+## Generic behavior
+
+ - Components
+   - Central manager (keep persistent state, bi-directional communication with monitors,
+     alerters, and scheduler, receive events from a control channel)
+   - Scheduler (send events to the manager on interval/periods)
+   - Monitoring workers (issue checks, send results back to state manager)
+   - Alerting worker(s) (issue alerts, send state back to manager)
+
+ - Splay at start up (ensure monitors aren't always slamming at the same time)
+
+ - User auth for viewing / acking / modding
+
+ - LDAP support when generating configs (not runtime)
+	 - netgroup support for auto-expansion of hostgroups (system netgroup support is flakey)
+	 - ipService objectClass support for automatic monitoring
+
+ - Some nice DSL for managing all of this... inversion templates?
+
+ - History and/or event logging
+
+ - Decoupled as much as possible from external services, but still scalable
+   in some form (ZMQ?)
+
+
+## Monitoring
+
+ - Monitor a specific host's services
+ 	db.laika.com tcpcheck port 5432
+
+ - Monitor a class of hosts and their services
+ 	all web servers get head on port 80
+
+ - Exclusions for host classes
+ 	all web servers get head on port 80 except www1.example.com
+
+ - Interval for monitoring (poll every N seconds)
+
+ - Exclusion periods (don't monitor during period X)
+
+ - Separate monitoring interval when service is down
+
+ - Explicit dependencies -- require specified list of host/group/service checks to succeed
+   before running monitor
+
+ - Modular, exec to shell commands for all but built-in
+   basics (ping?  tcp/udp port checks?)
+
+ - Clear and concise command line opts for shelling out to external
+   monitoring scripts -- opt flags as an API
+
+ - Attach human readable descrptions to each monitor
+
+ - "Heartbeat" mode: some form of "if I haven't seen event X in this amount of time, send an alert"
+
+
+## Alerting
+
+ - Unique definable alerting periods
+ 	from 7am to 10pm, use this alert class
+	from 10pm to 7am, use this one
+	... any other matching classes in between
+
+ - Modular, exec to shell commands for all but built-in basics
+   (email, zmq message...)
+
+ - Clear and concise command line opts for shelling out to external
+   alert scripts -- opt flags as an API
+
+ - Only send alerts after X alerts are generated
+
+ - Send state change alerts (UP after DOWN)
+   - Only send state change if service was down for N timeframe
+
+ - Restrict alerts to send every N timeframe
+   (default is to alert on every monitor check)
+
+ - Limit total alert send count to N per failure event
+
+ - Alert acknowledgements
+
+ - Clear acknowledgement if alert state contents change? (monitor option?)
+
+
+## Things it'll probably need to "compete"
+
+ - Trending
+
+ - UI, graphs of trends, admin interface
+
+ - SNMP trap receiving support, "heartbeat" services
+
+
+
+# Jonathan's additions:
+
+- As few runtime dependencies as possible
+- Multiple monitor hosts (e.g., one in each building) with a single logging/alerting server
+- Network dependency map (e.g., json generated from switch port map)
+- Disable monitoring of a switch automatically disables all its dependent children as well
+- Event triggers (e.g., this netgroup just changed in ldap, so reload it)
+- Prominent display and/or periodic reminder of what?s disabled at the moment
+- Schedule periods to disable some/all monitors
+- Ack alerts per-group (current mon behavior) or per-instance (treat each member of a group separately)
+- Availability reports (per instance or group, specify time constraint)
+- Feed data from numeric monitors into graphite or similar (or do we replace graphite as well?)
+- Access policies (e.g., who can ack or disable stuff)
+- Monitor profiles (e.g., assign to netgroups)
+- Access and alert profiles (e.g., assign to posix groups)
+- Replace or append profile values on a per-instance basis (e.g., individual host or user)
+- Option for flap detection and automatic alert suppression
+- Option to progressively throttle recurring alerts
+

@@ -1,0 +1,11 @@
+.document
+.simplecov
+ChangeLog
+History.md
+LICENSE
+Manifest.txt
+README.md
+Rakefile
+lib/arborist.rb
+spec/arborist_spec.rb
+spec/spec_helper.rb
