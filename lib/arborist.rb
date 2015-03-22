@@ -75,19 +75,19 @@ module Arborist
 	end
 
 
-	### Return a new Arborist::Collector for the nodes described in files under
+	### Return a new Arborist::Manager for the nodes described in files under
 	### the specified +directory+.
-	def self::collector_for( directory )
+	def self::manager_for( directory )
 		nodes = Arborist::Node.each_in( directory )
-		collector = Arborist::Collector.new
-		collector.load_graph( nodes )
+		manager = Arborist::Manager.new
+		manager.load_graph( nodes )
 
-		return collector
+		return manager
 	end
 
 
 	require 'arborist/mixins'
-	require 'arborist/collector'
+	require 'arborist/manager'
 	require 'arborist/node'
 	require 'arborist/event'
 

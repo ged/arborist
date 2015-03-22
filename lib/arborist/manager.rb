@@ -4,6 +4,7 @@
 require 'pathname'
 require 'loggability'
 require 'rgl/adjacency'
+require 'rgl/traversal'
 
 require 'arborist' unless defined?( Arborist )
 require 'arborist/node'
@@ -11,7 +12,7 @@ require 'arborist/mixins'
 
 
 # The main Arborist process -- responsible for coordinating all other activity.
-class Arborist::Collector
+class Arborist::Manager
 	extend Loggability,
 	       Configurability,
 	       Arborist::MethodUtilities
@@ -28,8 +29,8 @@ class Arborist::Collector
 	log_to :arborist
 
 	##
-	# Use the 'collector' section of the config
-	config_key :collector
+	# Use the 'manager' section of the config
+	config_key :manager
 
 
 	##
@@ -37,7 +38,7 @@ class Arborist::Collector
 	singleton_attr_accessor :tree_dir
 
 
-	### Configurability API -- configure the Collector with the specified +config+. If the
+	### Configurability API -- configure the Manager with the specified +config+. If the
 	### +config+ is +nil+, use the default config.
 	def self::configure( config=nil )
 		config = self.defaults.merge( config || {} )
@@ -50,12 +51,12 @@ class Arborist::Collector
 	# Instance methods
 	#
 
-	### Create a new Arborist::Collector.
+	### Create a new Arborist::Manager.
 	def initialize
-		@graph = RGL::AdjacencyGraph[ '_', '_collector' ]
+		@graph = RGL::DirectedAdjacencyGraph[ '_', '_manager' ]
 		@nodes = {
-			'_'          => Arborist::Node.create( :root ),
-			'_collector' => self,
+			'_'        => Arborist::Node.create( :root ),
+			'_manager' => self,
 		}
 	end
 
@@ -73,7 +74,7 @@ class Arborist::Collector
 	attr_accessor :nodes
 
 
-	### Add nodes yielded from the specified +enumerator+ into the collector's
+	### Add nodes yielded from the specified +enumerator+ into the manager's
 	### graph.
 	def load_graph( enumerator )
 		enumerator.each do |node|
@@ -82,7 +83,7 @@ class Arborist::Collector
 	end
 
 
-	### Add the specified +node+ to the Collector's graph.
+	### Add the specified +node+ to the Manager's graph.
 	def add_node( node )
 		identifier = node.identifier
 		parent = node.parent || '_'
@@ -95,6 +96,21 @@ class Arborist::Collector
 
 		self.nodes[ identifier ] = node
 		self.graph.add_edge( parent, identifier )
+
+		node.subnodes.each do |subnode|
+			self.add_node( subnode )
+		end
 	end
 
-end # class Arborist::Collector
+
+	class NodeDumper < RGL::DFSVisitor
+
+		def examine_vertex( u, v )
+			super
+			pp([ u, v ])
+		end
+
+	end
+
+
+end # class Arborist::Manager

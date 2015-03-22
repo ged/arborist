@@ -1,6 +1,7 @@
 #!/usr/bin/ruby -*- ruby -*-
 
-require 'bundler/setup'
+$LOAD_PATH.unshift( 'lib' )
+
 require 'configurability'
 require 'loggability'
 require 'pathname'

@@ -6,9 +6,9 @@ require 'arborist'
 
 Arborist::Host 'yevaud' do
 	parent 'duir'
-	address 'yevaud.home'
+	address '192.168.16.10'
 
-	description "Latop, running services for development."
+	description "Laptop, running services for development."
 
 	tags :laptop,
 	     :developer

@@ -9,7 +9,8 @@ docs :: http://deveiate.org/code/aborist
 ## Description
 
 Arborist is a monitoring framework that follows the UNIX philosophy
-for stability, reliability, and customizability.
+of small parts and loose coupling for stability, reliability, and
+customizability.
 
 
 ## Prerequisites
@@ -24,7 +25,7 @@ for stability, reliability, and customizability.
 
 ## Further Reading
 
-You'll likely want to start with {the Tutorial}[rdoc-ref:Tutorial.rdoc].
+You'll likely want to start with [the Tutorial](Tutorial.html).
 
 
 ## Contributing

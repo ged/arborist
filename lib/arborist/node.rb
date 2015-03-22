@@ -104,6 +104,7 @@ class Arborist::Node
 		@description = nil
 		@tags        = Set.new
 		@source      = nil
+		@subnodes    = []
 
 		self.instance_eval( &block )
 	end
@@ -124,6 +125,10 @@ class Arborist::Node
 	##
 	# The URI of the source the object was read from
 	attr_reader :source
+
+	##
+	# The nodes which are children of this node that are loaded with it
+	attr_reader :subnodes
 
 
 	#
@@ -147,7 +152,6 @@ class Arborist::Node
 
 	### Get/set the node's description.
 	def description( new_description=nil )
-		self.log.debug "description( %p )" % [ new_description ]
 		return @description unless new_description
 		@description = new_description.to_s
 	end

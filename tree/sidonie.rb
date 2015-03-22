@@ -6,12 +6,13 @@ require 'arborist'
 
 Arborist::Host 'sidonie' do
 	parent 'duir'
-	address 'sidonie.home'
+	address '192.168.16.3'
 
 	description "Media server, NAS."
 
 	tags :storage,
-	     :media
+	     :media,
+		 :rip_status_check
 
 	service 'ssh'
 	service 'http', port: 6666
