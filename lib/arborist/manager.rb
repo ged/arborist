@@ -3,8 +3,6 @@
 
 require 'pathname'
 require 'loggability'
-require 'rgl/adjacency'
-require 'rgl/traversal'
 
 require 'arborist' unless defined?( Arborist )
 require 'arborist/node'
@@ -14,37 +12,12 @@ require 'arborist/mixins'
 # The main Arborist process -- responsible for coordinating all other activity.
 class Arborist::Manager
 	extend Loggability,
-	       Configurability,
-	       Arborist::MethodUtilities
-
-
-	# Configurability API -- reasonable default config values
-	DEFAULT_CONFIG = {
-		tree_dir: './tree'
-	}
+	    Arborist::MethodUtilities
 
 
 	##
 	# Use the Arborist logger
 	log_to :arborist
-
-	##
-	# Use the 'manager' section of the config
-	config_key :manager
-
-
-	##
-	# The Pathname of the directory to search for the files describing the monitoring tree
-	singleton_attr_accessor :tree_dir
-
-
-	### Configurability API -- configure the Manager with the specified +config+. If the
-	### +config+ is +nil+, use the default config.
-	def self::configure( config=nil )
-		config = self.defaults.merge( config || {} )
-
-		self.tree_dir = Pathname( config[:tree_dir] )
-	end
 
 
 	#
@@ -53,11 +26,11 @@ class Arborist::Manager
 
 	### Create a new Arborist::Manager.
 	def initialize
-		@graph = RGL::DirectedAdjacencyGraph[ '_', '_manager' ]
+		@root = Arborist::Node.create( :root )
 		@nodes = {
-			'_'        => Arborist::Node.create( :root ),
-			'_manager' => self,
+			'_' => @root,
 		}
+		@tree_built = false
 	end
 
 
@@ -66,51 +39,116 @@ class Arborist::Manager
 	######
 
 	##
-	# The adjacency graph that's used to represent the tree of monitored systems.
-	attr_accessor :graph
+	# The root node of the tree.
+	attr_accessor :root
 
 	##
 	# The Hash of all loaded Nodes, keyed by their identifier
 	attr_accessor :nodes
 
 
+	##
+	# Flag for marking when the tree is built successfully the first time
+	attr_predicate_accessor :tree_built
+
+
 	### Add nodes yielded from the specified +enumerator+ into the manager's
-	### graph.
-	def load_graph( enumerator )
+	### tree.
+	def load_tree( enumerator )
 		enumerator.each do |node|
 			self.add_node( node )
 		end
+		self.build_tree
 	end
 
 
-	### Add the specified +node+ to the Manager's graph.
+	### Build the tree out of all the loaded nodes.
+	def build_tree
+		self.log.info "Building tree from %d loaded nodes." % [ self.nodes.length ]
+		self.nodes.each do |identifier, node|
+			next if node.operational?
+			self.link_node_to_parent( node )
+		end
+		self.tree_built = true
+	end
+
+
+	### Link the specified +node+ to its parent. Raises an error if the specified +node+'s
+	### parent is not yet loaded.
+	def link_node_to_parent( node )
+		parent_id = node.parent || '_'
+		parent_node = self.nodes[ parent_id ] or
+			raise "no parent '%s' node loaded for %p" % [ parent_id, node ]
+
+		self.log.debug "adding %p as a child of %p" % [ node, parent_node ]
+		parent_node.add_child( node )
+	end
+
+
+	### Add the specified +node+ to the Manager.
 	def add_node( node )
 		identifier = node.identifier
-		parent = node.parent || '_'
 
-		if (( old_node = self.nodes[identifier] ))
-			unless old_node.source == node.source
-				self.log.warn "Replacing %p with %p" % [ old_node, node ]
-			end
-		end
-
+		self.remove_node( self.nodes[identifier] )
 		self.nodes[ identifier ] = node
-		self.graph.add_edge( parent, identifier )
 
-		node.subnodes.each do |subnode|
-			self.add_node( subnode )
-		end
+		self.log.debug "Linking node %p to its parent" % [ node ]
+		self.link_node_to_parent( node ) if self.tree_built?
 	end
 
 
-	class NodeDumper < RGL::DFSVisitor
+	### Remove a +node+ from the Manager. The +node+ can either be the Arborist::Node to
+	### remove, or the identifier of a node.
+	def remove_node( node )
+		node = self.nodes[ node ] unless node.is_a?( Arborist::Node )
+		return unless node
 
-		def examine_vertex( u, v )
-			super
-			pp([ u, v ])
+		raise "Can't remove an operational node" if node.operational?
+
+		self.log.info "Removing node %p" % [ node ]
+		node.children.each do |identifier, child_node|
+			self.remove_node( child_node )
 		end
 
+		if parent_node = self.nodes[ node.parent || '_' ]
+			parent_node.remove_child( node )
+		end
+
+		return self.nodes.delete( node.identifier )
 	end
 
+
+	### Yield each node in a depth-first traversal of the manager's tree
+	### to the specified +block+, or return an Enumerator if no block is given.
+	def all_nodes( &block )
+		iter = self.enumerator_for( self.root )
+		return iter.each( &block ) if block
+		return iter
+	end
+
+
+	### Yield each node that is not down to the specified +block+, or return
+	### an Enumerator if no block is given.
+	def reachable_nodes( &block )
+		iter = self.enumerator_for( self.root ) {|node| !node.down? }
+		return iter.each( &block ) if block
+		return iter
+	end
+
+
+	#########
+	protected
+	#########
+
+	### Return an enumerator for the specified +node+.
+	def enumerator_for( start_node, &filter )
+		return Enumerator.new do |yielder|
+			traverse = ->( node ) do
+				yielder.yield( node )
+				node.each( &traverse ) if !filter || filter[ node ]
+			end
+			traverse.call( start_node )
+		end
+	end
 
 end # class Arborist::Manager

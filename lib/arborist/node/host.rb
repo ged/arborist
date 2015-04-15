@@ -49,37 +49,4 @@ class Arborist::Node::Host < Arborist::Node
 	end
 
 
-	### Add a service to the host
-	def service( name, options={} )
-		parent_id = self.identifier
-		name = "%s-%s" % [ parent_id, name ]
-		self.subnodes << Arborist::Node.create( :service, name, options ) do
-			parent( parent_id )
-		end
-	end
-
-
-	### Add a web service to the host.
-	def webservice( name='www', options={} )
-		parent_id = self.identifier
-		name = "%s-webservice-%s" % [ parent_id, name ]
-		self.subnodes << Arborist::Node.create( :service, name, options ) do
-			parent( parent_id )
-		end
-	end
-
-
-	#########
-	protected
-	#########
-
-	### Look up the port corresponding to +service_name+ and return it
-	### if the lookup succeeds. Returns +nil+ if no such service port
-	### is known.
-	def lookup_service_port( service_name )
-		return Socket.getservbyname( service_name )
-	rescue SocketError
-		return nil
-	end
-
 end # class Arborist::Node::Host

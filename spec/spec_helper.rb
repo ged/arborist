@@ -1,8 +1,6 @@
 # -*- ruby -*-
 #encoding: utf-8
 
-require 'bundler/setup'
-
 require 'simplecov' if ENV['COVERAGE']
 require 'rspec'
 require 'loggability/spechelpers'

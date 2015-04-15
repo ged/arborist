@@ -12,7 +12,6 @@ GEMSPEC = 'arborist.gemspec'
 Hoe.plugin :mercurial
 Hoe.plugin :signing
 Hoe.plugin :deveiate
-Hoe.plugin :bundler
 
 Hoe.plugins.delete :rubyforge
 Hoe.plugins.delete :gemcutter
@@ -33,6 +32,7 @@ hoespec = Hoe.spec 'arborist' do |spec|
 	spec.dependency 'loggability', '~> 0.11'
 	spec.dependency 'configurability', '~> 2.2'
 	spec.dependency 'pluggability', '~> 0.4'
+	spec.dependency 'state_machines', '~> 0.2'
 
 	spec.dependency 'rspec', '~> 3.2', :developer
 	spec.dependency 'simplecov', '~> 0.9', :developer

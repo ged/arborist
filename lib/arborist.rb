@@ -86,13 +86,17 @@ module Arborist
 	end
 
 
+	### Load all node and event types
+	def self::load_all
+		Arborist::Node.load_all
+		Arborist::Event.load_all
+	end
+
+
 	require 'arborist/mixins'
 	require 'arborist/manager'
 	require 'arborist/node'
 	require 'arborist/event'
-
-	Arborist::Node.load_all
-	Arborist::Event.load_all
 
 end # module Arborist
 

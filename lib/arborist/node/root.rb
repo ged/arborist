@@ -18,6 +18,12 @@ class Arborist::Node::Root < Arborist::Node
 	end
 
 
+	### Reset the singleton instance; mainly used for testing.
+	def self::reset
+		@instance = nil
+	end
+
+
 	### Set up the root node.
 	def initialize( * )
 		super( '_' ) do

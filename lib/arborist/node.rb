@@ -4,14 +4,17 @@
 require 'set'
 require 'uri'
 require 'pathname'
+require 'state_machines'
 
 require 'loggability'
 require 'pluggability'
 require 'arborist' unless defined?( Arborist )
+require 'arborist/mixins'
 
 
 # The basic node class for an Arborist tree
 class Arborist::Node
+	include Enumerable
 	extend Loggability,
 	       Pluggability,
 	       Arborist::MethodUtilities
@@ -23,7 +26,7 @@ class Arborist::Node
 	LOADED_INSTANCE_KEY = :loaded_instances
 
 	##
-	# The glob pattern to use for searching for node 
+	# The glob pattern to use for searching for node
 	NODE_FILE_PATTERN = '**/*.rb'
 
 
@@ -34,6 +37,20 @@ class Arborist::Node
 	##
 	# Search for plugins in lib/arborist/node directories in loaded gems
 	plugin_prefixes 'arborist/node'
+
+
+	state_machine( :status, initial: :unknown ) do
+
+		state :unknown,
+			:up,
+			:down
+
+		event :observe do
+			transition any - [:up] => :up, if: :last_contact_successful?
+			transition any - [:down] => :down, unless: :last_contact_successful?
+		end
+
+	end
 
 
 	### Return a curried Proc for the ::create method for the specified +type+.
@@ -62,10 +79,14 @@ class Arborist::Node
 	def self::inherited( subclass )
 		super
 
-		name = subclass.name.sub( /.*::/, '' )
-		body = self.curried_create( subclass )
+		if name = subclass.name
+			name.sub!( /.*::/, '' )
+			body = self.curried_create( subclass )
+			Arborist.add_dsl_constructor( name, &body )
+		else
+			self.log.info "Skipping DSL constructor for anonymous class."
+		end
 
-		Arborist.add_dsl_constructor( name, &body )
 	end
 
 
@@ -98,15 +119,22 @@ class Arborist::Node
 	### Create a new Node with the specified +identifier+, which must be unique to the
 	### loaded tree.
 	def initialize( identifier, options={}, &block )
+		raise "Invalid identifier (must match /\w+/)" unless identifier =~ /^\w+$/
+
 		@identifier  = identifier
 		@options     = options
 		@parent      = nil
 		@description = nil
 		@tags        = Set.new
 		@source      = nil
-		@subnodes    = []
+		@children    = {}
 
-		self.instance_eval( &block )
+		@status      = :unknown
+
+		@last_contacted = Time.at( 0 )
+		@last_contact_attempt = nil
+
+		self.instance_eval( &block ) if block
 	end
 
 
@@ -127,8 +155,14 @@ class Arborist::Node
 	attr_reader :source
 
 	##
-	# The nodes which are children of this node that are loaded with it
-	attr_reader :subnodes
+	# The Hash of nodes which are children of this node, keyed by identifier
+	attr_reader :children
+
+
+	### Set the source of the node to +source+, which should be a valid URI.
+	def source=( source )
+		@source = URI( source )
+	end
 
 
 	#
@@ -165,24 +199,66 @@ class Arborist::Node
 
 
 	#
-	# :section:
+	# :section: Hierarchy API
 	#
 
-
-	### Set the source of the node to +source+, which should be a valid URI.
-	def source=( source )
-		@source = URI( source )
+	### Enumerable API -- iterate over the children of this node.
+	def each( &block )
+		return self.children.values.each( &block )
 	end
+
+
+	### Returns +true+ if the node has one or more child nodes.
+	def has_children?
+		return !self.children.empty?
+	end
+
+
+	### Returns +true+ if the node is considered operational.
+	def operational?
+		return self.identifier.start_with?( '_' )
+	end
+
+
+	### Register the specified +node+ as a child of this node, replacing any existing
+	### node with the same identifier.
+	def add_child( node )
+		self.log.debug "Adding node %p as a child. Parent = %p" % [ node, node.parent ]
+		raise "%p is not a child of %p" % [ node, self ] if
+			node.parent && node.parent != self.identifier
+		self.children[ node.identifier ] = node
+	end
+
+
+	### Append operator -- add the specified +node+ as a child and return +self+.
+	def <<( node )
+		self.add_child( node )
+		return self
+	end
+
+
+	### Unregister the specified +node+ as a child of this node.
+	def remove_child( node )
+		self.log.debug "Removing node %p from children" % [ node ]
+		return self.children.delete( node.identifier )
+	end
+
+
+	#
+	# State maintenance methods
+	#
 
 
 	### Return a String representation of the object suitable for debugging.
 	def inspect
-		return "#<%p:%#x [%s] %p %s>" % [
+		return "#<%p:%#x [%s] -> %s %p %s, %d children>" % [
 			self.class,
 			self.object_id * 2,
 			self.identifier,
+			self.parent || 'root',
 			self.description || "(no description)",
 			self.source,
+			self.children.length,
 		]
 	end
 
