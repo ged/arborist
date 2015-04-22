@@ -45,7 +45,7 @@ class Arborist::Node
 			:up,
 			:down
 
-		event :observe do
+		event :update do
 			transition any - [:up] => :up, if: :last_contact_successful?
 			transition any - [:down] => :down, unless: :last_contact_successful?
 		end
@@ -119,7 +119,8 @@ class Arborist::Node
 	### Create a new Node with the specified +identifier+, which must be unique to the
 	### loaded tree.
 	def initialize( identifier, options={}, &block )
-		raise "Invalid identifier (must match /\w+/)" unless identifier =~ /^\w+$/
+		raise "Invalid identifier %p" % [identifier] unless
+			identifier =~ /^\w[\w\-]*$/
 
 		@identifier  = identifier
 		@options     = options
@@ -129,7 +130,8 @@ class Arborist::Node
 		@source      = nil
 		@children    = {}
 
-		@status      = :unknown
+		@status      = 'unknown'
+		@properties  = {}
 
 		@last_contacted = Time.at( 0 )
 		@last_contact_attempt = nil
@@ -157,6 +159,18 @@ class Arborist::Node
 	##
 	# The Hash of nodes which are children of this node, keyed by identifier
 	attr_reader :children
+
+	##
+	# Arbitrary attributes attached to this node via the manager API
+	attr_reader :properties
+
+	##
+	# The Time the node was last successfully contacted
+	attr_accessor :last_contacted
+
+	##
+	# The Time the node was last selected for update.
+	attr_accessor :last_contact_attempt
 
 
 	### Set the source of the node to +source+, which should be a valid URI.
@@ -195,6 +209,26 @@ class Arborist::Node
 	def tags( *tags )
 		@tags.merge( tags ) unless tags.empty?
 		return @tags
+	end
+
+
+	### Update specified +properties+ for the node.
+	def update( properties=nil )
+		self.last_contact_attempt = Time.now
+
+		if properties
+			self.last_contacted = self.last_contact_attempt
+			self.properties.merge!( properties, &method(:deep_merge_hash) )
+		end
+
+		super
+	end
+
+
+	### Returns +true+ if the last time the node was monitored resulted in an
+	### update.
+	def last_contact_successful?
+		return self.last_contact_attempt == self.last_contacted
 	end
 
 
@@ -260,6 +294,20 @@ class Arborist::Node
 			self.source,
 			self.children.length,
 		]
+	end
+
+
+	#######
+	private
+	#######
+
+	### Merge conflict block for doing recursive Hash#merge!
+	def deep_merge_hash( key, oldval, newval )
+		if oldval.respond_to?(:merge) && newval.respond_to?(:merge)
+			oldval.merge( newval, &method(:deep_merge_hash) )
+		else
+			newval
+		end
 	end
 
 end # class Arborist::Node

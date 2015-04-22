@@ -41,15 +41,20 @@ describe Arborist::Node do
 	end
 
 
+	it "knows what its identifier is" do
+		expect( described_class.new('good_identifier').identifier ).to eq( 'good_identifier' )
+	end
+
+
+	it "accepts identifiers with hyphens" do
+		expect( described_class.new('router_nat-pmp').identifier ).to eq( 'router_nat-pmp' )
+	end
+
+
 	it "raises an error if the node identifier is invalid" do
 		expect {
 		   described_class.new 'bad identifier'
 		}.to raise_error( RuntimeError, /identifier/i )
-	end
-
-
-	it "knows what its identifier is" do
-		expect( described_class.new('good_identifier').identifier ).to eq( 'good_identifier' )
 	end
 
 
@@ -112,6 +117,95 @@ describe Arborist::Node do
 			node.add_child( child_node )
 			node.remove_child( child_node )
 			expect( node ).to_not have_children
+		end
+
+
+		describe "status" do
+
+			it "starts out in `unknown` status" do
+				expect( node ).to be_unknown
+				expect( node ).to_not be_up
+				expect( node ).to_not be_down
+			end
+
+
+			it "transitions to `up` status if its state is updated successfully" do
+				node.update( tested: true )
+
+				expect( node ).to be_up
+				expect( node ).to_not be_unknown
+				expect( node ).to_not be_down
+			end
+
+
+			it "transitions to `down` status if its state is not updated successfully" do
+				node.update( nil )
+
+				expect( node ).to be_down
+				expect( node ).to_not be_unknown
+				expect( node ).to_not be_up
+			end
+		end
+
+
+		describe "Properties API" do
+
+			it "is initialized with an empty set" do
+				expect( node.properties ).to be_empty
+			end
+
+			it "can attach arbitrary values to the node" do
+				node.update( 'cider' => 'tasty' )
+				expect( node.properties['cider'] ).to eq( 'tasty' )
+			end
+
+			it "replaces existing values on update" do
+				node.properties.replace({
+					'cider' => 'tasty',
+					'cider_size' => '16oz',
+				})
+				node.update( 'cider_size' => '8oz' )
+
+				expect( node.properties ).to include(
+					'cider' => 'tasty',
+					'cider_size' => '8oz'
+				)
+			end
+
+			it "replaces nested values on update" do
+				node.properties.replace({
+					'cider' => {
+						'description' => 'tasty',
+						'size' => '16oz',
+					},
+					'sausage' => {
+						'description' => 'pork',
+						'size' => 'huge',
+					},
+					'music' => '80s'
+				})
+				node.update(
+					'cider' => {'size' => '8oz'},
+					'sausage' => 'Linguiça',
+					'music' => {
+						'genre' => '80s',
+						'artist' => 'The Smiths'
+					}
+				)
+
+				expect( node.properties ).to eq(
+					'cider' => {
+						'description' => 'tasty',
+						'size' => '8oz',
+					},
+					'sausage' => 'Linguiça',
+					'music' => {
+						'genre' => '80s',
+						'artist' => 'The Smiths'
+					}
+				)
+			end
+
 		end
 
 
