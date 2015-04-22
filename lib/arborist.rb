@@ -80,7 +80,7 @@ module Arborist
 	def self::manager_for( directory )
 		nodes = Arborist::Node.each_in( directory )
 		manager = Arborist::Manager.new
-		manager.load_graph( nodes )
+		manager.load_tree( nodes )
 
 		return manager
 	end
