@@ -54,7 +54,7 @@ module Arborist
 		end
 
 		### Create predicate methods and writers that allow assignment to the attributes
-		### of the singleton of the declaring object that correspond to the specified 
+		### of the singleton of the declaring object that correspond to the specified
 		### +symbols+.
 		def singleton_predicate_accessor( *symbols )
 			singleton_class.extend( Arborist::MethodUtilities )

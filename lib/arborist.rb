@@ -78,6 +78,7 @@ module Arborist
 	### Return a new Arborist::Manager for the nodes described in files under
 	### the specified +directory+.
 	def self::manager_for( directory )
+		self.load_all
 		nodes = Arborist::Node.each_in( directory )
 		manager = Arborist::Manager.new
 		manager.load_tree( nodes )

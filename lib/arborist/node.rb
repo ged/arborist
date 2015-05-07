@@ -31,6 +31,15 @@ class Arborist::Node
 
 
 	##
+	# The struct for the 'ack' operational property
+	ACK = Struct.new( 'ArboristNodeACK', :message, :via, :sender, :time )
+
+	##
+	# The keys required to be set for an ACK
+	ACK_REQUIRED_PROPERTIES = %i[ message sender ]
+
+
+	##
 	# Log via the Arborist logger
 	log_to :arborist
 
@@ -43,12 +52,18 @@ class Arborist::Node
 
 		state :unknown,
 			:up,
-			:down
+			:down,
+			:acked
 
 		event :update do
+			transition any - [:acked] => :acked, if: :ack_set?
 			transition any - [:up] => :up, if: :last_contact_successful?
-			transition any - [:down] => :down, unless: :last_contact_successful?
+			transition any - [:down, :acked] => :down, unless: :last_contact_successful?
 		end
+
+		after_transition :acked => :up, do: :on_ack_cleared
+		after_transition :down => :up, do: :on_node_up
+		after_transition :up => :down, do: :on_node_down
 
 	end
 
@@ -122,19 +137,21 @@ class Arborist::Node
 		raise "Invalid identifier %p" % [identifier] unless
 			identifier =~ /^\w[\w\-]*$/
 
-		@identifier  = identifier
-		@options     = options
-		@parent      = nil
-		@description = nil
-		@tags        = Set.new
-		@source      = nil
-		@children    = {}
+		@identifier     = identifier
+		@options        = options
+		@parent         = nil
+		@description    = nil
+		@tags           = Set.new
+		@source         = nil
+		@children       = {}
 
-		@status      = 'unknown'
-		@properties  = {}
+		@status         = 'unknown'
+		@status_changed = nil
 
+		@error          = nil
+		@ack            = nil
+		@properties     = {}
 		@last_contacted = Time.at( 0 )
-		@last_contact_attempt = nil
 
 		self.instance_eval( &block ) if block
 	end
@@ -165,12 +182,20 @@ class Arborist::Node
 	attr_reader :properties
 
 	##
-	# The Time the node was last successfully contacted
+	# The Time the node was last contacted
 	attr_accessor :last_contacted
 
 	##
-	# The Time the node was last selected for update.
-	attr_accessor :last_contact_attempt
+	# The Time the node's status last changed.
+	attr_accessor :status_changed
+
+	##
+	# The last error encountered by a monitor attempting to update this node.
+	attr_accessor :error
+
+	##
+	# The acknowledgement currently in effect. Should be an instance of Arborist::Node::ACK
+	attr_accessor :ack
 
 
 	### Set the source of the node to +source+, which should be a valid URI.
@@ -213,23 +238,68 @@ class Arborist::Node
 
 
 	### Update specified +properties+ for the node.
-	def update( properties=nil )
-		self.last_contact_attempt = Time.now
+	def update( properties )
+		self.log.debug "Updated: %p" % [ properties ]
 
-		if properties
-			self.last_contacted = self.last_contact_attempt
-			self.properties.merge!( properties, &method(:deep_merge_hash) )
-		end
+		self.last_contacted = Time.now
+		self.error          = properties.delete( :error )
+		self.ack            = properties.delete( :ack ) if properties.key?( :ack )
+
+		self.properties.merge!( properties, &method(:deep_merge_hash) )
 
 		super
+	end
+
+
+	### Ack the node with the specified +ack_data+, which should contain
+	def ack=( ack_data )
+		self.log.debug "ACKed with data: %p" % [ ack_data ]
+		ack_values = ack_data.values_at( *Arborist::Node::ACK.members )
+		self.log.debug "  ack values: %p" % [ ack_values ]
+		new_ack = Arborist::Node::ACK.new( *ack_values )
+
+		if missing = ACK_REQUIRED_PROPERTIES.find {|prop| new_ack[prop].nil? }
+			raise "Missing required ACK attribute %s" % [ missing ]
+		end
+
+		@ack = new_ack
+	end
+
+
+	### Returns +true+ if the node has an ACK status set.
+	def ack_set?
+		return @ack ? true : false
 	end
 
 
 	### Returns +true+ if the last time the node was monitored resulted in an
 	### update.
 	def last_contact_successful?
-		return self.last_contact_attempt == self.last_contacted
+		return !self.error
 	end
+
+
+	#
+	# :section: State Callbacks
+	#
+
+	### Callback for when an acknowledgement is cleared.
+	def on_ack_cleared
+		# :TODO: Currently a no-op, but send an event when we know how to do that.
+	end
+
+
+	### Callback for when a node goes from down to up
+	def on_node_up
+		# :TODO: Currently a no-op, but send an event when we know how to do that.
+	end
+
+
+	### Callback for when a node goes from up to down
+	def on_node_down
+		# :TODO: Currently a no-op, but send an event when we know how to do that.
+	end
+
 
 
 	#

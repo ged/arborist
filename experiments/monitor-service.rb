@@ -11,6 +11,9 @@ sock.bind( ENDPOINT )
 sock.linger = 1
 
 while request = sock.recv
+	work = rand * 20.0
+	puts "Got a request. Sleeping for %0.2fs" % [ work ]
+	sleep( work )
 	sock.send "HERE YOU GO %d: [%.5f].\n" % [ request, Time.now.to_f ]
 end
 

@@ -124,27 +124,32 @@ describe Arborist::Node do
 
 			it "starts out in `unknown` status" do
 				expect( node ).to be_unknown
-				expect( node ).to_not be_up
-				expect( node ).to_not be_down
 			end
 
 
-			it "transitions to `up` status if its state is updated successfully" do
+			it "transitions to `up` status if its state is updated with no `error` property" do
 				node.update( tested: true )
+				expect( node ).to be_up
+			end
+
+
+			it "transitions to `down` status if its state is updated with an `error` property" do
+				node.update( error: "Couldn't talk to it!" )
+				expect( node ).to be_down
+			end
+
+			it "transitions from `down` to `acked` status if it's updated with an `ack` property" do
+				node.update( ack: {message: "Maintenance", sender: 'mahlon'}, error: "Offlined"  )
+				expect( node ).to be_acked
+			end
+
+			it "transitions to `up` from `acked` status if it's updated with an `ack` property" do
+				node.update( ack: {message: "Maintenance", sender: 'mahlon'}, error: "Offlined"  )
+				node.update( ping_time: 0.02 )
 
 				expect( node ).to be_up
-				expect( node ).to_not be_unknown
-				expect( node ).to_not be_down
 			end
 
-
-			it "transitions to `down` status if its state is not updated successfully" do
-				node.update( nil )
-
-				expect( node ).to be_down
-				expect( node ).to_not be_unknown
-				expect( node ).to_not be_up
-			end
 		end
 
 

@@ -4,7 +4,7 @@
 require 'arborist/monitor'
 
 Arborist::Monitor 'ping check' do
-	every 2.seconds
+	every 20.seconds
 	match type: 'host'
 	exclude tag: :laptop
 	use :address

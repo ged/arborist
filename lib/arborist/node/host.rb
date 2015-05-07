@@ -35,17 +35,20 @@ class Arborist::Node::Host < Arborist::Node
 
 	### Set an IP address of the host.
 	def address( new_address, options={} )
-		new_address = case new_address
-			when IPADDR_RE
-				IPAddr.new( new_address ) unless new_address.is_a?( IPAddr )
-			when String
-				ip_addr = Socket.gethostbyname( new_address )
-				ip_addr[2]
-			else
-				raise "I don't know how to parse a %p host address (%p)" %
-					[ new_address.class, new_address ]
-			end
-		@addresses << new_address
+		self.log.debug "Adding address %p to %p" % [ new_address, self ]
+		case new_address
+		when IPAddr
+			@addresses << new_address
+		when IPADDR_RE
+			@addresses << IPAddr.new( new_address )
+		when String
+			ip_addr = TCPSocket.gethostbyname( new_address )
+			@addresses << IPAddr.new( ip_addr[3] )
+			@addresses << IPAddr.new( ip_addr[4] ) if ip_addr[4]
+		else
+			raise "I don't know how to parse a %p host address (%p)" %
+				[ new_address.class, new_address ]
+		end
 	end
 
 

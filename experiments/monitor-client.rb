@@ -14,6 +14,5 @@ loop do
 	sock.send( pid.to_s )
 	reply = sock.recv
 	puts "Got: %s" % [ reply ]
-	sleep rand( 2.0 )
 end
 
