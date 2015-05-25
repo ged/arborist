@@ -136,5 +136,14 @@ describe Arborist do
 		expect( described_class.manager_for(@data_dir) ).to be_a( Arborist::Manager )
 	end
 
+
+	it "has a ZMQ context" do
+		ctx = instance_double( ZMQ::Context )
+		expect( ZMQ::Context ).to receive( :new ).once.and_return( ctx )
+
+		expect( described_class.zmq_context ).to be( ctx )
+		expect( described_class.zmq_context ).to be( ctx )
+	end
+
 end
 

@@ -3,3 +3,4 @@ coverage/
 \.yml$
 \.lock$
 \.devel$
+^ChangeLog$

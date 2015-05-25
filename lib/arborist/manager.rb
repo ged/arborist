@@ -2,7 +2,9 @@
 #encoding: utf-8
 
 require 'pathname'
+require 'configurability'
 require 'loggability'
+require 'rbczmq'
 
 require 'arborist' unless defined?( Arborist )
 require 'arborist/node'
@@ -11,13 +13,47 @@ require 'arborist/mixins'
 
 # The main Arborist process -- responsible for coordinating all other activity.
 class Arborist::Manager
-	extend Loggability,
+	extend Configurability,
+		Loggability,
 	    Arborist::MethodUtilities
+
+	# Signals the manager responds to
+	QUEUE_SIGS = [
+		:INT, :TERM, :HUP, :USR1,
+		# :TODO: :QUIT, :WINCH, :USR2, :TTIN, :TTOU
+	]
+
+	# Configurability API -- default configuration values
+	CONFIG_DEFAULTS = {
+		tree_api_url:  'ipc:///tmp/arborist_tree.sock',
+		event_api_url: 'ipc:///tmp/arborist_events.sock'
+	}
+
+	# The number of seconds to wait between checks for incoming signals
+	SIGNAL_INTERVAL = 0.5
 
 
 	##
 	# Use the Arborist logger
 	log_to :arborist
+
+
+	##
+	# The ZMQ REP socket for the API for accessing the node tree.
+	singleton_attr_accessor :tree_api_url
+
+	##
+	# The ZMQ PUB socket for published events
+	singleton_attr_accessor :event_api_url
+
+
+	### Configurability API.
+	def self::configure( config=nil )
+		config = self.defaults.merge( config || {} )
+
+		self.tree_api_url  = config[ :tree_api_url ]
+		self.event_api_url = config[ :event_api_url ]
+	end
 
 
 	#
@@ -31,6 +67,13 @@ class Arborist::Manager
 			'_' => @root,
 		}
 		@tree_built = false
+
+		@tree_sock = @event_sock = nil
+		@signal_timer = nil
+		@running      = false
+		@start_time   = nil
+
+		Thread.main[:signal_queue] = []
 	end
 
 
@@ -46,11 +89,196 @@ class Arborist::Manager
 	# The Hash of all loaded Nodes, keyed by their identifier
 	attr_accessor :nodes
 
+	##
+	# The time at which the manager began running.
+	attr_accessor :start_time
+
+	##
+	# Whether or not the manager is running
+	attr_predicate_accessor :running
 
 	##
 	# Flag for marking when the tree is built successfully the first time
 	attr_predicate_accessor :tree_built
 
+
+	#
+	# :section: Startup/Shutdown
+	#
+
+	### Setup sockets and start the event loop.
+	def run
+		self.log.info "Getting ready to start the manager."
+		self.setup_sockets
+		self.set_signal_handlers
+		self.start_accepting_requests
+
+		return self # For chaining
+	ensure
+		self.restore_signal_handlers
+		ZMQ::Loop.remove( @tree_sock )
+		ZMQ::Loop.remove( @event_sock )
+		Arborist.reset_zmq_context
+	end
+
+
+	### Start a loop, accepting a request and handling it.
+	def start_accepting_requests
+		self.log.debug "Starting the main loop"
+		ZMQ::Loop.run do
+			ZMQ::Loop.register_readable( @tree_sock, Arborist::Manager::TreeAPI, self )
+			ZMQ::Loop.register_writable( @event_sock, Arborist::Manager::EventPublisher, self )
+			self.setup_signal_timer
+			self.running = true
+			self.start_time = Time.now
+			self.log.debug "Manager running."
+		end
+	end
+
+
+	### Create the ZMQ API socket if necessary.
+	def setup_sockets
+		self.log.debug "Setting up sockets"
+		@tree_sock = self.setup_tree_socket
+		@event_sock = self.setup_event_socket
+	end
+
+
+	### Set up the ZMQ REP socket for the Tree API.
+	def setup_tree_socket
+		sock = Arborist.zmq_context.socket( :REP )
+		self.log.debug "  binding the tree API socket to %p" % [ self.class.tree_api_url ]
+		sock.linger = 0
+		sock.bind( self.class.tree_api_url )
+		return sock
+	end
+
+
+	### Set up the ZMQ PUB socket for published events.
+	def setup_event_socket
+		sock = Arborist.zmq_context.socket( :PUB )
+		self.log.debug "  binding the event socket to %p" % [ self.class.event_api_url ]
+		sock.linger = 0
+		sock.bind( self.class.event_api_url )
+		return sock
+	end
+
+
+	### Restart the manager
+	def restart
+		raise NotImplementedError
+	end
+
+
+	### Stop the manager.
+	def stop
+		self.log.info "Stopping the manager."
+		self.running = false
+		self.ignore_signals
+		self.cancel_signal_timer
+		ZMQ::Loop.stop
+	end
+
+
+	#
+	# :section: Signal Handling
+	# These methods set up some behavior for starting, restarting, and stopping
+	# your application when a signal is received. If you don't want signals to
+	# be handled, override #set_signal_handlers with an empty method.
+	#
+
+	### Set up a periodic ZMQ timer to check for queued signals and handle them.
+	def setup_signal_timer
+		@signal_timer = ZMQ::Loop.add_periodic_timer( SIGNAL_INTERVAL, &self.method(:process_signal_queue) )
+	end
+
+
+	### Disable the timer that checks for incoming signals
+	def cancel_signal_timer
+		@signal_timer.cancel
+	end
+
+
+	### Set up signal handlers for common signals that will shut down, restart, etc.
+	def set_signal_handlers
+		self.log.debug "Setting up deferred signal handlers."
+		QUEUE_SIGS.each do |sig|
+			Signal.trap( sig ) { Thread.main[:signal_queue] << sig }
+		end
+	end
+
+
+	### Set all signal handlers to ignore.
+	def ignore_signals
+		self.log.debug "Ignoring signals."
+		QUEUE_SIGS.each do |sig|
+			Signal.trap( sig, :IGNORE )
+		end
+	end
+
+
+	### Set the signal handlers back to their defaults.
+	def restore_signal_handlers
+		self.log.debug "Restoring default signal handlers."
+		QUEUE_SIGS.each do |sig|
+			Signal.trap( sig, :DEFAULT )
+		end
+	end
+
+	### Handle any queued signals.
+	def process_signal_queue
+		# Look for any signals that arrived and handle them
+		while sig = Thread.main[:signal_queue].shift
+			self.handle_signal( sig )
+		end
+	end
+
+
+	### Handle signals.
+	def handle_signal( sig )
+		self.log.debug "Handling signal %s" % [ sig ]
+		case sig
+		when :INT, :TERM
+			self.on_termination_signal( sig )
+
+		when :HUP
+			self.on_hangup_signal( sig )
+
+		when :USR1
+			self.on_user1_signal( sig )
+
+		else
+			self.log.warn "Unhandled signal %s" % [ sig ]
+		end
+
+	end
+
+
+	### Handle a TERM signal. Shuts the handler down after handling any current request/s. Also
+	### aliased to #on_interrupt_signal.
+	def on_termination_signal( signo )
+		self.log.warn "Terminated (%p)" % [ signo ]
+		self.stop
+	end
+	alias_method :on_interrupt_signal, :on_termination_signal
+
+
+	### Handle a HUP signal. The default is to restart the handler.
+	def on_hangup_signal( signo )
+		self.log.warn "Hangup (%p)" % [ signo ]
+		self.restart
+	end
+
+
+	### Handle a USR1 signal. Writes a message to the log by default.
+	def on_user1_signal( signo )
+		self.log.info "Checkpoint: User signal."
+	end
+
+
+	#
+	# :section: Tree API
+	#
 
 	### Add nodes yielded from the specified +enumerator+ into the manager's
 	### tree.
@@ -89,8 +317,11 @@ class Arborist::Manager
 	def add_node( node )
 		identifier = node.identifier
 
-		self.remove_node( self.nodes[identifier] )
-		self.nodes[ identifier ] = node
+		unless self.nodes[identifier].equal?( node )
+			self.log.debug "removing existing '%s' node: %p" % [ identifier, self.nodes[identifier] ]
+			self.remove_node( self.nodes[identifier] )
+			self.nodes[ identifier ] = node
+		end
 
 		self.log.debug "Linking node %p to its parent" % [ node ]
 		self.link_node_to_parent( node ) if self.tree_built?
@@ -136,6 +367,25 @@ class Arborist::Manager
 	end
 
 
+	### Return the duration the manager has been running in seconds.
+	def uptime
+		return 0 unless self.start_time
+		return Time.now - self.start_time
+	end
+
+
+	### Return the number of nodes in the manager's tree.
+	def nodecount
+		return self.nodes.length
+	end
+
+
+	### Return an Array of the identifiers of all nodes in the manager's tree.
+	def nodelist
+		return self.nodes.keys
+	end
+
+
 	#########
 	protected
 	#########
@@ -150,5 +400,9 @@ class Arborist::Manager
 			traverse.call( start_node )
 		end
 	end
+
+
+	require 'arborist/manager/tree_api'
+	require 'arborist/manager/event_publisher'
 
 end # class Arborist::Manager

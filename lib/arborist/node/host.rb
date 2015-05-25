@@ -33,6 +33,7 @@ class Arborist::Node::Host < Arborist::Node
 	# The network address(es) of this Host as an Array of IPAddr objects
 	attr_reader :addresses
 
+
 	### Set an IP address of the host.
 	def address( new_address, options={} )
 		self.log.debug "Adding address %p to %p" % [ new_address, self ]
@@ -49,6 +50,12 @@ class Arborist::Node::Host < Arborist::Node
 			raise "I don't know how to parse a %p host address (%p)" %
 				[ new_address.class, new_address ]
 		end
+	end
+
+
+	### Add a service to the host
+	def service( name, options={}, &block )
+		return Arborist::Node.create( :service, name, self, options, &block )
 	end
 
 

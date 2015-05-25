@@ -15,3 +15,24 @@
 ...but don't send more than 3 SMSes per hour.
 
 
+SUBSCRIBE /nodes/bennett Arborist/0.1
+{
+    type: service
+    port: 80
+}
+
+=>
+200 OK
+7d4083bc35a9
+
+
+SUBSCRIBE /nodes Arborist/0.1
+{
+    type: service
+    port: 80
+}
+
+=>
+200 OK
+7d4083bc35a9
+

@@ -17,10 +17,10 @@ Arborist::Host 'yevaud' do
 	service 'rabbitmq', port: 'amqp'
 	service 'postgresql'
 
-	webservice 'cozy_frontend',       port: 3000
-	webservice 'cozy_admin_frontend', port: 4331
-	webservice 'cozy_services',       port: 8888
-	webservice 'cozy_admin_services', port: 8889
+	service 'cozy_frontend',       port: 3000, type: 'http'
+	service 'cozy_admin_frontend', port: 4331, type: 'http'
+	service 'cozy_services',       port: 8888, type: 'http'
+	service 'cozy_admin_services', port: 8889, type: 'http'
 
 end
 

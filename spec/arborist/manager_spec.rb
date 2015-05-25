@@ -2,6 +2,7 @@
 
 require_relative '../spec_helper'
 
+require 'timecop'
 require 'arborist/manager'
 
 
@@ -46,6 +47,22 @@ describe Arborist::Manager do
 	end
 
 
+	it "knows how long it has been running" do
+		Timecop.freeze do
+			manager.start_time = Time.now
+
+			Timecop.travel( 10 ) do
+				expect( manager.uptime ).to be_within( 1 ).of( 10 )
+			end
+		end
+	end
+
+
+	it "has an uptime of 0 if it hasn't yet been started" do
+		expect( manager.uptime ).to eq( 0 )
+	end
+
+
 	context "a new empty manager" do
 
 		let( :node ) do
@@ -59,10 +76,17 @@ describe Arborist::Manager do
 		end
 
 
+		it "has a nodecount of 1" do
+			expect( manager.nodecount ).to eq( 1 )
+		end
+
+
 		it "can have a node added to it" do
 			manager.add_node( node )
 			expect( manager.nodes ).to include( 'italian_lessons' )
 			expect( manager.nodes['italian_lessons'] ).to be( node )
+			expect( manager.nodecount ).to eq( 2 )
+			expect( manager.nodelist ).to include( '_', 'italian_lessons' )
 		end
 
 
@@ -72,6 +96,10 @@ describe Arborist::Manager do
 			expect( manager.nodes['italian_lessons'] ).to be( node )
 			expect( manager.nodes['french_laundry'] ).to be( node2 )
 			expect( manager.nodes['german_oak_cats'] ).to be( node3 )
+			expect( manager.nodecount ).to eq( 4 )
+			expect( manager.nodelist ).to include(
+				'_', 'italian_lessons', 'french_laundry', 'german_oak_cats'
+			)
 		end
 
 
@@ -83,6 +111,9 @@ describe Arborist::Manager do
 			expect( manager.nodes ).to include( 'italian_lessons' )
 			expect( manager.nodes['italian_lessons'] ).to_not be( node )
 			expect( manager.nodes['italian_lessons'] ).to be( another_node )
+
+			expect( manager.nodecount ).to eq( 2 )
+			expect( manager.nodelist ).to include( '_', 'italian_lessons' )
 		end
 
 
@@ -92,6 +123,9 @@ describe Arborist::Manager do
 
 			expect( deleted_node ).to be( node )
 			expect( manager.nodes ).to_not include( 'italian_lessons' )
+
+			expect( manager.nodecount ).to eq( 1 )
+			expect( manager.nodelist ).to include( '_' )
 		end
 
 
@@ -125,6 +159,11 @@ describe Arborist::Manager do
 
 		it "has a tree built out of its nodes" do
 			expect( manager.root ).to have_children
+		end
+
+
+		it "knows what nodes have been loaded" do
+			expect( manager.nodelist ).to include( 'trunk', 'branch', 'leaf' )
 		end
 
 
@@ -212,5 +251,53 @@ describe Arborist::Manager do
 
 	end
 
+
+	describe "sockets" do
+
+		let( :zmq_context ) { instance_double(ZMQ::Context) }
+		let( :tree_sock ) { instance_double(ZMQ::Socket::Rep, "tree API socket") }
+		let( :observer_sock ) { instance_double(ZMQ::Socket::Pull, "observer API socket") }
+		let( :event_sock ) { instance_double(ZMQ::Socket::Pub, "event socket") }
+
+
+		before( :each ) do
+			Arborist.instance_variable_set( :@zmq_context, zmq_context )
+
+			allow( zmq_context ).to receive( :socket ).with( :REP ).and_return( tree_sock )
+			allow( zmq_context ).to receive( :socket ).with( :PULL ).and_return( observer_sock )
+			allow( zmq_context ).to receive( :socket ).with( :PUB ).and_return( event_sock )
+
+			allow( ZMQ::Loop ).to receive( :run ).and_yield()
+		end
+
+		after( :each ) do
+			Arborist.instance_variable_set( :@zmq_ctx, nil )
+		end
+
+
+
+		it "sets up its sockets with handlers and starts the ZMQ loop when started" do
+			expect( tree_sock ).to receive( :bind ).with( described_class.tree_api_url )
+			expect( tree_sock ).to receive( :linger= ).with( 0 )
+
+			expect( event_sock ).to receive( :bind ).with( described_class.event_api_url )
+			expect( event_sock ).to receive( :linger= ).with( 0 )
+
+			expect( ZMQ::Loop ).to receive( :run ).and_yield()
+
+			expect( ZMQ::Loop ).to receive( :register_readable ).
+				with( tree_sock, Arborist::Manager::TreeAPI, manager )
+			expect( ZMQ::Loop ).to receive( :register_writable ).
+				with( event_sock, Arborist::Manager::EventPublisher, manager )
+
+			expect( ZMQ::Loop ).to receive( :add_periodic_timer ).
+				with( described_class::SIGNAL_INTERVAL )
+
+			expect( ZMQ::Loop ).to receive( :remove ).with( tree_sock )
+			expect( ZMQ::Loop ).to receive( :remove ).with( event_sock )
+
+			manager.run
+		end
+	end
 end
 
