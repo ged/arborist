@@ -52,10 +52,10 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 		handler = self.lookup_request_action( header ) or
 			raise Arborist::RequestError, "No such action '%s'" % [ header['action'] ]
 
-		raw_response = handler.call( header, body )
+		response = handler.call( header, body )
 
-		self.log.debug "Returning response: %p" % [ raw_response ]
-		return MessagePack.pack( raw_response )
+		self.log.debug "Returning response: %p" % [ response ]
+		return response
 	end
 
 
@@ -75,6 +75,16 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 	def error_response( category, reason )
 		msg = [
 			{ category: category, reason: reason, success: false, version: 1 }
+		]
+		return MessagePack.pack( msg )
+	end
+
+
+	### Build a successful response with the specified +body+.
+	def successful_response( body )
+		msg = [
+			{ success: true, version: 1 },
+			body
 		]
 		return MessagePack.pack( msg )
 	end
@@ -108,33 +118,27 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 
 	### Return a repsonse to the `list` action.
 	def make_list_response( header, body )
-		return [
-			{
-				success: true,
-				version: 1,
-			},
-			{
-				nodes: @manager.nodelist
-			}
-		]
+		return successful_response( nodes: @manager.nodelist )
 	end
 
 
-	### Return a response to the `status` action
+	### Return a response to the `status` action.
 	def make_status_response( header, body )
-		return [
-			{
-				success: true,
-				version: 1,
-			},
-			{
-				server_version: Arborist::VERSION,
-				state: @manager.running? ? 'running' : 'not running',
-				uptime: @manager.uptime,
-				nodecount: @manager.nodecount
-			}
-		]
+		return successful_response(
+			server_version: Arborist::VERSION,
+			state: @manager.running? ? 'running' : 'not running',
+			uptime: @manager.uptime,
+			nodecount: @manager.nodecount
+		)
 	end
+
+
+	### Return a response to the 'fetch' action.
+	def make_fetch_response( header, body )
+		
+		return successful_response(  )
+	end
+
 
 end # class Arborist::Manager::TreeAPI
 

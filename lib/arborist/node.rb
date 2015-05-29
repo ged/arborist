@@ -237,6 +237,11 @@ class Arborist::Node
 	end
 
 
+	#
+	# :section: Manager API
+	# Methods used by the manager to manage its nodes.
+	#
+
 	### Update specified +properties+ for the node.
 	def update( properties )
 		self.log.debug "Updated: %p" % [ properties ]
@@ -249,57 +254,6 @@ class Arborist::Node
 
 		super
 	end
-
-
-	### Ack the node with the specified +ack_data+, which should contain
-	def ack=( ack_data )
-		self.log.debug "ACKed with data: %p" % [ ack_data ]
-		ack_values = ack_data.values_at( *Arborist::Node::ACK.members )
-		self.log.debug "  ack values: %p" % [ ack_values ]
-		new_ack = Arborist::Node::ACK.new( *ack_values )
-
-		if missing = ACK_REQUIRED_PROPERTIES.find {|prop| new_ack[prop].nil? }
-			raise "Missing required ACK attribute %s" % [ missing ]
-		end
-
-		@ack = new_ack
-	end
-
-
-	### Returns +true+ if the node has an ACK status set.
-	def ack_set?
-		return @ack ? true : false
-	end
-
-
-	### Returns +true+ if the last time the node was monitored resulted in an
-	### update.
-	def last_contact_successful?
-		return !self.error
-	end
-
-
-	#
-	# :section: State Callbacks
-	#
-
-	### Callback for when an acknowledgement is cleared.
-	def on_ack_cleared
-		# :TODO: Currently a no-op, but send an event when we know how to do that.
-	end
-
-
-	### Callback for when a node goes from down to up
-	def on_node_up
-		# :TODO: Currently a no-op, but send an event when we know how to do that.
-	end
-
-
-	### Callback for when a node goes from up to down
-	def on_node_down
-		# :TODO: Currently a no-op, but send an event when we know how to do that.
-	end
-
 
 
 	#
@@ -349,9 +303,8 @@ class Arborist::Node
 
 
 	#
-	# State maintenance methods
+	# :section: Utility methods
 	#
-
 
 	### Return a String representation of the object suitable for debugging.
 	def inspect
@@ -365,6 +318,61 @@ class Arborist::Node
 			self.children.length,
 		]
 	end
+
+
+	#########
+	protected
+	#########
+
+	### Ack the node with the specified +ack_data+, which should contain
+	def ack=( ack_data )
+		self.log.debug "ACKed with data: %p" % [ ack_data ]
+		ack_values = ack_data.values_at( *Arborist::Node::ACK.members )
+		self.log.debug "  ack values: %p" % [ ack_values ]
+		new_ack = Arborist::Node::ACK.new( *ack_values )
+
+		if missing = ACK_REQUIRED_PROPERTIES.find {|prop| new_ack[prop].nil? }
+			raise "Missing required ACK attribute %s" % [ missing ]
+		end
+
+		@ack = new_ack
+	end
+
+
+	### State machine guard predicate -- Returns +true+ if the node has an ACK status set.
+	def ack_set?
+		return @ack ? true : false
+	end
+
+
+	### State machine guard predicate -- Returns +true+ if the last time the node
+	### was monitored resulted in an update.
+	def last_contact_successful?
+		return !self.error
+	end
+
+
+	#
+	# :section: State Callbacks
+	#
+
+	### Callback for when an acknowledgement is cleared.
+	def on_ack_cleared
+		# :TODO: Currently a no-op, but send an event when we know how to do that.
+	end
+
+
+	### Callback for when a node goes from down to up
+	def on_node_up
+		# :TODO: Currently a no-op, but send an event when we know how to do that.
+	end
+
+
+	### Callback for when a node goes from up to down
+	def on_node_down
+		# :TODO: Currently a no-op, but send an event when we know how to do that.
+	end
+
 
 
 	#######

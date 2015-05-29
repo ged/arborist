@@ -247,6 +247,30 @@ describe Arborist::Manager do
 		end
 
 
+		it "can traverse all nodes whose status is 'up'" do
+			manager.nodes.each {|_, node| node.status = :up }
+			manager.nodes[ 'host_a' ].update( error: "ping failed" )
+			expect( manager.nodes[ 'host_a' ] ).to be_down
+			manager.nodes[ 'host_c' ].update( error: "gamma rays" )
+			expect( manager.nodes[ 'host_c' ] ).to be_down
+
+			iter = manager.reachable_nodes
+
+			expect( iter ).to be_a( Enumerator )
+
+			nodes = iter.to_a
+			expect( nodes.size ).to eq( 6 )
+			expect( nodes.map(&:identifier) ).to include(
+				"_",
+				"router",
+				"host_b",
+				"host_b_www",
+				"host_b_nfs",
+				"host_b_ssh"
+			)
+		end
+
+
 		it "can create an Enumerator for all of a node's parents from leaf to root"
 
 	end
@@ -293,6 +317,7 @@ describe Arborist::Manager do
 			expect( ZMQ::Loop ).to receive( :add_periodic_timer ).
 				with( described_class::SIGNAL_INTERVAL )
 
+			expect( ZMQ::Loop ).to receive( :instance ).and_return( true )
 			expect( ZMQ::Loop ).to receive( :remove ).with( tree_sock )
 			expect( ZMQ::Loop ).to receive( :remove ).with( event_sock )
 

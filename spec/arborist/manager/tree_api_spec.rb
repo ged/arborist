@@ -194,7 +194,7 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 	end
 
 
-	describe "fetch", :skip do
+	describe "fetch" do
 
 		it "returns a list of serialized nodes matching specified criteria" do
 			msg = pack_message( :fetch, type: 'service', port: 22 )
@@ -204,7 +204,51 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 
 			hdr, body = unpack_message( resmsg )
 			expect( hdr ).to include( 'success' => true )
-			expect( body.length ).to eq( manager.nodes.length )
+			expect( body ).to be_a( Hash )
+			expect( body ).to include( 'nodes' )
+
+			nodes = body['nodes']
+			expect( nodes ).to be_a( Hash )
+			expect( nodes.length ).to eq( manager.nodes.length )
+
+			expect( nodes.values ).to all( be_a(Hash) )
+			expect( nodes.values ).to all( include('status', 'error', 'ack', 'properties') )
+		end
+
+
+		it "doesn't return nodes beneath downed nodes by default" do
+			manager.nodes['sidonie'].status = :down
+			msg = pack_message( :fetch, type: 'service', port: 22 )
+
+			sock.send( msg )
+			resmsg = sock.recv
+
+			hdr, body = unpack_message( resmsg )
+			expect( hdr ).to include( 'success' => true )
+			expect( body ).to be_a( Hash )
+			expect( body ).to include( 'nodes' )
+
+			nodes = body['nodes']
+			expect( nodes ).to be_a( Hash )
+			expect( nodes ).to_not include( 'sidonie-ssh' )
+		end
+
+
+		it "does return nodes beneath downed nodes if asked to" do
+			manager.nodes['sidonie'].status = :down
+			msg = pack_message( :fetch, {include_down: true}, type: 'service', port: 22 )
+
+			sock.send( msg )
+			resmsg = sock.recv
+
+			hdr, body = unpack_message( resmsg )
+			expect( hdr ).to include( 'success' => true )
+			expect( body ).to be_a( Hash )
+			expect( body ).to include( 'nodes' )
+
+			nodes = body['nodes']
+			expect( nodes ).to be_a( Hash )
+			expect( nodes ).to include( 'sidonie-ssh' )
 		end
 
 
@@ -216,7 +260,12 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 
 			hdr, body = unpack_message( resmsg )
 			expect( hdr ).to include( 'success' => true )
-			expect( body.length ).to eq( manager.nodes.length )
+			expect( body ).to be_a( Hash )
+			expect( body ).to include( 'nodes' )
+
+			nodes = body['nodes']
+			expect( nodes ).to be_a( Hash )
+			expect( nodes.length ).to eq( manager.nodes.length )
 		end
 
 
@@ -233,7 +282,6 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 		end
 
 	end
-
 
 
 	describe "list" do

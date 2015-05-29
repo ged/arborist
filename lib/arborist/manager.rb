@@ -11,6 +11,14 @@ require 'arborist/node'
 require 'arborist/mixins'
 
 
+class ZMQ::Loop
+	# Unhide the `instance` reader
+	class << self
+		public :instance
+	end
+end
+
+
 # The main Arborist process -- responsible for coordinating all other activity.
 class Arborist::Manager
 	extend Configurability,
@@ -116,8 +124,10 @@ class Arborist::Manager
 		return self # For chaining
 	ensure
 		self.restore_signal_handlers
-		ZMQ::Loop.remove( @tree_sock )
-		ZMQ::Loop.remove( @event_sock )
+		if ZMQ::Loop.instance
+			ZMQ::Loop.remove( @tree_sock )
+			ZMQ::Loop.remove( @event_sock )
+		end
 		Arborist.reset_zmq_context
 	end
 
@@ -349,24 +359,6 @@ class Arborist::Manager
 	end
 
 
-	### Yield each node in a depth-first traversal of the manager's tree
-	### to the specified +block+, or return an Enumerator if no block is given.
-	def all_nodes( &block )
-		iter = self.enumerator_for( self.root )
-		return iter.each( &block ) if block
-		return iter
-	end
-
-
-	### Yield each node that is not down to the specified +block+, or return
-	### an Enumerator if no block is given.
-	def reachable_nodes( &block )
-		iter = self.enumerator_for( self.root ) {|node| !node.down? }
-		return iter.each( &block ) if block
-		return iter
-	end
-
-
 	### Return the duration the manager has been running in seconds.
 	def uptime
 		return 0 unless self.start_time
@@ -386,6 +378,30 @@ class Arborist::Manager
 	end
 
 
+	#
+	# Tree-traversal API
+	#
+
+	### Yield each node in a depth-first traversal of the manager's tree
+	### to the specified +block+, or return an Enumerator if no block is given.
+	def all_nodes( &block )
+		iter = self.enumerator_for( self.root )
+		return iter.each( &block ) if block
+		return iter
+	end
+
+
+	### Yield each node that is not down to the specified +block+, or return
+	### an Enumerator if no block is given.
+	def reachable_nodes( &block )
+		iter = self.enumerator_for( self.root ) do |node|
+			!node.down?
+		end
+		return iter.each( &block ) if block
+		return iter
+	end
+
+
 	#########
 	protected
 	#########
@@ -394,8 +410,10 @@ class Arborist::Manager
 	def enumerator_for( start_node, &filter )
 		return Enumerator.new do |yielder|
 			traverse = ->( node ) do
-				yielder.yield( node )
-				node.each( &traverse ) if !filter || filter[ node ]
+				if !filter || filter.call( node )
+					yielder.yield( node )
+					node.each( &traverse )
+				end
 			end
 			traverse.call( start_node )
 		end
