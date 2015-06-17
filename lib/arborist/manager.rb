@@ -11,14 +11,6 @@ require 'arborist/node'
 require 'arborist/mixins'
 
 
-class ZMQ::Loop
-	# Unhide the `instance` reader
-	class << self
-		public :instance
-	end
-end
-
-
 # The main Arborist process -- responsible for coordinating all other activity.
 class Arborist::Manager
 	extend Configurability,
@@ -78,10 +70,10 @@ class Arborist::Manager
 
 		@tree_sock = @event_sock = nil
 		@signal_timer = nil
-		@running      = false
 		@start_time   = nil
 
 		Thread.main[:signal_queue] = []
+		@zmq_loop     = nil
 	end
 
 
@@ -102,8 +94,8 @@ class Arborist::Manager
 	attr_accessor :start_time
 
 	##
-	# Whether or not the manager is running
-	attr_predicate_accessor :running
+	# The ZMQ::Loop that will/is acting as the main loop.
+	attr_reader :zmq_loop
 
 	##
 	# Flag for marking when the tree is built successfully the first time
@@ -124,25 +116,39 @@ class Arborist::Manager
 		return self # For chaining
 	ensure
 		self.restore_signal_handlers
-		if ZMQ::Loop.instance
-			ZMQ::Loop.remove( @tree_sock )
-			ZMQ::Loop.remove( @event_sock )
+		if @zmq_loop
+			@zmq_loop.remove( @tree_sock )
+			@zmq_loop.remove( @event_sock )
 		end
 		Arborist.reset_zmq_context
+	end
+
+
+	### Returns true if the Manager is running.
+	def running?
+		return @zmq_loop && @zmq_loop.running?
 	end
 
 
 	### Start a loop, accepting a request and handling it.
 	def start_accepting_requests
 		self.log.debug "Starting the main loop"
-		ZMQ::Loop.run do
-			ZMQ::Loop.register_readable( @tree_sock, Arborist::Manager::TreeAPI, self )
-			ZMQ::Loop.register_writable( @event_sock, Arborist::Manager::EventPublisher, self )
-			self.setup_signal_timer
-			self.running = true
-			self.start_time = Time.now
-			self.log.debug "Manager running."
-		end
+
+		@zmq_loop = ZMQ::Loop.new
+
+		handler = Arborist::Manager::TreeAPI.new( @tree_sock, self )
+		@tree_sock.handler = handler
+		@zmq_loop.register( @tree_sock )
+
+		handler = Arborist::Manager::EventPublisher.new( @event_sock, self )
+		@event_sock.handler = handler
+		@zmq_loop.register( @event_sock )
+
+		self.setup_signal_timer
+		self.start_time = Time.now
+
+		self.log.debug "Manager running."
+		@zmq_loop.start
 	end
 
 
@@ -160,7 +166,7 @@ class Arborist::Manager
 		self.log.debug "  binding the tree API socket to %p" % [ self.class.tree_api_url ]
 		sock.linger = 0
 		sock.bind( self.class.tree_api_url )
-		return sock
+		return ZMQ::Pollitem.new( sock, ZMQ::POLLIN )
 	end
 
 
@@ -170,7 +176,7 @@ class Arborist::Manager
 		self.log.debug "  binding the event socket to %p" % [ self.class.event_api_url ]
 		sock.linger = 0
 		sock.bind( self.class.event_api_url )
-		return sock
+		return ZMQ::Pollitem.new( sock, ZMQ::POLLOUT )
 	end
 
 
@@ -183,10 +189,9 @@ class Arborist::Manager
 	### Stop the manager.
 	def stop
 		self.log.info "Stopping the manager."
-		self.running = false
 		self.ignore_signals
 		self.cancel_signal_timer
-		ZMQ::Loop.stop
+		@zmq_loop.stop if @zmq_loop
 	end
 
 
@@ -199,7 +204,8 @@ class Arborist::Manager
 
 	### Set up a periodic ZMQ timer to check for queued signals and handle them.
 	def setup_signal_timer
-		@signal_timer = ZMQ::Loop.add_periodic_timer( SIGNAL_INTERVAL, &self.method(:process_signal_queue) )
+		@signal_timer = ZMQ::Timer.new( SIGNAL_INTERVAL, 0, self.method(:process_signal_queue) )
+		@zmq_loop.register_timer( @signal_timer )
 	end
 
 
@@ -401,10 +407,6 @@ class Arborist::Manager
 		return iter
 	end
 
-
-	#########
-	protected
-	#########
 
 	### Return an enumerator for the specified +node+.
 	def enumerator_for( start_node, &filter )

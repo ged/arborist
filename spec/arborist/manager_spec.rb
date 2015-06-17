@@ -12,6 +12,10 @@ describe Arborist::Manager do
 		Arborist::Node::Root.reset
 	end
 
+	after( :all ) do
+		Arborist.reset_zmq_context
+	end
+
 
 	let( :manager ) { described_class.new }
 
@@ -279,19 +283,23 @@ describe Arborist::Manager do
 	describe "sockets" do
 
 		let( :zmq_context ) { instance_double(ZMQ::Context) }
+		let( :zmq_loop ) { instance_double(ZMQ::Loop) }
 		let( :tree_sock ) { instance_double(ZMQ::Socket::Rep, "tree API socket") }
-		let( :observer_sock ) { instance_double(ZMQ::Socket::Pull, "observer API socket") }
 		let( :event_sock ) { instance_double(ZMQ::Socket::Pub, "event socket") }
-
+		let( :tree_pollitem ) { instance_double(ZMQ::Pollitem, "tree API pollitem") }
+		let( :event_pollitem ) { instance_double(ZMQ::Pollitem, "event API pollitem") }
+		let( :signal_timer ) { instance_double(ZMQ::Timer, "signal timer") }
 
 		before( :each ) do
 			Arborist.instance_variable_set( :@zmq_context, zmq_context )
 
+			allow( ZMQ::Loop ).to receive( :new ).and_return( zmq_loop )
+
 			allow( zmq_context ).to receive( :socket ).with( :REP ).and_return( tree_sock )
-			allow( zmq_context ).to receive( :socket ).with( :PULL ).and_return( observer_sock )
 			allow( zmq_context ).to receive( :socket ).with( :PUB ).and_return( event_sock )
 
-			allow( ZMQ::Loop ).to receive( :run ).and_yield()
+			allow( zmq_loop ).to receive( :remove ).with( tree_pollitem )
+			allow( zmq_loop ).to receive( :remove ).with( event_pollitem )
 		end
 
 		after( :each ) do
@@ -307,19 +315,26 @@ describe Arborist::Manager do
 			expect( event_sock ).to receive( :bind ).with( described_class.event_api_url )
 			expect( event_sock ).to receive( :linger= ).with( 0 )
 
-			expect( ZMQ::Loop ).to receive( :run ).and_yield()
+			expect( ZMQ::Pollitem ).to receive( :new ).with( tree_sock, ZMQ::POLLIN ).
+				and_return( tree_pollitem )
+			expect( ZMQ::Pollitem ).to receive( :new ).with( event_sock, ZMQ::POLLOUT ).
+				and_return( event_pollitem )
 
-			expect( ZMQ::Loop ).to receive( :register_readable ).
-				with( tree_sock, Arborist::Manager::TreeAPI, manager )
-			expect( ZMQ::Loop ).to receive( :register_writable ).
-				with( event_sock, Arborist::Manager::EventPublisher, manager )
+			expect( tree_pollitem ).to receive( :handler= ).
+				with( an_instance_of(Arborist::Manager::TreeAPI) )
+			expect( zmq_loop ).to receive( :register ).with( tree_pollitem )
+			expect( event_pollitem ).to receive( :handler= ).
+				with( an_instance_of(Arborist::Manager::EventPublisher) )
+			expect( zmq_loop ).to receive( :register ).with( event_pollitem )
 
-			expect( ZMQ::Loop ).to receive( :add_periodic_timer ).
-				with( described_class::SIGNAL_INTERVAL )
+			expect( ZMQ::Timer ).to receive( :new ).
+				with( described_class::SIGNAL_INTERVAL, 0, manager.method(:process_signal_queue) ).
+				and_return( signal_timer )
+			expect( zmq_loop ).to receive( :register_timer ).with( signal_timer )
+			expect( zmq_loop ).to receive( :start )
 
-			expect( ZMQ::Loop ).to receive( :instance ).and_return( true )
-			expect( ZMQ::Loop ).to receive( :remove ).with( tree_sock )
-			expect( ZMQ::Loop ).to receive( :remove ).with( event_sock )
+			expect( zmq_loop ).to receive( :remove ).with( tree_pollitem )
+			expect( zmq_loop ).to receive( :remove ).with( event_pollitem )
 
 			manager.run
 		end

@@ -14,13 +14,13 @@ Arborist::Host 'yevaud' do
 	     :developer
 
 	service 'ssh'
-	service 'rabbitmq', port: 'amqp'
+	service 'rabbitmq', app_protocol: 'amqp'
 	service 'postgresql'
 
-	service 'cozy_frontend',       port: 3000, type: 'http'
-	service 'cozy_admin_frontend', port: 4331, type: 'http'
-	service 'cozy_services',       port: 8888, type: 'http'
-	service 'cozy_admin_services', port: 8889, type: 'http'
+	service 'cozy_frontend',       port: 3000, app_protocol: 'http'
+	service 'cozy_admin_frontend', port: 4331, app_protocol: 'http'
+	service 'cozy_services',       port: 8888, app_protocol: 'http'
+	service 'cozy_admin_services', port: 8889, app_protocol: 'http'
 
 end
 

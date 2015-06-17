@@ -19,12 +19,13 @@ class Arborist::Node::Service < Arborist::Node
 	### Create a new Service node.
 	def initialize( identifier, host, options={}, &block )
 		my_identifier = "%s-%s" % [ host.identifier, identifier ]
-		super( my_identifier, options )
+		super( my_identifier )
 
-		@type = options[:type] || identifier
-		@protocol = options[:protocol] || DEFAULT_PROTOCOL
-		@port = options[:port] || default_port_for( @type, @protocol )
+		@host = host
 		@parent = host.identifier
+		@app_protocol = options[:app_protocol] || identifier
+		@protocol = options[:protocol] || DEFAULT_PROTOCOL
+		@port = Integer( options[:port] || default_port_for(@app_protocol, @protocol) )
 
 		self.instance_eval( &block ) if block
 	end
@@ -43,8 +44,39 @@ class Arborist::Node::Service < Arborist::Node
 	attr_reader :protocol
 
 	##
-	# The type of service (layer 7 protocol)
-	attr_reader :type
+	# The (layer 7) protocol used by the service
+	attr_reader :app_protocol
+
+
+	### Delegate the service's address to its host.
+	def addresses
+		return @host.addresses
+	end
+
+
+	### Returns +true+ if the node matches the specified +key+ and +val+ criteria.
+	def match_criteria?( key, val )
+		return case key
+			when 'port' then self.port == val.to_i
+			when 'address' then self.addresses.include?( val )
+			when 'protocol' then self.protocol == val.downcase
+			when 'app', 'app_protocol' then self.app_protocol == val
+			else
+				super
+			end
+	end
+
+
+	### Return a Hash of the operational values that are included with the node's
+	### monitor state.
+	def operational_values
+		return super.merge(
+			addresses: self.addresses.map( &:to_s ),
+			port: self.port,
+			protocol: self.protocol,
+			app_protocol: self.app_protocol,
+		)
+	end
 
 
 	#######

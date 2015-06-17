@@ -19,8 +19,8 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 	### and call into the +manager+ to respond to them.
 	def initialize( pollable, manager )
 		self.log.debug "Setting up a %p" % [ self.class ]
-		super
-		@manager = manager
+		@pollitem = pollable
+		@manager  = manager
 	end
 
 
@@ -39,16 +39,19 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 		header, body = self.parse_request( raw_request )
 		return self.dispatch_request( header, body )
 
-	rescue Arborist::ClientError => err
+	rescue => err
 		self.log.error "%p: %s" % [ err.class, err.message ]
-		self.log.debug "  %s" % [ err.backtrace.join( "\n  ") ]
-		return self.error_response( 'client', err.message )
+		err.backtrace.each {|frame| self.log.debug "  #{frame}" }
+
+		errtype = err.is_a?( Arborist::RequestError ) ? 'client' : 'server'
+		return self.error_response( errtype, err.message )
 	end
 
 
 	### Attempt to dispatch a request given its +header+ and +body+, and return the
 	### serialized response.
 	def dispatch_request( header, body )
+		self.log.debug "Dispatching request %p -> %p" % [ header, body ]
 		handler = self.lookup_request_action( header ) or
 			raise Arborist::RequestError, "No such action '%s'" % [ header['action'] ]
 
@@ -76,6 +79,7 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 		msg = [
 			{ category: category, reason: reason, success: false, version: 1 }
 		]
+		self.log.debug "Returning error response: %p" % [ msg ]
 		return MessagePack.pack( msg )
 	end
 
@@ -86,6 +90,7 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 			{ success: true, version: 1 },
 			body
 		]
+		self.log.debug "Returning successful response: %p" % [ msg ]
 		return MessagePack.pack( msg )
 	end
 
@@ -97,6 +102,8 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 		rescue => err
 			raise Arborist::RequestError, err.message
 		end
+
+		self.log.debug "Parsed request: %p" % [ tuple ]
 
 		raise Arborist::RequestError, 'not a tuple' unless tuple.is_a?( Array )
 		raise Arborist::RequestError, 'incorrect length' if tuple.length.zero? || tuple.length > 2
@@ -116,14 +123,9 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 	end
 
 
-	### Return a repsonse to the `list` action.
-	def make_list_response( header, body )
-		return successful_response( nodes: @manager.nodelist )
-	end
-
-
 	### Return a response to the `status` action.
 	def make_status_response( header, body )
+		self.log.info "STATUS: %p" % [ header ]
 		return successful_response(
 			server_version: Arborist::VERSION,
 			state: @manager.running? ? 'running' : 'not running',
@@ -133,10 +135,42 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 	end
 
 
+	### Return a repsonse to the `list` action.
+	def make_list_response( header, body )
+		self.log.info "LIST: %p" % [ header ]
+		from = header['from'] || '_'
+
+		start_node = @manager.nodes[ from ]
+		self.log.debug "  Listing nodes under %p" % [ start_node ]
+		iter = @manager.enumerator_for( start_node )
+		data = iter.map( &:to_hash )
+		self.log.debug "  got data for %d nodes" % [ data.length ]
+
+		return successful_response( data )
+	end
+
+
 	### Return a response to the 'fetch' action.
 	def make_fetch_response( header, body )
-		
-		return successful_response(  )
+		self.log.info "FETCH: %p" % [ header ]
+
+		nodes_iter = if header['include_down']
+				@manager.all_nodes
+			else
+				@manager.reachable_nodes
+			end
+
+		states = nodes_iter.
+			select {|node| node.matches?(body) }.
+			each_with_object( {} ) do |node, hash|
+				if !header.key?( 'return' ) || header['return']
+					hash[ node.identifier ] = node.fetch_values( header['return'] )
+				else
+					hash[ node.identifier ] = nil
+				end
+			end
+
+		return successful_response( states )
 	end
 
 

@@ -3,6 +3,7 @@
 
 require 'set'
 require 'uri'
+require 'time'
 require 'pathname'
 require 'state_machines'
 
@@ -11,10 +12,13 @@ require 'pluggability'
 require 'arborist' unless defined?( Arborist )
 require 'arborist/mixins'
 
+using Arborist::TimeRefinements
+
 
 # The basic node class for an Arborist tree
 class Arborist::Node
-	include Enumerable
+	include Enumerable,
+	        Arborist::HashUtilities
 	extend Loggability,
 	       Pluggability,
 	       Arborist::MethodUtilities
@@ -82,6 +86,14 @@ class Arborist::Node
 	end
 
 
+	### Create a new node with its state read from the specified +hash+.
+	def self::from_hash( hash )
+		return self.new( hash[:identifier] ) do
+			self.marshal_load( hash )
+		end
+	end
+
+
 	### Record a new loaded instance if the Thread-local variable is set up to track
 	### them.
 	def self::add_loaded_instance( new_instance )
@@ -133,12 +145,11 @@ class Arborist::Node
 
 	### Create a new Node with the specified +identifier+, which must be unique to the
 	### loaded tree.
-	def initialize( identifier, options={}, &block )
+	def initialize( identifier, &block )
 		raise "Invalid identifier %p" % [identifier] unless
 			identifier =~ /^\w[\w\-]*$/
 
 		@identifier     = identifier
-		@options        = options
 		@parent         = nil
 		@description    = nil
 		@tags           = Set.new
@@ -146,7 +157,7 @@ class Arborist::Node
 		@children       = {}
 
 		@status         = 'unknown'
-		@status_changed = nil
+		@status_changed = Time.at( 0 )
 
 		@error          = nil
 		@ack            = nil
@@ -164,10 +175,6 @@ class Arborist::Node
 	##
 	# The node's identifier
 	attr_reader :identifier
-
-	##
-	# The node's options
-	attr_reader :options
 
 	##
 	# The URI of the source the object was read from
@@ -232,8 +239,8 @@ class Arborist::Node
 
 	### Declare one or more +tags+ for this node.
 	def tags( *tags )
-		@tags.merge( tags ) unless tags.empty?
-		return @tags
+		@tags.merge( tags.map(&:to_s) ) unless tags.empty?
+		return @tags.to_a
 	end
 
 
@@ -241,6 +248,14 @@ class Arborist::Node
 	# :section: Manager API
 	# Methods used by the manager to manage its nodes.
 	#
+
+
+	### Return the simple type of this node (e.g., Arborist::Node::Host => 'host')
+	def type
+		return 'anonymous' unless self.class.name
+		return self.class.name.sub( /.*::/, '' ).downcase
+	end
+
 
 	### Update specified +properties+ for the node.
 	def update( properties )
@@ -250,9 +265,61 @@ class Arborist::Node
 		self.error          = properties.delete( :error )
 		self.ack            = properties.delete( :ack ) if properties.key?( :ack )
 
-		self.properties.merge!( properties, &method(:deep_merge_hash) )
+		self.properties.merge!( properties, &method(:merge_recursively) )
 
 		super
+	end
+
+
+	### Returns +true+ if the specified search +criteria+ all match this node.
+	def matches?( criteria )
+		self.log.debug "Matching %p against criteria: %p" % [ self, criteria ]
+		return criteria.all? do |key, val|
+			self.match_criteria?( key, val )
+		end.tap {|match| self.log.debug "  node %s match." % [ match ? "DID" : "did not"] }
+	end
+
+
+	### Returns +true+ if the node matches the specified +key+ and +val+ criteria.
+	def match_criteria?( key, val )
+		return case key
+			when 'type'
+				self.log.debug "Checking node type %p against %p" % [ self.type, val ]
+				self.type == val
+			when 'tag' then @tags.include?( val.to_s )
+			when 'tags' then Array(val).all? {|tag| @tags.include?(tag) }
+			when 'identifier' then @identifier == identifier
+			else
+				@properties[ key ] == val
+			end
+	end
+
+
+	### Return a Hash of node state values that match the specified +value_spec+.
+	def fetch_values( value_spec )
+		state = self.properties.merge( self.operational_values )
+		state = stringify_keys( state )
+
+		if value_spec
+			self.log.debug "Eliminating all values except: %p" % [ value_spec ]
+			state.delete_if {|key, _| !value_spec.include?(key) }
+		end
+
+		return state
+	end
+
+
+	### Return a Hash of the operational values that are included with the node's
+	### monitor state.
+	def operational_values
+		values = {
+			type: self.type,
+			status: self.status,
+			tags: self.tags
+		}
+		values[:ack] = self.ack.to_h if self.ack
+
+		return values
 	end
 
 
@@ -306,9 +373,22 @@ class Arborist::Node
 	# :section: Utility methods
 	#
 
+	### Return a string describing the node's status.
+	def status_description
+		case self.status
+		when 'up', 'down'
+			return "%s as of %s" % [ self.status.upcase, self.last_contacted ]
+		when 'acked'
+			return "ACKed by %s %s" % [ self.ack.sender, self.ack.time.as_delta ]
+		else
+			return "in an unknown state"
+		end
+	end
+
+
 	### Return a String representation of the object suitable for debugging.
 	def inspect
-		return "#<%p:%#x [%s] -> %s %p %s, %d children>" % [
+		return "#<%p:%#x [%s] -> %s %p %s, %d children, %s>" % [
 			self.class,
 			self.object_id * 2,
 			self.identifier,
@@ -316,7 +396,75 @@ class Arborist::Node
 			self.description || "(no description)",
 			self.source,
 			self.children.length,
+			self.status_description,
 		]
+	end
+
+
+	#
+	# :section: Serialization API
+	#
+
+	### Return a Hash of the node's state.
+	def to_hash
+		return {
+			identifier: self.identifier,
+			parent: self.parent,
+			description: self.description,
+			tags: self.tags,
+			properties: self.properties.dup,
+			status: self.status,
+			ack: self.ack ? self.ack.to_h : nil,
+			last_contacted: self.last_contacted ? self.last_contacted.iso8601 : nil,
+			status_changed: self.status_changed ? self.status_changed.iso8601 : nil,
+			error: self.error,
+		}
+	end
+
+
+	### Marshal API -- return the node as an object suitable for marshalling.
+	def marshal_dump
+		return self.to_hash
+	end
+
+
+	### Marshal API -- set up the object's state using the +hash+ from a
+	### previously-marshalled node.
+	def marshal_load( hash )
+		@identifier = hash[:identifier]
+		@properties = hash[:properties]
+
+		@parent         = hash[:parent]
+		@description    = hash[:description]
+		@tags           = Set.new( hash[:tags] )
+		@children       = {}
+
+		@status         = hash[:status]
+		@status_changed = Time.parse( hash[:status_changed] )
+
+		@error          = hash[:error]
+		@properties     = hash[:properties]
+		@last_contacted = Time.parse( hash[:last_contacted] )
+
+		if hash[:ack]
+			ack_values = hash[:ack].values_at( *Arborist::Node::ACK.members )
+			@ack = Arborist::Node::ACK.new( *ack_values )
+		end
+	end
+
+
+	### Equality operator -- returns +true+ if +other_node+ has the same identifier, parent, and
+	### state as the receiving one.
+	def ==( other_node )
+		return \
+			other_node.identifier == self.identifier &&
+			other_node.parent == self.parent &&
+			other_node.description == self.description &&
+			other_node.tags == self.tags &&
+			other_node.properties == self.properties &&
+			other_node.status == self.status &&
+			other_node.ack == self.ack &&
+			other_node.error == self.error
 	end
 
 
@@ -327,8 +475,9 @@ class Arborist::Node
 	### Ack the node with the specified +ack_data+, which should contain
 	def ack=( ack_data )
 		self.log.debug "ACKed with data: %p" % [ ack_data ]
+
+		ack_data[:time] ||= Time.now
 		ack_values = ack_data.values_at( *Arborist::Node::ACK.members )
-		self.log.debug "  ack values: %p" % [ ack_values ]
 		new_ack = Arborist::Node::ACK.new( *ack_values )
 
 		if missing = ACK_REQUIRED_PROPERTIES.find {|prop| new_ack[prop].nil? }
@@ -373,19 +522,5 @@ class Arborist::Node
 		# :TODO: Currently a no-op, but send an event when we know how to do that.
 	end
 
-
-
-	#######
-	private
-	#######
-
-	### Merge conflict block for doing recursive Hash#merge!
-	def deep_merge_hash( key, oldval, newval )
-		if oldval.respond_to?(:merge) && newval.respond_to?(:merge)
-			oldval.merge( newval, &method(:deep_merge_hash) )
-		else
-			newval
-		end
-	end
 
 end # class Arborist::Node

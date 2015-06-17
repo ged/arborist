@@ -17,7 +17,7 @@ Header is a Map of the form:
         [verb-specific attributes]
     }
 
-Body is either Nil or a Map of key-value pairs appropriate to the `action`.
+Body is either Nil, a Map of key-value pairs, or an Array of Maps appropriate to the `action`.
 
 
 ## status
@@ -26,7 +26,7 @@ Fetch the status of the Manager.
 
     {
         action: status,
-        version: 1
+        version: 1,
     }
 
 Response:
@@ -51,6 +51,7 @@ Request:
         {
             action: list,
             version: 1
+            [from: «identifier»]
         }
     ]
 
@@ -61,9 +62,20 @@ Successful response:
             success: true,
             version: 1
         },
-        {
-            nodes: ''
-        }
+        [
+            {
+                identifier: 'foo',
+                status: 'up',
+                parent: '_',
+                properties: {},
+            },
+            {
+                identifier: 'bar',
+                status: 'down',
+                parent: 'foo',
+                properties: {},
+            }
+        ]
     ]
 
 failure example:
@@ -87,20 +99,29 @@ Fetch state for
 
     [
         {
-            action: search,
+            action: fetch,
             version: 1,
-            return: address, name
+            include_down: true,
+            return: [address, description, status]
         },
         {
-            status: up
-            type: host
-        }
+            'theon' => {
+                address: '10.2.10.4',
+                description: 'no theon, reek',
+                status: down,
+            },
+            'thoros' => {
+                address: '10.2.10.4',
+                description: "The Red God's champion",
+                status: up,
+            }
+        ]
     ]
 
 ### return
 
 - not specified : returns everything.
-- `null` : returns just identifiers
+- `Nil` : returns just identifiers
 - array of fields : returns the values of those fields
 
 Search for nodes that match the filter given in the request body, returning a serialized map of node identifiers to requested state.

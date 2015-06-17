@@ -11,9 +11,10 @@ Arborist::Host 'sidonie' do
 
 	description "Media server, NAS."
 
-	tags :storage,
+	tags :infrastructure,
+	     :storage,
 	     :media,
-		 :rip_status_check
+	     :rip_status_check
 
 	service 'ssh'
 	service 'demon-http', port: 6666, protocol: 'http'

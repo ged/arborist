@@ -6,6 +6,8 @@ require_relative '../../spec_helper'
 describe Arborist::Manager::TreeAPI, :testing_manager do
 
 	before( :each ) do
+		Arborist.reset_zmq_context
+
 		@manager = make_testing_manager()
 		@manager_thread = Thread.new do
 			Thread.current.abort_on_exception = true
@@ -26,12 +28,12 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 		@manager_thread.join
 
 		count = 0
-		while ZMQ::Loop.running? || count > 30
+		while @manager.zmq_loop.running? || count > 30
 			sleep 0.1
 			Loggability[ Arborist ].info "ZMQ loop still running"
 			count += 1
 		end
-		raise "ZMQ Loop didn't stop" if ZMQ::Loop.running?
+		raise "ZMQ Loop didn't stop" if @manager.zmq_loop.running?
 	end
 
 
@@ -196,7 +198,7 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 
 	describe "fetch" do
 
-		it "returns a list of serialized nodes matching specified criteria" do
+		it "returns an array of full state maps for nodes matching specified criteria" do
 			msg = pack_message( :fetch, type: 'service', port: 22 )
 
 			sock.send( msg )
@@ -204,20 +206,17 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 
 			hdr, body = unpack_message( resmsg )
 			expect( hdr ).to include( 'success' => true )
+
 			expect( body ).to be_a( Hash )
-			expect( body ).to include( 'nodes' )
+			expect( body.length ).to eq( 3 )
 
-			nodes = body['nodes']
-			expect( nodes ).to be_a( Hash )
-			expect( nodes.length ).to eq( manager.nodes.length )
-
-			expect( nodes.values ).to all( be_a(Hash) )
-			expect( nodes.values ).to all( include('status', 'error', 'ack', 'properties') )
+			expect( body.values ).to all( be_a(Hash) )
+			expect( body.values ).to all( include('status', 'type') )
 		end
 
 
 		it "doesn't return nodes beneath downed nodes by default" do
-			manager.nodes['sidonie'].status = :down
+			manager.nodes['sidonie'].update( error: 'sunspots' )
 			msg = pack_message( :fetch, type: 'service', port: 22 )
 
 			sock.send( msg )
@@ -226,16 +225,13 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 			hdr, body = unpack_message( resmsg )
 			expect( hdr ).to include( 'success' => true )
 			expect( body ).to be_a( Hash )
-			expect( body ).to include( 'nodes' )
-
-			nodes = body['nodes']
-			expect( nodes ).to be_a( Hash )
-			expect( nodes ).to_not include( 'sidonie-ssh' )
+			expect( body.length ).to eq( 2 )
+			expect( body ).to include( 'duir-ssh', 'yevaud-ssh' )
 		end
 
 
 		it "does return nodes beneath downed nodes if asked to" do
-			manager.nodes['sidonie'].status = :down
+			manager.nodes['sidonie'].update( error: 'plague of locusts' )
 			msg = pack_message( :fetch, {include_down: true}, type: 'service', port: 22 )
 
 			sock.send( msg )
@@ -244,15 +240,12 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 			hdr, body = unpack_message( resmsg )
 			expect( hdr ).to include( 'success' => true )
 			expect( body ).to be_a( Hash )
-			expect( body ).to include( 'nodes' )
-
-			nodes = body['nodes']
-			expect( nodes ).to be_a( Hash )
-			expect( nodes ).to include( 'sidonie-ssh' )
+			expect( body.length ).to eq( 3 )
+			expect( body ).to include( 'duir-ssh', 'yevaud-ssh', 'sidonie-ssh' )
 		end
 
 
-		it "returns a list of identifiers matching specified criteria" do
+		it "returns only identifiers if the `return` header is set to `nil`" do
 			msg = pack_message( :fetch, {return: nil}, type: 'service', port: 22 )
 
 			sock.send( msg )
@@ -261,16 +254,14 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 			hdr, body = unpack_message( resmsg )
 			expect( hdr ).to include( 'success' => true )
 			expect( body ).to be_a( Hash )
-			expect( body ).to include( 'nodes' )
-
-			nodes = body['nodes']
-			expect( nodes ).to be_a( Hash )
-			expect( nodes.length ).to eq( manager.nodes.length )
+			expect( body.length ).to eq( 3 )
+			expect( body ).to include( 'duir-ssh', 'yevaud-ssh', 'sidonie-ssh' )
+			expect( body.values ).to all( be_nil )
 		end
 
 
-		it "returns a list of serialized node attributes matching specified criteria" do
-			msg = pack_message( :fetch, {return: %w[status tags description]},
+		it "returns only specified state if the `return` header is set to an Array of keys" do
+			msg = pack_message( :fetch, {return: %w[status tags addresses]},
 				type: 'service', port: 22 )
 
 			sock.send( msg )
@@ -278,7 +269,9 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 
 			hdr, body = unpack_message( resmsg )
 			expect( hdr ).to include( 'success' => true )
-			expect( body.length ).to eq( manager.nodes.length )
+			expect( body.length ).to eq( 3 )
+			expect( body ).to include( 'duir-ssh', 'yevaud-ssh', 'sidonie-ssh' )
+			expect( body.values.map(&:keys) ).to all( contain_exactly('status', 'tags', 'addresses') )
 		end
 
 	end
@@ -286,15 +279,20 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 
 	describe "list" do
 
-		it "returns a list of node identifiers" do
+		it "returns an array of node state" do
 			msg = pack_message( :list )
 			sock.send( msg )
 			resmsg = sock.recv
 
 			hdr, body = unpack_message( resmsg )
 			expect( hdr ).to include( 'success' => true )
-			expect( body['nodes'].length ).to eq( manager.nodes.length )
-			expect( body['nodes'] ).to include( "_", "duir" )
+			expect( body.length ).to eq( manager.nodes.length )
+			expect( body ).to all( be_a(Hash) )
+			expect( body ).to include( hash_including('identifier' => '_') )
+			expect( body ).to include( hash_including('identifier' => 'duir') )
+			expect( body ).to include( hash_including('identifier' => 'sidonie-ssh') )
+			expect( body ).to include( hash_including('identifier' => 'sidonie-demon-http') )
+			expect( body ).to include( hash_including('identifier' => 'yevaud') )
 		end
 
 	end

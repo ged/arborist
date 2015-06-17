@@ -17,8 +17,8 @@ class Arborist::Manager::EventPublisher < ZMQ::Handler
 	### emitters on the specified +manager+ on the given +pollable+.
 	def initialize( pollable, manager )
 		self.log.debug "Setting up a %p" % [ self.class ]
-		super
-		@manager = manager
+		@pollitem    = pollable
+		@manager     = manager
 		@event_queue = []
 	end
 

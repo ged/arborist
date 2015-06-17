@@ -30,5 +30,18 @@ describe Arborist::Node::Service do
 		expect( result.protocol ).to eq( 'udp' )
 	end
 
+
+	it "uses the identifier as the application protocol if none is specified" do
+		result = described_class.new( 'rsspk', host, port: 1801 )
+		expect( result.port ).to eq( 1801 )
+		expect( result.app_protocol ).to eq( 'rsspk' )
+	end
+
+
+	it "can specify an explicit application protocol" do
+		result = described_class.new( 'dnsd', host, port: 53, protocol: 'udp', app_protocol: 'dns' )
+		expect( result.app_protocol ).to eq( 'dns' )
+	end
+
 end
 

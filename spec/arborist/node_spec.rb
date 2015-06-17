@@ -2,14 +2,16 @@
 
 require_relative '../spec_helper'
 
+require 'time'
 require 'arborist/node'
+
+
+class TestNode < Arborist::Node; end
 
 
 describe Arborist::Node do
 
-	let( :concrete_class ) do
-		Class.new( described_class )
-	end
+	let( :concrete_class ) { TestNode }
 
 	let( :identifier ) { 'the_identifier' }
 	let( :identifier2 ) { 'the_other_identifier' }
@@ -119,7 +121,6 @@ describe Arborist::Node do
 			expect( node ).to_not have_children
 		end
 
-
 		describe "status" do
 
 			it "starts out in `unknown` status" do
@@ -225,6 +226,71 @@ describe Arborist::Node do
 
 				expect( parent.map(&:identifier) ).to eq([ 'child1', 'child2', 'child3' ])
 			end
+
+		end
+
+
+		describe "Serialization" do
+
+			let( :node ) do
+				concrete_class.new( 'foo' ) do
+					parent 'bar'
+					description "The prototypical node"
+					tags :chunker, :hunky, :flippin, :hippo
+
+					update( 'song' => 'Around the World', 'artist' => 'Daft Punk', 'length' => '7:09' )
+				end
+			end
+
+
+			it "can return a Hash of serializable node data" do
+				result = node.to_hash
+
+				expect( result ).to be_a( Hash )
+				expect( result ).to include(
+					:identifier,
+					:parent, :description, :tags, :properties, :status, :ack,
+					:last_contacted, :status_changed, :error
+				)
+				expect( result[:identifier] ).to eq( 'foo' )
+				expect( result[:parent] ).to eq( 'bar' )
+				expect( result[:description] ).to eq( node.description )
+				expect( result[:tags] ).to eq( node.tags )
+				expect( result[:properties] ).to eq( node.properties )
+				expect( result[:status] ).to eq( node.status )
+				expect( result[:ack] ).to be_nil
+				expect( result[:last_contacted] ).to eq( node.last_contacted.iso8601 )
+				expect( result[:status_changed] ).to eq( node.status_changed.iso8601 )
+				expect( result[:error] ).to be_nil
+			end
+
+
+			it "can be reconstituted from a serialized Hash of node data" do
+				hash = node.to_hash
+				cloned_node = concrete_class.from_hash( hash )
+
+				expect( cloned_node ).to eq( node )
+			end
+
+
+			it "an ACKed node stays ACKed when reconstituted" do
+				node.update(ack: {
+					message: 'We know about the fire.  It rages on.',
+					sender: '1986 Labyrinth David Bowie'
+				})
+				cloned_node = concrete_class.from_hash( node.to_hash )
+
+				expect( cloned_node ).to be_acked
+			end
+
+
+			it "can be marshalled" do
+				data = Marshal.dump( node )
+				cloned_node = Marshal.load( data )
+
+				expect( cloned_node ).to eq( node )
+			end
+
 
 		end
 
