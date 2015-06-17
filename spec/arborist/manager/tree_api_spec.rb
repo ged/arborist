@@ -297,5 +297,50 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 
 	end
 
-end
 
+	describe "update" do
+
+		it "merges the properties sent with those of the targeted nodes" do
+			update_data = {
+				duir: {
+					ping: {
+						rtt: 254
+					}
+				},
+				sidonie: {
+					ping: {
+						rtt: 1208
+					}
+				},
+				yevaud: {
+					ping: {
+						rtt: 843
+					}
+				}
+			}
+			msg = pack_message( :update, update_data )
+			sock.send( msg )
+			resmsg = sock.recv
+
+			hdr, body = unpack_message( resmsg )
+			expect( hdr ).to include( 'success' => true )
+			expect( body ).to be_nil
+
+			expect( manager.nodes['duir'].properties['ping'] ).to include( 'rtt' => 254 )
+			expect( manager.nodes['sidonie'].properties['ping'] ).to include( 'rtt' => 1208 )
+			expect( manager.nodes['yevaud'].properties['ping'] ).to include( 'rtt' => 843 )
+		end
+
+
+		it "ignores unknown identifiers" do
+			msg = pack_message( :update, charlie_humperton: {ping: { rtt: 8 }} )
+			sock.send( msg )
+			resmsg = sock.recv
+
+			hdr, body = unpack_message( resmsg )
+			expect( hdr ).to include( 'success' => true )
+		end
+
+	end
+
+end

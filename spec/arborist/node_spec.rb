@@ -121,6 +121,7 @@ describe Arborist::Node do
 			expect( node ).to_not have_children
 		end
 
+
 		describe "status" do
 
 			it "starts out in `unknown` status" do
@@ -212,6 +213,37 @@ describe Arborist::Node do
 				)
 			end
 
+			it "removes pairs whose value is nil" do
+				node.properties.replace({
+					'cider' => {
+						'description' => 'tasty',
+						'size' => '16oz',
+					},
+					'sausage' => {
+						'description' => 'pork',
+						'size' => 'huge',
+					},
+					'music' => '80s'
+				})
+				node.update(
+					'cider' => {'size' => nil},
+					'sausage' => nil,
+					'music' => {
+						'genre' => '80s',
+						'artist' => 'The Smiths'
+					}
+				)
+
+				expect( node.properties ).to eq(
+					'cider' => {
+						'description' => 'tasty',
+					},
+					'music' => {
+						'genre' => '80s',
+						'artist' => 'The Smiths'
+					}
+				)
+			end
 		end
 
 
@@ -253,6 +285,7 @@ describe Arborist::Node do
 					:last_contacted, :status_changed, :error
 				)
 				expect( result[:identifier] ).to eq( 'foo' )
+				expect( result[:type] ).to eq( 'testnode' )
 				expect( result[:parent] ).to eq( 'bar' )
 				expect( result[:description] ).to eq( node.description )
 				expect( result[:tags] ).to eq( node.tags )

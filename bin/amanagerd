@@ -1,0 +1,10 @@
+#!/usr/bin/env ruby
+
+require 'arborist'
+require 'arborist/manager'
+
+$0 = "Arborist::Manager"
+
+Arborist.load_config( ARGV.pop )
+mgr = Arborist.manager_for( ARGV.shift )
+mgr.run

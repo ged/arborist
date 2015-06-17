@@ -53,6 +53,18 @@ class Arborist::Node::Host < Arborist::Node
 	end
 
 
+	### Returns +true+ if the node matches the specified +key+ and +val+ criteria.
+	def match_criteria?( key, val )
+		return case key
+			when 'address'
+				search_addr = IPAddr.new( val )
+				@addresses.any? {|a| search_addr.include?(a) }
+			else
+				super
+			end
+	end
+
+
 	### Add a service to the host
 	def service( name, options={}, &block )
 		return Arborist::Node.create( :service, name, self, options, &block )

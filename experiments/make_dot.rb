@@ -1,14 +1,17 @@
 #!/usr/bin/env ruby
 #
-# This script takes a built node tree from a manager instance, and
-# builts a .dot file from it.
+# This script asks a running Arborist manager for a list of its
+# known nodes, and builds a .dot file from it.
 #
-#	./make_dot.rb [path-to-node-files] | dot -Tpdf -o nodes.pdf
+#	./make_dot.rb | dot -Tpdf -o nodes.pdf
 #
 
 require 'arborist'
+require 'arborist/client'
 
-manager = Arborist.manager_for( ARGV.first )
+Arborist.load_config
+
+client  = Arborist::Client.new
 $dot    =  "digraph nodes {\n"
 
 
@@ -23,19 +26,19 @@ attrs   = {
 }
 attrs.each_pair{|key, val| $dot << "\t#{key}=\"#{val}\";\n"}
 
+nodes = client.list
 
 # Initial labeling, type, look and feel
 #
-manager.nodelist.each do |n|
-	node  = manager.nodes[ n ]
+nodes.each do |node|
 	attrs = {}
 
 	attrs[ :fontname ]  = 'Helvetica'
-	attrs[ :shape ]     = "box" unless node.is_a?( Arborist::Node::Service )
-	attrs[ :label ]     = node.identifier.dup.sub( "#{node.parent}-", '' )
-	attrs[ :label ] << "\\n#{node.description}" if node.description
+	attrs[ :shape ]     = "box" unless node[ 'type' ] == 'service'
+	attrs[ :label ]     = node['identifier'].sub( "#{node['parent']}-", '' )
+	attrs[ :label ] << "\\n#{node['description']}" if node['description']
 
-	if node.identifier == "_"
+	if node[ 'identifier' ] == "_"
 		attrs[ :label ] = "Arborist"
 		attrs[ :style ] = "bold"
 		attrs[ :shape ] = "polygon"
@@ -43,15 +46,15 @@ manager.nodelist.each do |n|
 	end
 
 	opts = attrs.each_with_object( [] ) {|(key, val), acc| acc << "#{key}=\"#{val}\"" }.join( ' ' )
-	$dot << "\t\"#{n}\" [#{opts}];\n"
+	$dot << "\t\"#{node['identifier']}\" [#{opts}];\n"
 end
 
 
 # Now just walk the tree, creating the relational hookups.
 #
-manager.all_nodes do |node|
-	next if node.identifier == "_"
-	$dot << "\t\"%s\" -> \"%s\";\n" % [ node.parent || "_", node.identifier ]
+nodes.each do |node|
+	next if node[ 'identifier' ] == "_"
+	$dot << "\t\"%s\" -> \"%s\";\n" % [ node['parent'] || "_", node['identifier'] ]
 end
 
 $dot << "}\n"

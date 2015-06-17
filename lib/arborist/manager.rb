@@ -14,20 +14,14 @@ require 'arborist/mixins'
 # The main Arborist process -- responsible for coordinating all other activity.
 class Arborist::Manager
 	extend Configurability,
-		Loggability,
-	    Arborist::MethodUtilities
+		   Loggability,
+	       Arborist::MethodUtilities
 
 	# Signals the manager responds to
 	QUEUE_SIGS = [
 		:INT, :TERM, :HUP, :USR1,
 		# :TODO: :QUIT, :WINCH, :USR2, :TTIN, :TTOU
 	]
-
-	# Configurability API -- default configuration values
-	CONFIG_DEFAULTS = {
-		tree_api_url:  'ipc:///tmp/arborist_tree.sock',
-		event_api_url: 'ipc:///tmp/arborist_events.sock'
-	}
 
 	# The number of seconds to wait between checks for incoming signals
 	SIGNAL_INTERVAL = 0.5
@@ -36,24 +30,6 @@ class Arborist::Manager
 	##
 	# Use the Arborist logger
 	log_to :arborist
-
-
-	##
-	# The ZMQ REP socket for the API for accessing the node tree.
-	singleton_attr_accessor :tree_api_url
-
-	##
-	# The ZMQ PUB socket for published events
-	singleton_attr_accessor :event_api_url
-
-
-	### Configurability API.
-	def self::configure( config=nil )
-		config = self.defaults.merge( config || {} )
-
-		self.tree_api_url  = config[ :tree_api_url ]
-		self.event_api_url = config[ :event_api_url ]
-	end
 
 
 	#
@@ -163,9 +139,9 @@ class Arborist::Manager
 	### Set up the ZMQ REP socket for the Tree API.
 	def setup_tree_socket
 		sock = Arborist.zmq_context.socket( :REP )
-		self.log.debug "  binding the tree API socket to %p" % [ self.class.tree_api_url ]
+		self.log.debug "  binding the tree API socket to %p" % [ Arborist.tree_api_url ]
 		sock.linger = 0
-		sock.bind( self.class.tree_api_url )
+		sock.bind( Arborist.tree_api_url )
 		return ZMQ::Pollitem.new( sock, ZMQ::POLLIN )
 	end
 
@@ -173,9 +149,9 @@ class Arborist::Manager
 	### Set up the ZMQ PUB socket for published events.
 	def setup_event_socket
 		sock = Arborist.zmq_context.socket( :PUB )
-		self.log.debug "  binding the event socket to %p" % [ self.class.event_api_url ]
+		self.log.debug "  binding the event socket to %p" % [ Arborist.event_api_url ]
 		sock.linger = 0
-		sock.bind( self.class.event_api_url )
+		sock.bind( Arborist.event_api_url )
 		return ZMQ::Pollitem.new( sock, ZMQ::POLLOUT )
 	end
 

@@ -309,10 +309,10 @@ describe Arborist::Manager do
 
 
 		it "sets up its sockets with handlers and starts the ZMQ loop when started" do
-			expect( tree_sock ).to receive( :bind ).with( described_class.tree_api_url )
+			expect( tree_sock ).to receive( :bind ).with( Arborist.tree_api_url )
 			expect( tree_sock ).to receive( :linger= ).with( 0 )
 
-			expect( event_sock ).to receive( :bind ).with( described_class.event_api_url )
+			expect( event_sock ).to receive( :bind ).with( Arborist.event_api_url )
 			expect( event_sock ).to receive( :linger= ).with( 0 )
 
 			expect( ZMQ::Pollitem ).to receive( :new ).with( tree_sock, ZMQ::POLLIN ).

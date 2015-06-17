@@ -8,7 +8,8 @@ require 'loggability'
 
 # Arborist namespace
 module Arborist
-	extend Loggability
+	extend Loggability,
+	       Configurability
 
 	# Package version
 	VERSION = '0.0.1'
@@ -26,15 +27,46 @@ module Arborist
 	# The name of the config file that's loaded if none is specified.
 	DEFAULT_CONFIG_FILE = Pathname( 'arborist.yml' ).expand_path
 
+	# Configurability API -- default configuration values
+	CONFIG_DEFAULTS = {
+		tree_api_url:  'ipc:///tmp/arborist_tree.sock',
+		event_api_url: 'ipc:///tmp/arborist_events.sock'
+	}
+
 
 	##
 	# Set up a logger for the Arborist namespace
 	log_as :arborist
 
+	# Configurability API -- use the 'arborist'
+	config_key :arborist
+
+
+	require 'arborist/mixins'
+	extend Arborist::MethodUtilities
+
+
+	##
+	# The ZMQ REP socket for the API for accessing the node tree.
+	singleton_attr_accessor :tree_api_url
+
+	##
+	# The ZMQ PUB socket for published events
+	singleton_attr_accessor :event_api_url
+
 
 	#
 	# :section: Configuration API
 	#
+
+	### Configurability API.
+	def self::configure( config=nil )
+		config = self.defaults.merge( config || {} )
+
+		self.tree_api_url  = config[ :tree_api_url ]
+		self.event_api_url = config[ :event_api_url ]
+	end
+
 
 	### Get the loaded config (a Configurability::Config object)
 	def self::config

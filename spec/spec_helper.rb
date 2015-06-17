@@ -28,14 +28,14 @@ module Arborist::TestHelpers
 		mod.around( :each ) do |example|
 			if example.metadata[:testing_manager]
 				Loggability[ Arborist ].info "Configuring the manager to use testing ports."
-				Arborist::Manager.configure({
+				Arborist.configure({
 					tree_api_url: TESTING_API_SOCK,
 					event_api_url: TESTING_EVENT_SOCK,
 				})
 
 				example.run
 
-				Arborist::Manager.configure
+				Arborist.configure
 			else
 				example.run
 			end

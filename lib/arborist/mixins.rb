@@ -336,6 +336,16 @@ module Arborist
 			end
 		end
 
+
+		# Recursively remove hash pairs in place whose value is nil.
+		def compact_hash( hash )
+			hash.each_key do |k|
+				hash.delete( k ) if hash[ k ].nil?
+				compact_hash( hash[k] ) if hash[k].is_a?( Hash )
+			end
+		end
+
+
 	end # HashUtilities
 
 end # module Arborist

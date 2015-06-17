@@ -58,7 +58,9 @@ class Arborist::Node::Service < Arborist::Node
 	def match_criteria?( key, val )
 		return case key
 			when 'port' then self.port == val.to_i
-			when 'address' then self.addresses.include?( val )
+			when 'address'
+				search_addr = IPAddr.new( val )
+				self.addresses.any? {|a| search_addr.include?(a) }
 			when 'protocol' then self.protocol == val.downcase
 			when 'app', 'app_protocol' then self.app_protocol == val
 			else

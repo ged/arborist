@@ -67,7 +67,7 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 		raise Arborist::RequestError, "unsupported version %d" % [ header['version'] ] unless
 			header['version'] == 1
 
-		handler_name = "make_%s_response" % [ header['action'] ]
+		handler_name = "handle_%s_request" % [ header['action'] ]
 		return nil unless self.respond_to?( handler_name )
 
 		return self.method( handler_name )
@@ -124,7 +124,7 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 
 
 	### Return a response to the `status` action.
-	def make_status_response( header, body )
+	def handle_status_request( header, body )
 		self.log.info "STATUS: %p" % [ header ]
 		return successful_response(
 			server_version: Arborist::VERSION,
@@ -136,7 +136,7 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 
 
 	### Return a repsonse to the `list` action.
-	def make_list_response( header, body )
+	def handle_list_request( header, body )
 		self.log.info "LIST: %p" % [ header ]
 		from = header['from'] || '_'
 
@@ -151,7 +151,7 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 
 
 	### Return a response to the 'fetch' action.
-	def make_fetch_response( header, body )
+	def handle_fetch_request( header, body )
 		self.log.info "FETCH: %p" % [ header ]
 
 		nodes_iter = if header['include_down']
@@ -173,6 +173,22 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 		return successful_response( states )
 	end
 
+
+	### Update nodes using the data from the update request's +body+.
+	def handle_update_request( header, body )
+		self.log.info "UPDATE: %p" % [ header ]
+
+		body.each do |identifier, properties|
+			unless (( node = @manager.nodes[ identifier ] ))
+				self.log.warn "Update for non-existent node %p ignored." % [ identifier ]
+				next
+			end
+
+			node.update( properties )
+		end
+
+		return successful_response( nil )
+	end
 
 end # class Arborist::Manager::TreeAPI
 

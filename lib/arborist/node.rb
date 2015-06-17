@@ -266,6 +266,7 @@ class Arborist::Node
 		self.ack            = properties.delete( :ack ) if properties.key?( :ack )
 
 		self.properties.merge!( properties, &method(:merge_recursively) )
+		compact_hash( self.properties )
 
 		super
 	end
@@ -409,6 +410,7 @@ class Arborist::Node
 	def to_hash
 		return {
 			identifier: self.identifier,
+			type: self.class.name.to_s.sub( /.+::/, '' ).downcase,
 			parent: self.parent,
 			description: self.description,
 			tags: self.tags,
