@@ -2,8 +2,8 @@
 
 home :: http://deveiate.org/projects/Arborist  
 code :: http://bitbucket.org/ged/Arborist  
-github :: https://github.com/ged/aborist  
-docs :: http://deveiate.org/code/aborist  
+github :: https://github.com/ged/arborist  
+docs :: http://deveiate.org/code/arborist  
 
 
 ## Description
@@ -20,7 +20,7 @@ customizability.
 
 ## Installation
 
-    $ gem install aborist
+    $ gem install arborist
 
 
 ## Further Reading
@@ -32,7 +32,7 @@ You'll likely want to start with [the Tutorial](Tutorial.html).
 
 You can check out the current development source with Mercurial via its
 [project page](http://bitbucket.org/ged/Arborist). Or if you prefer Git, via 
-[its Github mirror](https://github.com/ged/aborist).
+[its Github mirror](https://github.com/ged/arborist).
 
 After checking out the source, run:
 
