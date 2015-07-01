@@ -1,0 +1,3 @@
+foo ip=10.2.10.3 bar=baz
+this ip= chunkers=hunkers
+quoted ip=192.168.16.1 sausage="beef taco"
