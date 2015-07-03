@@ -48,7 +48,7 @@ end
 ENV['VERSION'] ||= hoespec.spec.version.to_s
 
 # Run the tests before checking in
-task 'hg:precheckin' => [ :check_history, :check_manifest, :spec ]
+task 'hg:precheckin' => [ :check_history, :check_manifest, :gemspec, :spec ]
 
 # Rebuild the ChangeLog immediately before release
 task :prerelease => 'ChangeLog'
