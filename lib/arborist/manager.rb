@@ -50,6 +50,9 @@ class Arborist::Manager
 
 		Thread.main[:signal_queue] = []
 		@zmq_loop     = nil
+
+		@api_handler = nil
+		@event_publisher = nil
 	end
 
 
@@ -112,12 +115,12 @@ class Arborist::Manager
 
 		@zmq_loop = ZMQ::Loop.new
 
-		handler = Arborist::Manager::TreeAPI.new( @tree_sock, self )
-		@tree_sock.handler = handler
+		@api_handler = Arborist::Manager::TreeAPI.new( @tree_sock, self )
+		@tree_sock.handler = @api_handler
 		@zmq_loop.register( @tree_sock )
 
-		handler = Arborist::Manager::EventPublisher.new( @event_sock, self )
-		@event_sock.handler = handler
+		@event_publisher = Arborist::Manager::EventPublisher.new( @event_sock, self, @zmq_loop )
+		@event_sock.handler = @event_publisher
 		@zmq_loop.register( @event_sock )
 
 		self.setup_signal_timer
