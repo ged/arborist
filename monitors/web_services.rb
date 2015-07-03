@@ -3,10 +3,13 @@
 
 require 'net/http'
 require 'arborist/monitor'
+require 'arborist/mixins'
 
-Arborist::Monitor 'web service check'
+using Arborist::TimeRefinements
+
+Arborist::Monitor 'web service check' do
 	match type: 'webservice'
-	run do |node|
+	exec do |nodes|
 		Net::HTTP
 	end
 end
