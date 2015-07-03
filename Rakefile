@@ -28,12 +28,12 @@ hoespec = Hoe.spec 'arborist' do |spec|
 
 	spec.developer 'Michael Granger', 'ged@FaerieMUD.org'
 
-	spec.dependency 'rgl', '~> 0.5'
 	spec.dependency 'loggability', '~> 0.11'
 	spec.dependency 'configurability', '~> 2.2'
 	spec.dependency 'pluggability', '~> 0.4'
 	spec.dependency 'state_machines', '~> 0.2'
 	spec.dependency 'msgpack', '~> 0.5'
+	spec.dependency 'rbczmq', '~> 0.5'
 
 	spec.dependency 'rspec', '~> 3.2', :developer
 	spec.dependency 'simplecov', '~> 0.9', :developer

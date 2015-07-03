@@ -1,9 +1,9 @@
 # -*- encoding: utf-8 -*-
-# stub: arborist 0.0.1.pre20150703112619 ruby lib
+# stub: arborist 0.0.1.pre20150703112822 ruby lib
 
 Gem::Specification.new do |s|
   s.name = "arborist"
-  s.version = "0.0.1.pre20150703112619"
+  s.version = "0.0.1.pre20150703112822"
 
   s.required_rubygems_version = Gem::Requirement.new("> 1.3.1") if s.respond_to? :required_rubygems_version=
   s.require_paths = ["lib"]
@@ -26,12 +26,12 @@ Gem::Specification.new do |s|
     s.specification_version = 4
 
     if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
-      s.add_runtime_dependency(%q<rgl>, ["~> 0.5"])
       s.add_runtime_dependency(%q<loggability>, ["~> 0.11"])
       s.add_runtime_dependency(%q<configurability>, ["~> 2.2"])
       s.add_runtime_dependency(%q<pluggability>, ["~> 0.4"])
       s.add_runtime_dependency(%q<state_machines>, ["~> 0.2"])
       s.add_runtime_dependency(%q<msgpack>, ["~> 0.5"])
+      s.add_runtime_dependency(%q<rbczmq>, ["~> 0.5"])
       s.add_development_dependency(%q<hoe-mercurial>, ["~> 1.4"])
       s.add_development_dependency(%q<hoe-deveiate>, ["~> 0.7"])
       s.add_development_dependency(%q<hoe-highline>, ["~> 0.2"])
@@ -40,12 +40,12 @@ Gem::Specification.new do |s|
       s.add_development_dependency(%q<simplecov>, ["~> 0.9"])
       s.add_development_dependency(%q<hoe>, ["~> 3.13"])
     else
-      s.add_dependency(%q<rgl>, ["~> 0.5"])
       s.add_dependency(%q<loggability>, ["~> 0.11"])
       s.add_dependency(%q<configurability>, ["~> 2.2"])
       s.add_dependency(%q<pluggability>, ["~> 0.4"])
       s.add_dependency(%q<state_machines>, ["~> 0.2"])
       s.add_dependency(%q<msgpack>, ["~> 0.5"])
+      s.add_dependency(%q<rbczmq>, ["~> 0.5"])
       s.add_dependency(%q<hoe-mercurial>, ["~> 1.4"])
       s.add_dependency(%q<hoe-deveiate>, ["~> 0.7"])
       s.add_dependency(%q<hoe-highline>, ["~> 0.2"])
@@ -55,12 +55,12 @@ Gem::Specification.new do |s|
       s.add_dependency(%q<hoe>, ["~> 3.13"])
     end
   else
-    s.add_dependency(%q<rgl>, ["~> 0.5"])
     s.add_dependency(%q<loggability>, ["~> 0.11"])
     s.add_dependency(%q<configurability>, ["~> 2.2"])
     s.add_dependency(%q<pluggability>, ["~> 0.4"])
     s.add_dependency(%q<state_machines>, ["~> 0.2"])
     s.add_dependency(%q<msgpack>, ["~> 0.5"])
+    s.add_dependency(%q<rbczmq>, ["~> 0.5"])
     s.add_dependency(%q<hoe-mercurial>, ["~> 1.4"])
     s.add_dependency(%q<hoe-deveiate>, ["~> 0.7"])
     s.add_dependency(%q<hoe-highline>, ["~> 0.2"])
