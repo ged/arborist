@@ -1,6 +1,8 @@
 # -*- ruby -*-
 #encoding: utf-8
 
+require 'rbczmq'
+
 require 'pathname'
 require 'configurability'
 require 'loggability'
@@ -49,10 +51,12 @@ module Arborist
 	##
 	# The ZMQ REP socket for the API for accessing the node tree.
 	singleton_attr_accessor :tree_api_url
+	@tree_api_url = CONFIG_DEFAULTS[ :tree_api_url ]
 
 	##
 	# The ZMQ PUB socket for published events
 	singleton_attr_accessor :event_api_url
+	@event_api_url = CONFIG_DEFAULTS[ :event_api_url ]
 
 
 	#
@@ -119,6 +123,18 @@ module Arborist
 	end
 
 
+	### Return a new Arborist::MonitorRunner for the monitors described in files under
+	### the specified +directory+.
+	def self::monitor_runner_for( directory )
+		self.load_all
+		monitors = Arborist::Monitor.each_in( directory )
+		runner = Arborist::MonitorRunner.new
+		runner.load_monitors( monitors )
+
+		return runner
+	end
+
+
 	### Load all node and event types
 	def self::load_all
 		Arborist::Node.load_all
@@ -141,9 +157,12 @@ module Arborist
 
 	require 'arborist/exceptions'
 	require 'arborist/mixins'
-	require 'arborist/manager'
-	require 'arborist/node'
-	require 'arborist/event'
+
+	autoload :Client, 'arborist/client'
+	autoload :Event, 'arborist/event'
+	autoload :Manager, 'arborist/manager'
+	autoload :Monitor, 'arborist/monitor'
+	autoload :Node, 'arborist/node'
 
 end # module Arborist
 

@@ -30,6 +30,15 @@ class Arborist::Node::Root < Arborist::Node
 			description "The root node."
 			source = URI( __FILE__ )
 		end
+
+		@status = 'up'
+		@status.freeze
+	end
+
+
+	### Ignore updates to the root node.
+	def update( properties )
+		self.log.warn "Update to the root node ignored."
 	end
 
 end # class Arborist::Node::Root

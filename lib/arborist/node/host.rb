@@ -34,6 +34,13 @@ class Arborist::Node::Host < Arborist::Node
 	attr_reader :addresses
 
 
+	### Return the host's operational attributes.
+	def operational_values
+		properties = super
+		return properties.merge( addresses: self.addresses.map(&:to_s) )
+	end
+
+
 	### Set an IP address of the host.
 	def address( new_address, options={} )
 		self.log.debug "Adding address %p to %p" % [ new_address, self ]

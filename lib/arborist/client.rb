@@ -20,7 +20,15 @@ class Arborist::Client
 	def initialize( tree_api_url: nil, event_api_url: nil )
 		@tree_api_url  = tree_api_url  || Arborist.tree_api_url
 		@event_api_url = event_api_url || Arborist.event_api_url
+
+		@request_queue = nil
+		@event_subscriptions = nil
 	end
+
+
+	######
+	public
+	######
 
 	# The ZMQ URI required to speak to the Arborist tree API.
 	attr_accessor :tree_api_url
@@ -31,29 +39,61 @@ class Arborist::Client
 
 	### Return the manager's current status as a hash.
 	def status
-		request = self.pack_message( :status )
+		request = self.make_status_request
+		return self.send_tree_api_request( request )
+	end
+
+
+	### Return the manager's current status as a hash.
+	def make_status_request
+		return self.pack_message( :status )
+	end
+
+
+	### Return the manager's current node tree.
+	def list( *args )
+		request = self.make_list_request( *args )
 		return self.send_tree_api_request( request )
 	end
 
 
 	### Return the manager's current node tree.
-	def list
-		request = self.pack_message( :list )
+	def make_list_request( from: nil )
+		header = {}
+		self.log.debug "From is: %p" % [ from ]
+		header[:from] = from if from
+
+		return self.pack_message( :list, header )
+	end
+
+
+	### Return the manager's current node tree.
+	def fetch( criteria={}, *args )
+		request = self.make_fetch_request( criteria, *args )
 		return self.send_tree_api_request( request )
 	end
 
 
 	### Return the manager's current node tree.
-	def fetch( search_criteria )
-		request = self.pack_message( :fetch, search_criteria )
+	def make_fetch_request( criteria, include_down: false, properties: :all )
+		header = {}
+		header[ :include_down ] = true if include_down
+		header[ :return ] = properties if properties != :all
+
+		return self.pack_message( :fetch, header, criteria )
+	end
+
+
+	### Update the identified nodes in the manager with the specified data.
+	def update( *args )
+		request = self.make_update_request( *args )
 		return self.send_tree_api_request( request )
 	end
 
 
 	### Update the identified nodes in the manager with the specified data.
-	def update( data )
-		request = self.pack_message( :update, data )
-		return self.send_tree_api_request( request )
+	def make_update_request( data )
+		return self.pack_message( :update, nil, data )
 	end
 
 
@@ -78,9 +118,12 @@ class Arborist::Client
 
 	### Format ruby +data+ for communicating with the Arborist manager.
 	def pack_message( verb, *data )
-		body   = data.pop
-		header = data.pop || {}
+		header = data.shift || {}
+		body   = data.shift
+
 		header.merge!( action: verb, version: API_VERSION )
+
+		self.log.debug "Packing message; header: %p, body: %p" % [ header, body ]
 
 		return MessagePack.pack([ header, body ])
 	end
@@ -92,28 +135,37 @@ class Arborist::Client
 	end
 
 
-	### Return a ZMQ REQ communication socket to the manager's tree API,
-	### instantiating it if necessary.
+	### Return a ZMQ REQ socket connected to the manager's tree API, instantiating
+	### it if necessary.
 	def tree_api
-		unless @tree_api
-			self.log.info "Connecting to the tree socket %p" % [ self.tree_api_url ]
-			@tree_api = Arborist.zmq_context.socket( :REQ )
-			@tree_api.connect( self.tree_api_url )
-		end
-		return @tree_api
+		return @tree_api ||= self.make_tree_api_socket
 	end
 
 
-	### Return a ZMQ SUB communication socket to the manager's event API,
-	### instantiating it if necessary.
+	### Create a new ZMQ REQ socket connected to the manager's tree API.
+	def make_tree_api_socket
+		self.log.info "Connecting to the tree socket %p" % [ self.tree_api_url ]
+		sock = Arborist.zmq_context.socket( :REQ )
+		sock.connect( self.tree_api_url )
+
+		return sock
+	end
+
+
+	### Return a ZMQ SUB socket connected to the manager's event API, instantiating
+	### it if necessary.
 	def event_api
-		unless @event_api
-			self.log.info "Connecting to the event socket %p" % [ self.event_api_url ]
-			@event_api = Arborist.zmq_context.socket( :SUB )
-			@event_api.connect( self.event_api_url )
-		end
-		return @event_api
+		return @event_api ||= self.make_event_api_socket
 	end
 
+
+	### Create a new ZMQ SUB socket connected to the manager's event API.
+	def make_event_api_socket
+		self.log.info "Connecting to the event socket %p" % [ self.event_api_url ]
+		sock = Arborist.zmq_context.socket( :SUB )
+		sock.connect( self.event_api_url )
+
+		return sock
+	end
 
 end # class Arborist::Client

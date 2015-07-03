@@ -27,7 +27,7 @@ class Arborist::Node
 	##
 	# The key for the thread local that is used to track instances as they're
 	# loaded.
-	LOADED_INSTANCE_KEY = :loaded_instances
+	LOADED_INSTANCE_KEY = :loaded_node_instances
 
 	##
 	# The glob pattern to use for searching for node
@@ -40,7 +40,7 @@ class Arborist::Node
 
 	##
 	# The keys required to be set for an ACK
-	ACK_REQUIRED_PROPERTIES = %i[ message sender ]
+	ACK_REQUIRED_PROPERTIES = %w[ message sender ]
 
 
 	##
@@ -67,7 +67,7 @@ class Arborist::Node
 
 		after_transition :acked => :up, do: :on_ack_cleared
 		after_transition :down => :up, do: :on_node_up
-		after_transition :up => :down, do: :on_node_down
+		after_transition [:unknown, :up] => :down, do: :on_node_down
 
 	end
 
@@ -259,11 +259,12 @@ class Arborist::Node
 
 	### Update specified +properties+ for the node.
 	def update( properties )
+		properties = stringify_keys( properties )
 		self.log.debug "Updated: %p" % [ properties ]
 
 		self.last_contacted = Time.now
-		self.error          = properties.delete( :error )
-		self.ack            = properties.delete( :ack ) if properties.key?( :ack )
+		self.error          = properties.delete( 'error' )
+		self.ack            = properties.delete( 'ack' ) if properties.key?( 'ack' )
 
 		self.properties.merge!( properties, &method(:merge_recursively) )
 		compact_hash( self.properties )
@@ -302,7 +303,8 @@ class Arborist::Node
 		state = stringify_keys( state )
 
 		if value_spec
-			self.log.debug "Eliminating all values except: %p" % [ value_spec ]
+			self.log.debug "Eliminating all values except: %p (from keys: %p)" %
+				[ value_spec, state.keys ]
 			state.delete_if {|key, _| !value_spec.include?(key) }
 		end
 
@@ -478,8 +480,8 @@ class Arborist::Node
 	def ack=( ack_data )
 		self.log.debug "ACKed with data: %p" % [ ack_data ]
 
-		ack_data[:time] ||= Time.now
-		ack_values = ack_data.values_at( *Arborist::Node::ACK.members )
+		ack_data['time'] ||= Time.now
+		ack_values = ack_data.values_at( *Arborist::Node::ACK.members.map(&:to_s) )
 		new_ack = Arborist::Node::ACK.new( *ack_values )
 
 		if missing = ACK_REQUIRED_PROPERTIES.find {|prop| new_ack[prop].nil? }
@@ -499,6 +501,8 @@ class Arborist::Node
 	### State machine guard predicate -- Returns +true+ if the last time the node
 	### was monitored resulted in an update.
 	def last_contact_successful?
+		self.log.debug "Checking to see if last contact was successful (it %s)" %
+			[ self.error ? "wasn't" : "was" ]
 		return !self.error
 	end
 
@@ -509,18 +513,21 @@ class Arborist::Node
 
 	### Callback for when an acknowledgement is cleared.
 	def on_ack_cleared
+		self.log.warn "ACK cleared for %s" % [ self.identifier ]
 		# :TODO: Currently a no-op, but send an event when we know how to do that.
 	end
 
 
 	### Callback for when a node goes from down to up
 	def on_node_up
+		self.log.warn "%s is %s" % [ self.status_description ]
 		# :TODO: Currently a no-op, but send an event when we know how to do that.
 	end
 
 
 	### Callback for when a node goes from up to down
 	def on_node_down
+		self.log.error "%s is %s" % [ self.identifier, self.status_description ]
 		# :TODO: Currently a no-op, but send an event when we know how to do that.
 	end
 
