@@ -1,9 +1,9 @@
 # -*- encoding: utf-8 -*-
-# stub: arborist 0.0.1.pre20150703112822 ruby lib
+# stub: arborist 0.0.1.pre20150703113948 ruby lib
 
 Gem::Specification.new do |s|
   s.name = "arborist"
-  s.version = "0.0.1.pre20150703112822"
+  s.version = "0.0.1.pre20150703113948"
 
   s.required_rubygems_version = Gem::Requirement.new("> 1.3.1") if s.respond_to? :required_rubygems_version=
   s.require_paths = ["lib"]
@@ -31,7 +31,7 @@ Gem::Specification.new do |s|
       s.add_runtime_dependency(%q<pluggability>, ["~> 0.4"])
       s.add_runtime_dependency(%q<state_machines>, ["~> 0.2"])
       s.add_runtime_dependency(%q<msgpack>, ["~> 0.5"])
-      s.add_runtime_dependency(%q<rbczmq>, ["~> 0.5"])
+      s.add_runtime_dependency(%q<rbczmq>, ["~> 1.7"])
       s.add_development_dependency(%q<hoe-mercurial>, ["~> 1.4"])
       s.add_development_dependency(%q<hoe-deveiate>, ["~> 0.7"])
       s.add_development_dependency(%q<hoe-highline>, ["~> 0.2"])
@@ -45,7 +45,7 @@ Gem::Specification.new do |s|
       s.add_dependency(%q<pluggability>, ["~> 0.4"])
       s.add_dependency(%q<state_machines>, ["~> 0.2"])
       s.add_dependency(%q<msgpack>, ["~> 0.5"])
-      s.add_dependency(%q<rbczmq>, ["~> 0.5"])
+      s.add_dependency(%q<rbczmq>, ["~> 1.7"])
       s.add_dependency(%q<hoe-mercurial>, ["~> 1.4"])
       s.add_dependency(%q<hoe-deveiate>, ["~> 0.7"])
       s.add_dependency(%q<hoe-highline>, ["~> 0.2"])
@@ -60,7 +60,7 @@ Gem::Specification.new do |s|
     s.add_dependency(%q<pluggability>, ["~> 0.4"])
     s.add_dependency(%q<state_machines>, ["~> 0.2"])
     s.add_dependency(%q<msgpack>, ["~> 0.5"])
-    s.add_dependency(%q<rbczmq>, ["~> 0.5"])
+    s.add_dependency(%q<rbczmq>, ["~> 1.7"])
     s.add_dependency(%q<hoe-mercurial>, ["~> 1.4"])
     s.add_dependency(%q<hoe-deveiate>, ["~> 0.7"])
     s.add_dependency(%q<hoe-highline>, ["~> 0.2"])
