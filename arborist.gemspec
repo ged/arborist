@@ -1,9 +1,9 @@
 # -*- encoding: utf-8 -*-
-# stub: arborist 0.0.1.pre20150703113948 ruby lib
+# stub: arborist 0.0.1.pre20150703114534 ruby lib
 
 Gem::Specification.new do |s|
   s.name = "arborist"
-  s.version = "0.0.1.pre20150703113948"
+  s.version = "0.0.1.pre20150703114534"
 
   s.required_rubygems_version = Gem::Requirement.new("> 1.3.1") if s.respond_to? :required_rubygems_version=
   s.require_paths = ["lib"]
@@ -38,6 +38,7 @@ Gem::Specification.new do |s|
       s.add_development_dependency(%q<rdoc>, ["~> 4.0"])
       s.add_development_dependency(%q<rspec>, ["~> 3.2"])
       s.add_development_dependency(%q<simplecov>, ["~> 0.9"])
+      s.add_development_dependency(%q<timecop>, ["~> 0.7"])
       s.add_development_dependency(%q<hoe>, ["~> 3.13"])
     else
       s.add_dependency(%q<loggability>, ["~> 0.11"])
@@ -52,6 +53,7 @@ Gem::Specification.new do |s|
       s.add_dependency(%q<rdoc>, ["~> 4.0"])
       s.add_dependency(%q<rspec>, ["~> 3.2"])
       s.add_dependency(%q<simplecov>, ["~> 0.9"])
+      s.add_dependency(%q<timecop>, ["~> 0.7"])
       s.add_dependency(%q<hoe>, ["~> 3.13"])
     end
   else
@@ -67,6 +69,7 @@ Gem::Specification.new do |s|
     s.add_dependency(%q<rdoc>, ["~> 4.0"])
     s.add_dependency(%q<rspec>, ["~> 3.2"])
     s.add_dependency(%q<simplecov>, ["~> 0.9"])
+    s.add_dependency(%q<timecop>, ["~> 0.7"])
     s.add_dependency(%q<hoe>, ["~> 3.13"])
   end
 end

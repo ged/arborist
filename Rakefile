@@ -37,6 +37,7 @@ hoespec = Hoe.spec 'arborist' do |spec|
 
 	spec.dependency 'rspec', '~> 3.2', :developer
 	spec.dependency 'simplecov', '~> 0.9', :developer
+	spec.dependency 'timecop', '~> 0.7', :developer
 
 	spec.require_ruby_version( '>=2.2.0' )
 	spec.hg_sign_tags = true if spec.respond_to?( :hg_sign_tags= )
