@@ -14,7 +14,7 @@ Arborist::Host 'duir' do
 
 	service 'ssh'
 
-	service 'nat-pmp'
+	service 'nat-pmp', port: 5351
 
 end
 
