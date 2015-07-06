@@ -57,9 +57,9 @@ end
 Arborist::Monitor 'ping check downed hosts' do
 	extend FPingWrapper
 
-	every 2.minutes
+	every 40.seconds
 	splay 15.seconds
-	match type: 'host'
+	match type: 'host', status: 'down'
 	include_down true
 	use :addresses
 
