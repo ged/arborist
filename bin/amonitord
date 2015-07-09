@@ -1,0 +1,12 @@
+#!/usr/bin/env ruby
+
+require 'arborist'
+require 'arborist/monitor_runner'
+
+monitors_path = ARGV.shift or raise "No monitor file specified."
+
+Arborist.load_config( ARGV.shift )
+Arborist.load_all
+
+runner = Arborist.monitor_runner_for( monitors_path )
+runner.run

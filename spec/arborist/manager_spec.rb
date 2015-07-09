@@ -282,7 +282,7 @@ describe Arborist::Manager do
 
 	describe "sockets" do
 
-		let( :zmq_context ) { instance_double(ZMQ::Context) }
+		let( :zmq_context ) { instance_double(ZMQ::Context, __FILE__) }
 		let( :zmq_loop ) { instance_double(ZMQ::Loop) }
 		let( :tree_sock ) { instance_double(ZMQ::Socket::Rep, "tree API socket") }
 		let( :event_sock ) { instance_double(ZMQ::Socket::Pub, "event socket") }
@@ -303,7 +303,7 @@ describe Arborist::Manager do
 		end
 
 		after( :each ) do
-			Arborist.instance_variable_set( :@zmq_ctx, nil )
+			Arborist.reset_zmq_context
 		end
 
 

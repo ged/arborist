@@ -162,6 +162,7 @@ module Arborist
 	autoload :Event, 'arborist/event'
 	autoload :Manager, 'arborist/manager'
 	autoload :Monitor, 'arborist/monitor'
+	autoload :MonitorRunner, 'arborist/monitor_runner'
 	autoload :Node, 'arborist/node'
 
 end # module Arborist
