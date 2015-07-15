@@ -142,13 +142,6 @@ module Arborist
 	end
 
 
-	### Destroy any existing ZMQ state.
-	def self::reset_zmq_context
-		@zmq_context.destroy if @zmq_context.respond_to?( :destroy )
-		@zmq_context = nil
-	end
-
-
 	### Fetch the ZMQ context for Arborist.
 	def self::zmq_context
 		return @zmq_context ||= ZMQ::Context.new

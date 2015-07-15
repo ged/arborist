@@ -97,9 +97,11 @@ class Arborist::Manager
 		self.restore_signal_handlers
 		if @zmq_loop
 			@zmq_loop.remove( @tree_sock )
+			@tree_sock.pollable.close
+
 			@zmq_loop.remove( @event_sock )
+			@event_sock.pollable.close
 		end
-		Arborist.reset_zmq_context
 	end
 
 

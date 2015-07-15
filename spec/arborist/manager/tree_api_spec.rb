@@ -6,8 +6,6 @@ require_relative '../../spec_helper'
 describe Arborist::Manager::TreeAPI, :testing_manager do
 
 	before( :each ) do
-		Arborist.reset_zmq_context
-
 		@manager = make_testing_manager()
 		@manager_thread = Thread.new do
 			Thread.current.abort_on_exception = true

@@ -12,10 +12,6 @@ describe Arborist::Manager do
 		Arborist::Node::Root.reset
 	end
 
-	after( :all ) do
-		Arborist.reset_zmq_context
-	end
-
 
 	let( :manager ) { described_class.new }
 
@@ -282,7 +278,7 @@ describe Arborist::Manager do
 
 	describe "sockets" do
 
-		let( :zmq_context ) { instance_double(ZMQ::Context, __FILE__) }
+		let( :zmq_context ) { Arborist.zmq_context }
 		let( :zmq_loop ) { instance_double(ZMQ::Loop) }
 		let( :tree_sock ) { instance_double(ZMQ::Socket::Rep, "tree API socket") }
 		let( :event_sock ) { instance_double(ZMQ::Socket::Pub, "event socket") }
@@ -291,8 +287,6 @@ describe Arborist::Manager do
 		let( :signal_timer ) { instance_double(ZMQ::Timer, "signal timer") }
 
 		before( :each ) do
-			Arborist.instance_variable_set( :@zmq_context, zmq_context )
-
 			allow( ZMQ::Loop ).to receive( :new ).and_return( zmq_loop )
 
 			allow( zmq_context ).to receive( :socket ).with( :REP ).and_return( tree_sock )
@@ -300,10 +294,11 @@ describe Arborist::Manager do
 
 			allow( zmq_loop ).to receive( :remove ).with( tree_pollitem )
 			allow( zmq_loop ).to receive( :remove ).with( event_pollitem )
-		end
 
-		after( :each ) do
-			Arborist.reset_zmq_context
+			allow( tree_pollitem ).to receive( :pollable ).and_return( tree_sock )
+			allow( tree_sock ).to receive( :close )
+			allow( event_pollitem ).to receive( :pollable ).and_return( event_sock )
+			allow( event_sock ).to receive( :close )
 		end
 
 

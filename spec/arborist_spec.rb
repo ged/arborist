@@ -15,11 +15,6 @@ describe Arborist do
 
 	before( :each ) do
 		ENV.delete(Arborist::CONFIG_ENV)
-		Arborist.reset_zmq_context
-	end
-
-	after( :each ) do
-		Arborist.reset_zmq_context
 	end
 
 	after( :all ) do
@@ -143,11 +138,7 @@ describe Arborist do
 
 
 	it "has a ZMQ context" do
-		ctx = instance_double( ZMQ::Context, __FILE__ )
-		expect( ZMQ::Context ).to receive( :new ).once.and_return( ctx )
-
-		expect( described_class.zmq_context ).to be( ctx )
-		expect( described_class.zmq_context ).to be( ctx )
+		expect( described_class.zmq_context ).to be_a( ZMQ::Context )
 	end
 
 end

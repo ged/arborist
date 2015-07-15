@@ -105,6 +105,7 @@ describe Arborist::MonitorRunner do
 			'server' => {'ping' => { 'rtt' => 8 }},
 		}}
 
+
 		it "can run a monitor using async ZMQ IO" do
 			expect( zmq_loop ).to receive( :register ).with( handler.pollitem )
 
@@ -144,10 +145,6 @@ describe Arborist::MonitorRunner do
 			}.to change { handler.registered? }.from( true ).to( false )
 
 		end
-
-
-		it "queues a fetch request and registers itself for writing when told to fetch nodes"
-		it "queues an update request and registers itself for writing when told to update nodes"
 
 	end
 

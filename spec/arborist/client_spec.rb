@@ -12,21 +12,19 @@ describe Arborist::Client do
 	describe "synchronous API", :testing_manager do
 
 		before( :each ) do
-			Arborist.reset_zmq_context
-
 			@manager = make_testing_manager()
 			@manager_thread = Thread.new do
 				Thread.current.abort_on_exception = true
-				manager.run
+				@manager.run
 				Loggability[ Arborist ].info "Stopped the test manager"
 			end
 
 			count = 0
-			until manager.running? || count > 30
+			until @manager.running? || count > 30
 				sleep 0.1
 				count += 1
 			end
-			raise "Manager didn't start up" unless manager.running?
+			raise "Manager didn't start up" unless @manager.running?
 		end
 
 		after( :each ) do
