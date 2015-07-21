@@ -138,7 +138,6 @@ module Arborist
 	### Load all node and event types
 	def self::load_all
 		Arborist::Node.load_all
-		Arborist::Event.load_all
 	end
 
 

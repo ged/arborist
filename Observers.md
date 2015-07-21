@@ -1,5 +1,54 @@
 # Observers
 
+## Subscription
+
+Get node change events for every 'host' type node.
+
+    {
+        action: subscribe,
+        version: 1,
+        events: node.delta
+    },
+    {
+        type: 'host',
+    }
+
+Get a snapshot of node state on every update for 'service' type nodes under
+the 'bennett' node.
+
+    {
+        action: subscribe,
+        version: 1,
+        events: node.update,
+        identifier: 'bennett'
+    },
+    {
+        type: 'service',
+    }
+
+Get events of state changes to services running on port 80.
+
+    {
+        action: subscribe,
+        version: 1,
+        events: node.delta
+    },
+    {
+        type: 'service',
+        port: 80
+    }
+
+Get notified of every system event (startup, shutdown, reload, etc.)
+
+    {
+        action: subscribe,
+        version: 1,
+        events: sys.*
+    },
+    Nil
+
+
+
 ## Filters
 
 ### state change
@@ -14,25 +63,4 @@
 ...but don't send more than 5 mails per hour.
 ...but don't send more than 3 SMSes per hour.
 
-
-SUBSCRIBE /nodes/bennett Arborist/0.1
-{
-    type: service
-    port: 80
-}
-
-=>
-200 OK
-7d4083bc35a9
-
-
-SUBSCRIBE /nodes Arborist/0.1
-{
-    type: service
-    port: 80
-}
-
-=>
-200 OK
-7d4083bc35a9
 

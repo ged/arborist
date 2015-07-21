@@ -12,7 +12,7 @@ describe Arborist::Manager::EventPublisher do
 	let( :zloop ) { instance_double( ZMQ::Loop ) }
 
 	let( :manager ) { Arborist::Manager.new }
-	let( :event ) { Arborist::Event.new }
+	let( :event ) { Arborist::Event.new('sys.test') }
 
 	let( :publisher ) { described_class.new(pollitem, manager, zloop) }
 

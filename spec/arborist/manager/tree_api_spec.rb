@@ -254,7 +254,7 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 			expect( body ).to be_a( Hash )
 			expect( body.length ).to eq( 3 )
 			expect( body ).to include( 'duir-ssh', 'yevaud-ssh', 'sidonie-ssh' )
-			expect( body.values ).to all( be_nil )
+			expect( body.values ).to all( be_empty )
 		end
 
 

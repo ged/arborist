@@ -1,6 +1,7 @@
 .document
 .simplecov
 ChangeLog
+Events.md
 History.md
 LICENSE
 Manifest.txt

@@ -76,7 +76,7 @@ describe Arborist::Client do
 			res = client.fetch( {}, properties: nil )
 			expect( res ).to be_a( Hash )
 			expect( res.length ).to be == manager.nodes.length
-			expect( res.values ).to all( be_nil )
+			expect( res.values ).to all( be_empty )
 		end
 
 

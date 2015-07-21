@@ -141,7 +141,10 @@ describe Arborist::Node do
 			end
 
 			it "transitions from `down` to `acked` status if it's updated with an `ack` property" do
-				node.update( ack: {message: "Maintenance", sender: 'mahlon'}, error: "Offlined"  )
+				node.status = 'down'
+				node.error = 'Something is wrong | he falls | betraying the trust | "\
+					"there is a disaster in his life.'
+				node.update( ack: {message: "Leitmotiv", sender: 'ged'}  )
 				expect( node ).to be_acked
 			end
 
@@ -326,6 +329,112 @@ describe Arborist::Node do
 
 
 		end
+
+	end
+
+
+	describe "event system" do
+
+		let( :node ) do
+			concrete_class.new( 'foo' ) do
+				parent 'bar'
+				description "The prototypical node"
+				tags :chunker, :hunky, :flippin, :hippo
+
+				update(
+					'song' => 'Around the World',
+					'artist' => 'Daft Punk',
+					'length' => '7:09',
+					'cider' => {
+						'description' => 'tasty',
+						'size' => '16oz',
+					},
+					'sausage' => {
+						'description' => 'pork',
+						'size' => 'monsterous',
+						'price' => {
+							'units' => 1200,
+							'currency' => 'usd'
+						}
+					},
+					'music' => '80s'
+				)
+			end
+		end
+
+
+		it "generates a node.update event on update" do
+			events = node.update( 'song' => "Around the World" )
+
+			expect( events ).to be_an( Array )
+			expect( events ).to all( be_a(Arborist::Event) )
+			expect( events.size ).to eq( 1 )
+			expect( events.first.type ).to eq( 'node.update' )
+			expect( events.first.data ).to eq( node.fetch_values )
+		end
+
+
+		it "generates a node.delta event when an update changes a value" do
+			events = node.update(
+				'song' => "Motherboard",
+				'sausage' => {
+					'price' => {
+						'currency' => 'eur'
+					}
+				}
+			)
+
+			expect( events ).to be_an( Array )
+			expect( events ).to all( be_a(Arborist::Event) )
+			expect( events.size ).to eq( 2 )
+
+			delta_event = events.find {|ev| ev.type == 'node.delta' }
+
+			expect( delta_event.data ).to eq({
+				'song' => ['Around the World' , 'Motherboard'],
+				'sausage' => {
+					'price' => {
+						'currency' => ['usd', 'eur']
+					}
+				}
+			})
+		end
+
+
+		it "includes status changes in delta events" do
+			events = node.update( error: "Couldn't talk to it!" )
+			delta_event = events.find {|ev| ev.type == 'node.delta' }
+
+			expect( delta_event.data ).to include( 'status' => ['up', 'down'] )
+		end
+
+
+		it "generates a node.acked event when a node is acked" do
+			events = node.update(ack: {
+				message: "I have a poisonous friend. She's living in the house.",
+				sender: 'Seabound'
+			})
+
+			expect( events.size ).to eq( 3 )
+			ack_event = events.find {|ev| ev.type == 'node.acked' }
+
+			expect( ack_event ).to be_a( Arborist::Event )
+			expect( ack_event.data ).to include( sender: 'Seabound' )
+		end
+
+	end
+
+
+	describe "subscriptions" do
+
+
+		it "allows the addition of a Subscription"
+
+
+		it "allows the removal of a Subscription"
+
+
+		it "publishes events which match one of its subscriptions to the associated subscriber ID"
 
 	end
 

@@ -276,6 +276,75 @@ describe Arborist::Manager do
 	end
 
 
+	describe "node updates and events" do
+
+		let( :tree ) do
+			#                        router
+			# host_a                 host_b              host_c
+			# www smtp imap          www nfs ssh         www
+
+			[
+				testing_node( 'router' ),
+					testing_node( 'host_a', 'router' ),
+						testing_node( 'host_a_www', 'host_a' ),
+						testing_node( 'host_a_smtp', 'host_a' ),
+						testing_node( 'host_a_imap', 'host_a' ),
+					testing_node( 'host_b', 'router' ),
+						testing_node( 'host_b_www', 'host_b' ),
+						testing_node( 'host_b_nfs', 'host_b' ),
+						testing_node( 'host_b_ssh', 'host_b' ),
+					testing_node( 'host_c', 'router' ),
+						testing_node( 'host_c_www', 'host_c' ),
+			]
+		end
+
+		let( :manager ) do
+			instance = described_class.new
+			instance.load_tree( tree )
+			instance
+		end
+
+
+		it "can fetch a Hash of node states" do
+			states = manager.fetch_matching_node_states( {}, [] )
+			expect( states.size ).to eq( manager.nodes.size )
+			expect( states ).to include( 'host_b_nfs', 'host_c', 'router' )
+			expect( states['host_b_nfs'] ).to be_a( Hash )
+			expect( states['host_c'] ).to be_a( Hash )
+			expect( states['router'] ).to be_a( Hash )
+		end
+
+
+		it "can update an event by identifier" do
+			manager.update_node( 'host_b_www', http: { status: 200 } )
+			expect(
+				manager.nodes['host_b_www'].properties
+			).to include( 'http' => { 'status' => 200 } )
+		end
+
+
+		it "ignores updates to an identifier that is not (any longer) in the tree" do
+			expect {
+				manager.update_node( 'host_y', asset_tag: '2by-n86y7t' )
+			}.to_not raise_error
+		end
+
+
+		it "propagates events from an update up the node tree"
+
+	end
+
+
+	describe "subscriptions" do
+
+		it "can attach subscriptions to a node by its identifier"
+
+
+		it "passes propagating events to a node's subscriptions as they pass by"
+
+	end
+
+
 	describe "sockets" do
 
 		let( :zmq_context ) { Arborist.zmq_context }
@@ -334,5 +403,7 @@ describe Arborist::Manager do
 			manager.run
 		end
 	end
+
+
 end
 

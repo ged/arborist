@@ -154,21 +154,13 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 	def handle_fetch_request( header, body )
 		self.log.info "FETCH: %p" % [ header ]
 
-		nodes_iter = if header['include_down']
-				@manager.all_nodes
+		include_down = header['include_down']
+		values = if header.key?( 'return' )
+				header['return'] || []
 			else
-				@manager.reachable_nodes
+				nil
 			end
-
-		states = nodes_iter.
-			select {|node| node.matches?(body) }.
-			each_with_object( {} ) do |node, hash|
-				if !header.key?( 'return' ) || header['return']
-					hash[ node.identifier ] = node.fetch_values( header['return'] )
-				else
-					hash[ node.identifier ] = nil
-				end
-			end
+		states = @manager.fetch_matching_node_states( body, values, include_down )
 
 		return successful_response( states )
 	end
@@ -179,12 +171,7 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 		self.log.info "UPDATE: %p" % [ header ]
 
 		body.each do |identifier, properties|
-			unless (( node = @manager.nodes[ identifier ] ))
-				self.log.warn "Update for non-existent node %p ignored." % [ identifier ]
-				next
-			end
-
-			node.update( properties )
+			@manager.update_node( identifier, properties )
 		end
 
 		return successful_response( nil )
