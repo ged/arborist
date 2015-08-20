@@ -23,6 +23,7 @@ hoespec = Hoe.spec 'arborist' do |spec|
 	spec.license 'BSD'
 
 	spec.developer 'Michael Granger', 'ged@FaerieMUD.org'
+	spec.developer 'Mahlon E. Smith', 'mahlon@martini.nu'
 
 	spec.dependency 'loggability', '~> 0.11'
 	spec.dependency 'configurability', '~> 2.2'
