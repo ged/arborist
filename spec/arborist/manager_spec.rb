@@ -330,17 +330,50 @@ describe Arborist::Manager do
 		end
 
 
-		it "propagates events from an update up the node tree"
+		it "propagates events from an update up the node tree" do
+			expect( manager.root ).to receive( :find_matching_subscriptions ).
+				at_least(:once).
+				and_call_original
+			expect( manager.nodes['host_c'] ).to receive( :find_matching_subscriptions ).
+				at_least(:once).
+				and_call_original
+			manager.update_node( 'host_c_www', response_status: 504, error: 'Timeout talking to web service.' )
+		end
+
+
+		it "only propagates events to a node's ancestors" do
+			expect( manager.root ).to receive( :find_matching_subscriptions ).
+				at_least(:once).
+				and_call_original
+			expect( manager.nodes['host_c'] ).to_not receive( :find_matching_subscriptions )
+
+			manager.update_node( 'host_b_www', response_status: 504, error: 'Timeout talking to web service.' )
+		end
 
 	end
 
 
 	describe "subscriptions" do
 
-		it "can attach subscriptions to a node by its identifier"
+		let( :tree ) {[ testing_node('host_c') ]}
+		let( :manager ) do
+			instance = described_class.new
+			instance.load_tree( tree )
+			instance
+		end
 
 
-		it "passes propagating events to a node's subscriptions as they pass by"
+		it "can attach subscriptions to a node by its identifier" do
+			sub = subid = nil
+			expect {
+				subid = manager.create_subscription( 'host_c', 'node.update', type: 'host' )
+			}.to change { manager.subscriptions.size }.by( 1 )
+
+			sub = manager.subscriptions[ subid ]
+
+			expect( sub ).to be_a( Arborist::Subscription )
+			expect( manager.nodes['host_c'].subscriptions ).to include( sub )
+		end
 
 	end
 

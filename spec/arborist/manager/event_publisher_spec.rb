@@ -12,7 +12,7 @@ describe Arborist::Manager::EventPublisher do
 	let( :zloop ) { instance_double( ZMQ::Loop ) }
 
 	let( :manager ) { Arborist::Manager.new }
-	let( :event ) { Arborist::Event.new('sys.test') }
+	let( :event ) { Arborist::Event.create(TestEvent, 'stuff') }
 
 	let( :publisher ) { described_class.new(pollitem, manager, zloop) }
 
@@ -36,10 +36,31 @@ describe Arborist::Manager::EventPublisher do
 		publisher.on_writable
 
 		expect( zloop ).to receive( :register ).with( socket )
+
 		expect {
-			publisher << event
+			publisher.publish( 'identifier-00aa', event )
 		}.to change { publisher.registered? }.to( true )
 	end
 
+
+	it "publishes events with their identifier" do
+		identifier = '65b2430b-6855-4961-ab46-d742cf4456a1'
+
+		expect( socket ).to receive( :sendm ).with( identifier )
+		expect( socket ).to receive( :send ) do |raw_data|
+			ev = MessagePack.unpack( raw_data )
+			expect( ev ).to include( 'type', 'data' )
+
+			expect( ev['type'] ).to eq( 'test.event' )
+			expect( ev['data'] ).to eq( 'stuff' )
+		end
+		expect( zloop ).to receive( :remove ).with( socket )
+
+		publisher.publish( identifier, event )
+		publisher.on_writable
+	end
+
+
 end
+
 

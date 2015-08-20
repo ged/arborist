@@ -135,6 +135,17 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 	end
 
 
+	### Return a response to the `subscribe` action.
+	def handle_subscribe_request( header, body )
+		self.log.info "SUBSCRIBE: %p" % [ header ]
+		event_pattern   = header[ 'event_pattern' ]
+		node_identifier = header[ 'identifier' ]
+		subscription_id = @manager.create_subscription( node_identifier, event_pattern, body )
+
+		return successful_response([ subscription_id ])
+	end
+
+
 	### Return a repsonse to the `list` action.
 	def handle_list_request( header, body )
 		self.log.info "LIST: %p" % [ header ]

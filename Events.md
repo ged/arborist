@@ -8,6 +8,7 @@
     sys.shutdown
     node.delta
     node.update
+    node.ack
 
 Second part of the event name is the verb.
 

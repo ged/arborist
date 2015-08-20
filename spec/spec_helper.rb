@@ -9,8 +9,12 @@ require 'msgpack'
 
 require 'arborist'
 require 'arborist/manager'
+require 'arborist/node'
 
 
+class TestNode < Arborist::Node; end
+
+class TestEvent < Arborist::Event; end
 
 
 module Arborist::TestHelpers

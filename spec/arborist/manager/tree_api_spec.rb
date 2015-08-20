@@ -341,4 +341,39 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 
 	end
 
+
+	describe "subscribe" do
+
+		it "adds a subscription to the specified node" do
+			criteria = {
+				type: 'host'
+			}
+
+			msg = pack_message( :subscribe, criteria, identifier: 'sidonie' )
+
+			resmsg = nil
+			expect {
+				sock.send( msg )
+				resmsg = sock.recv
+			}.to change { manager.subscriptions.length }.by( 1 )
+			hdr, body = unpack_message( resmsg )
+
+			sub_id = manager.subscriptions.keys.first
+
+			expect( hdr ).to include( 'success' => true )
+			expect( body ).to eq([ sub_id ])
+		end
+
+
+		it "adds a subscription to the root node if none was specified"
+
+	end
+
+
+	describe "unsubscribe" do
+
+		it "removes the subscription with the specified ID"
+
+	end
+
 end

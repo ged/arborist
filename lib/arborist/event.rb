@@ -1,6 +1,7 @@
 # -*- ruby -*-
 #encoding: utf-8
 
+require 'pluggability'
 require 'arborist' unless defined?( Arborist )
 
 
@@ -8,11 +9,16 @@ require 'arborist' unless defined?( Arborist )
 # node state changes, when they're updated, and when various other operational
 # actions take place, e.g., the node tree gets reloaded.
 class Arborist::Event
+	extend Pluggability
 
-	### Create a new event with the specified +type+ and event +data+.
-	def initialize( type, data={} )
-		@type = type
-		@data = data.clone
+
+	# Pluggability API -- look for events under the specified prefix
+	plugin_prefixes 'arborist/event'
+
+
+	### Create a new event with the specified +payload+ data.
+	def initialize( payload )
+		@payload = payload.clone
 	end
 
 
@@ -20,12 +26,34 @@ class Arborist::Event
 	public
 	######
 
-	# The event type
-	attr_reader :type
+	# The event payload specific to the event type
+	attr_reader :payload
 
-	# The event data
-	attr_reader :data
 
+	### Return the type of the event.
+	def type
+		return self.class.name.
+			sub( /.*::/, '' ).
+			gsub( /([a-z])([A-Z])/, '\1.\2' ).
+			downcase
+	end
+
+
+	### Match operator -- returns +true+ if the other object matches this event.
+	def match( object )
+		return object.respond_to?( :event_type ) &&
+		   object.event_type == self.type
+	end
+	alias_method :=~, :match
+
+
+	### Return the event as a Hash.
+	def to_hash
+		return {
+			'type' => self.type,
+			'data' => self.payload
+		}
+	end
 
 end # class Arborist::Event
 

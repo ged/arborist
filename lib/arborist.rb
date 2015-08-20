@@ -156,6 +156,7 @@ module Arborist
 	autoload :Monitor, 'arborist/monitor'
 	autoload :MonitorRunner, 'arborist/monitor_runner'
 	autoload :Node, 'arborist/node'
+	autoload :Subscription, 'arborist/subscription'
 
 end # module Arborist
 

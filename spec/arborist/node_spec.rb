@@ -6,9 +6,6 @@ require 'time'
 require 'arborist/node'
 
 
-class TestNode < Arborist::Node; end
-
-
 describe Arborist::Node do
 
 	let( :concrete_class ) { TestNode }
@@ -370,13 +367,14 @@ describe Arborist::Node do
 			expect( events ).to all( be_a(Arborist::Event) )
 			expect( events.size ).to eq( 1 )
 			expect( events.first.type ).to eq( 'node.update' )
-			expect( events.first.data ).to eq( node.fetch_values )
+			expect( events.first.node ).to be( node )
 		end
 
 
 		it "generates a node.delta event when an update changes a value" do
 			events = node.update(
 				'song' => "Motherboard",
+				'artist' => 'Daft Punk',
 				'sausage' => {
 					'price' => {
 						'currency' => 'eur'
@@ -390,7 +388,8 @@ describe Arborist::Node do
 
 			delta_event = events.find {|ev| ev.type == 'node.delta' }
 
-			expect( delta_event.data ).to eq({
+			expect( delta_event.node ).to be( node )
+			expect( delta_event.payload ).to eq({
 				'song' => ['Around the World' , 'Motherboard'],
 				'sausage' => {
 					'price' => {
@@ -405,7 +404,7 @@ describe Arborist::Node do
 			events = node.update( error: "Couldn't talk to it!" )
 			delta_event = events.find {|ev| ev.type == 'node.delta' }
 
-			expect( delta_event.data ).to include( 'status' => ['up', 'down'] )
+			expect( delta_event.payload ).to include( 'status' => ['up', 'down'] )
 		end
 
 
@@ -419,7 +418,7 @@ describe Arborist::Node do
 			ack_event = events.find {|ev| ev.type == 'node.acked' }
 
 			expect( ack_event ).to be_a( Arborist::Event )
-			expect( ack_event.data ).to include( sender: 'Seabound' )
+			expect( ack_event.payload ).to include( sender: 'Seabound' )
 		end
 
 	end
@@ -427,14 +426,43 @@ describe Arborist::Node do
 
 	describe "subscriptions" do
 
+		let( :node ) do
+			concrete_class.new( 'foo' ) do
+				parent 'bar'
+				description "The prototypical node"
+				tags :chunker, :hunky, :flippin, :hippo
+			end
+		end
 
-		it "allows the addition of a Subscription"
+
+		it "allows the addition of a Subscription" do
+			sub = Arborist::Subscription.new( 'test', { type: 'host'} )
+			node.add_subscription( sub )
+			expect( node.subscriptions ).to include( sub )
+		end
 
 
-		it "allows the removal of a Subscription"
+		it "allows the removal of a Subscription" do
+			sub = Arborist::Subscription.new( 'test', { type: 'host'} )
+			node.add_subscription( sub )
+			node.remove_subscription( sub )
+			expect( node.subscriptions ).to_not include( sub )
+		end
 
 
-		it "publishes events which match one of its subscriptions to the associated subscriber ID"
+		it "can find subscriptions that match a given event" do
+			events = node.update( 'song' => 'Fear', 'artist' => "Mind.in.a.Box" )
+			delta_event = events.find {|ev| ev.type == 'node.delta' }
+
+			sub = Arborist::Subscription.new( 'node.delta' )
+			node.add_subscription( sub )
+
+			results = node.find_matching_subscriptions( delta_event )
+
+			expect( results.size ).to eq( 1 )
+			expect( results ).to all( be_a(Arborist::Subscription) )
+			expect( results.first ).to be( sub )
+		end
 
 	end
 

@@ -22,10 +22,6 @@ hoespec = Hoe.spec 'arborist' do |spec|
 	spec.extra_rdoc_files = FileList[ '*.rdoc', '*.md' ]
 	spec.license 'BSD'
 
-	if File.directory?( '.hg' )
-		spec.spec_extras[:rdoc_options] = ['-f', 'fivefish', '-t', 'Arborist']
-	end
-
 	spec.developer 'Michael Granger', 'ged@FaerieMUD.org'
 
 	spec.dependency 'loggability', '~> 0.11'
