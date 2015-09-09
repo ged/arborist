@@ -9,8 +9,6 @@ Arborist::Host 'sidonie' do
 	description "NAS and media server"
 	address '192.168.16.3'
 
-	description "Media server, NAS."
-
 	tags :infrastructure,
 	     :storage,
 	     :media,

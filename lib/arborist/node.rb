@@ -170,7 +170,7 @@ class Arborist::Node
 			h[ k ] = Hash.new( &h.default_proc )
 		end
 		@pending_update_events = []
-		@subscriptions  = Set.new
+		@subscriptions  = {}
 
 		self.instance_eval( &block ) if block
 	end
@@ -221,7 +221,8 @@ class Arborist::Node
 	attr_reader :pending_update_events
 
 	##
-	# The Set of Subscription objects obeserving this node and its children.
+	# The Hash of Subscription objects observing this node and its children, keyed by
+	# subscription ID.
 	attr_reader :subscriptions
 
 
@@ -279,19 +280,19 @@ class Arborist::Node
 
 	### Add the specified +subscription+ (an Arborist::Subscription) to the node.
 	def add_subscription( subscription )
-		self.subscriptions.add( subscription )
+		self.subscriptions[ subscription.id ] = subscription
 	end
 
 
 	### Remove the specified +subscription+ (an Arborist::Subscription) from the node.
-	def remove_subscription( subscription )
-		self.subscriptions.delete( subscription )
+	def remove_subscription( subscription_id )
+		return self.subscriptions.delete( subscription_id )
 	end
 
 
 	### Return subscriptions matching the specified +event+ on the receiving node.
 	def find_matching_subscriptions( event )
-		return self.subscriptions.find_all {|sub| event =~ sub }
+		return self.subscriptions.values.find_all {|sub| event =~ sub }
 	end
 
 

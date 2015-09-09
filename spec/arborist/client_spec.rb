@@ -117,6 +117,79 @@ describe Arborist::Client do
 			expect( manager.nodes['duir'].properties['ping']['rtt'] ).to eq( 24 )
 		end
 
+
+		it "can subscribe to all events" do
+			sub_id = client.subscribe
+			expect( sub_id ).to be_a( String )
+			expect( sub_id ).to match( /^[\w\-]{16,}/ )
+
+			node = manager.subscriptions[ sub_id ]
+			sub = manager.root.subscriptions[ sub_id ]
+
+			expect( sub ).to be_a( Arborist::Subscription )
+			expect( sub.criteria ).to be_empty
+			expect( sub.event_type ).to be_nil
+		end
+
+
+		it "can subscribe a particular kind of event" do
+			sub_id = client.subscribe( event_type: 'node.ack' )
+			expect( sub_id ).to be_a( String )
+			expect( sub_id ).to match( /^[\w\-]{16,}/ )
+
+			node = manager.subscriptions[ sub_id ]
+			sub = manager.root.subscriptions[ sub_id ]
+
+			expect( sub ).to be_a( Arborist::Subscription )
+			expect( sub.criteria ).to be_empty
+			expect( sub.event_type ).to eq( 'node.ack' )
+		end
+
+
+		it "can subscribe to events for descendants of a particular node in the tree" do
+			sub_id = client.subscribe( identifier: 'sidonie' )
+			expect( sub_id ).to be_a( String )
+			expect( sub_id ).to match( /^[\w\-]{16,}/ )
+
+			node = manager.subscriptions[ sub_id ]
+			sub = node.subscriptions[ sub_id ]
+
+			expect( node.identifier ).to eq( 'sidonie' )
+			expect( sub ).to be_a( Arborist::Subscription )
+			expect( sub.criteria ).to be_empty
+			expect( sub.event_type ).to be_nil
+		end
+
+
+		it "can subscribe to events of a particular type for descendants of a particular node" do
+			sub_id = client.subscribe( identifier: 'sidonie', event_type: 'node.delta' )
+			expect( sub_id ).to be_a( String )
+			expect( sub_id ).to match( /^[\w\-]{16,}/ )
+
+			node = manager.subscriptions[ sub_id ]
+			sub = node.subscriptions[ sub_id ]
+
+			expect( node.identifier ).to eq( 'sidonie' )
+			expect( sub ).to be_a( Arborist::Subscription )
+			expect( sub.criteria ).to be_empty
+			expect( sub.event_type ).to eq( 'node.delta' )
+		end
+
+
+		it "can subscribe to events matching one or more criteria" do
+			sub_id = client.subscribe( criteria: {type: 'service'} )
+			expect( sub_id ).to be_a( String )
+			expect( sub_id ).to match( /^[\w\-]{16,}/ )
+
+			node = manager.subscriptions[ sub_id ]
+			sub = node.subscriptions[ sub_id ]
+
+			expect( node.identifier ).to eq( '_' )
+			expect( sub ).to be_a( Arborist::Subscription )
+			expect( sub.criteria ).to eq( 'type' => 'service' )
+			expect( sub.event_type ).to eq( nil )
+		end
+
 	end
 
 

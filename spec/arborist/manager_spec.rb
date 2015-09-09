@@ -366,13 +366,27 @@ describe Arborist::Manager do
 		it "can attach subscriptions to a node by its identifier" do
 			sub = subid = nil
 			expect {
-				subid = manager.create_subscription( 'host_c', 'node.update', type: 'host' )
+				sub = manager.create_subscription( 'host_c', 'node.update', type: 'host' )
 			}.to change { manager.subscriptions.size }.by( 1 )
 
-			sub = manager.subscriptions[ subid ]
+			node = manager.subscriptions[ sub.id ]
 
 			expect( sub ).to be_a( Arborist::Subscription )
-			expect( manager.nodes['host_c'].subscriptions ).to include( sub )
+			expect( node ).to be( manager.nodes['host_c'] )
+		end
+
+
+		it "can detach subscriptions from a node given the subscription ID" do
+			sub = manager.create_subscription( 'host_c', 'node.ack', type: 'service' )
+			rval = nil
+
+			expect {
+				rval = manager.remove_subscription( sub.id )
+			}.to change { manager.subscriptions.size }.by( -1 ).and(
+				change { manager.nodes['host_c'].subscriptions.size }.by( -1 )
+			)
+
+			expect( rval ).to be( sub )
 		end
 
 	end

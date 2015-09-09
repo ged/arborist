@@ -138,11 +138,26 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 	### Return a response to the `subscribe` action.
 	def handle_subscribe_request( header, body )
 		self.log.info "SUBSCRIBE: %p" % [ header ]
-		event_pattern   = header[ 'event_pattern' ]
+		event_type      = header[ 'event_type' ]
 		node_identifier = header[ 'identifier' ]
-		subscription_id = @manager.create_subscription( node_identifier, event_pattern, body )
+		subscription    = @manager.create_subscription( node_identifier, event_type, body )
 
-		return successful_response([ subscription_id ])
+		return successful_response([ subscription.id ])
+	end
+
+
+	### Return a response to the `unsubscribe` action.
+	def handle_unsubscribe_request( header, body )
+		self.log.info "UNSUBSCRIBE: %p" % [ header ]
+		subscription_id = header[ 'subscription_id' ] or
+			return error_response( 'client', 'No identifier specified for UNSUBSCRIBE.' )
+		subscription = @manager.remove_subscription( subscription_id ) or
+			return successful_response( nil )
+
+		return successful_response(
+			event_type: subscription.event_type,
+			criteria: subscription.criteria
+		)
 	end
 
 

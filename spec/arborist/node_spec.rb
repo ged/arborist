@@ -438,14 +438,15 @@ describe Arborist::Node do
 		it "allows the addition of a Subscription" do
 			sub = Arborist::Subscription.new( 'test', { type: 'host'} )
 			node.add_subscription( sub )
-			expect( node.subscriptions ).to include( sub )
+			expect( node.subscriptions ).to include( sub.id )
+			expect( node.subscriptions[sub.id] ).to be( sub )
 		end
 
 
 		it "allows the removal of a Subscription" do
 			sub = Arborist::Subscription.new( 'test', { type: 'host'} )
 			node.add_subscription( sub )
-			node.remove_subscription( sub )
+			node.remove_subscription( sub.id )
 			expect( node.subscriptions ).to_not include( sub )
 		end
 

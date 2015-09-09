@@ -97,6 +97,24 @@ class Arborist::Client
 	end
 
 
+	### Add a subscription 
+	def subscribe( *args )
+		request = self.make_subscribe_request( *args )
+		response = self.send_tree_api_request( request )
+		return response.first
+	end
+
+
+	### Make a subscription request for the specified +criteria+, +identifier+, and +event_type+.
+	def make_subscribe_request( criteria: {}, identifier: nil, event_type: nil )
+		header = {}
+		header[ :identifier ] = identifier if identifier
+		header[ :event_type ] = event_type
+
+		return self.pack_message( :subscribe, header, criteria )
+	end
+
+
 	### Send the packed +request+ via the Tree API socket, raise an error on
 	### unsuccessful response, and return the response body.
 	def send_tree_api_request( request )

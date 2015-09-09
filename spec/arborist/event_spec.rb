@@ -32,6 +32,14 @@ describe Arborist::Event do
 			expect( event ).to match( sub )
 		end
 
+
+		it "always matches a subscription with a nil event type" do
+			sub = Arborist::Subscription.new
+			event = described_class.create( TestEvent, [] )
+
+			expect( event ).to match( sub )
+		end
+
 	end
 
 

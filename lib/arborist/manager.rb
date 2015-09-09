@@ -458,8 +458,7 @@ class Arborist::Manager
 	### Create a subscription for the node with the specified +identifier+ and
 	### +event_pattern+, using the given +criteria+ when considering an event.
 	def create_subscription( identifier, event_pattern, criteria )
-		identifier    ||= '_'
-		event_pattern ||= '*'
+		identifier ||= '_'
 
 		node = self.nodes[ identifier ] or raise ArgumentError, "no such node %p" % [ identifier ]
 		sub = Arborist::Subscription.new( event_pattern, criteria )
@@ -467,10 +466,18 @@ class Arborist::Manager
 		self.log.debug "Registering subscription %p" % [ sub ]
 		node.add_subscription( sub )
 		self.log.debug " adding '%s' to the subscriptions hash." % [ sub.id ]
-		self.subscriptions[ sub.id ] = sub
+		self.subscriptions[ sub.id ] = node
 		self.log.debug "  subscriptions hash: %#0x" % [ self.subscriptions.object_id ]
 
-		return sub.id
+		return sub
+	end
+
+
+	### Remove the subscription with the specified +subscription_identifier+ from the node
+	### it's attached to and from the manager, and return it.
+	def remove_subscription( subscription_identifier )
+		node = self.subscriptions.delete( subscription_identifier ) or return nil
+		return node.remove_subscription( subscription_identifier )
 	end
 
 

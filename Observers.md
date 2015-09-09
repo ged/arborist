@@ -7,7 +7,7 @@ Get node change delta events for every 'host' type node.
     {
         action: subscribe,
         version: 1,
-        event_pattern: node.delta
+        event_type: node.delta
     },
     {
         type: 'host',
@@ -19,7 +19,7 @@ the 'bennett' node.
     {
         action: subscribe,
         version: 1,
-        event_pattern: node.update,
+        event_type: node.update,
         identifier: 'bennett'
     },
     {
@@ -31,7 +31,7 @@ Get events of state changes to services running on port 80.
     {
         action: subscribe,
         version: 1,
-        event_pattern: node.delta
+        event_type: node.delta
     },
     {
         type: 'service',
@@ -43,7 +43,7 @@ Get notified of every system event (startup, shutdown, reload, etc.)
     {
         action: subscribe,
         version: 1,
-        event_pattern: sys.*
+        event_type: sys.*
     },
     Nil
 

@@ -35,6 +35,14 @@ describe Arborist::Subscription do
 	end
 
 
+	it "matches events which are of any type if the specified type is `nil`" do
+		subscription = described_class.new
+		event1 = Arborist::Event.create( 'node_delta', host_node, status: ['up', 'down'] )
+		event2 = Arborist::Event.create( 'sys_reloaded' )
+		expect([ event1, event2 ]).to all( match(subscription) )
+	end
+
+
 	it "doesn't match events which are of the desired type but don't have matching criteria" do
 		event = Arborist::Event.create( 'node_delta', service_node, status: ['up', 'down'] )
 		expect( event ).to_not match( subscription )

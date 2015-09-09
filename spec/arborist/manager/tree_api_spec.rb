@@ -344,18 +344,20 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 
 	describe "subscribe" do
 
-		it "adds a subscription to the specified node" do
+		it "adds a subscription for all event types to the root node by default" do
 			criteria = {
 				type: 'host'
 			}
 
-			msg = pack_message( :subscribe, criteria, identifier: 'sidonie' )
+			msg = pack_message( :subscribe, criteria )
 
 			resmsg = nil
 			expect {
 				sock.send( msg )
 				resmsg = sock.recv
-			}.to change { manager.subscriptions.length }.by( 1 )
+			}.to change { manager.subscriptions.length }.by( 1 ).and(
+				change { manager.root.subscriptions.length }.by( 1 )
+			)
 			hdr, body = unpack_message( resmsg )
 
 			sub_id = manager.subscriptions.keys.first
@@ -365,14 +367,87 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 		end
 
 
-		it "adds a subscription to the root node if none was specified"
+		it "adds a subscription to the specified node if an identifier is specified" do
+			criteria = {
+				type: 'host'
+			}
+
+			msg = pack_message( :subscribe, {identifier: 'sidonie'}, criteria )
+
+			resmsg = nil
+			expect {
+				sock.send( msg )
+				resmsg = sock.recv
+			}.to change { manager.subscriptions.length }.by( 1 ).and(
+				change { manager.nodes['sidonie'].subscriptions.length }.by( 1 )
+			)
+			hdr, body = unpack_message( resmsg )
+
+			sub_id = manager.subscriptions.keys.first
+
+			expect( hdr ).to include( 'success' => true )
+			expect( body ).to eq([ sub_id ])
+		end
+
+
+		it "adds a subscription for node types matching a pattern if one is specified" do
+			criteria = {
+				type: 'host'
+			}
+
+			msg = pack_message( :subscribe, {event_type: 'node.ack'}, criteria )
+
+			resmsg = nil
+			expect {
+				sock.send( msg )
+				resmsg = sock.recv
+			}.to change { manager.subscriptions.length }.by( 1 ).and(
+				change { manager.root.subscriptions.length }.by( 1 )
+			)
+			hdr, body = unpack_message( resmsg )
+			node = manager.subscriptions[ body.first ]
+			sub = node.subscriptions[ body.first ]
+
+			expect( sub.event_type ).to eq( 'node.ack' )
+		end
 
 	end
 
 
 	describe "unsubscribe" do
 
-		it "removes the subscription with the specified ID"
+		let( :subscription ) do
+			manager.create_subscription( nil, 'node.delta', {type: 'host'} )
+		end
+
+		it "removes the subscription with the specified ID" do
+			msg = pack_message( :unsubscribe, {subscription_id: subscription.id}, nil )
+
+			resmsg = nil
+			expect {
+				sock.send( msg )
+				resmsg = sock.recv
+			}.to change { manager.subscriptions.length }.by( -1 ).and(
+				change { manager.root.subscriptions.length }.by( -1 )
+			)
+			hdr, body = unpack_message( resmsg )
+
+			expect( body ).to include( 'event_type' => 'node.delta', 'criteria' => {'type' => 'host'} )
+		end
+
+
+		it "ignores unsubscription of a non-existant ID" do
+			msg = pack_message( :unsubscribe, {subscription_id: 'the bears!'}, nil )
+
+			resmsg = nil
+			expect {
+				sock.send( msg )
+				resmsg = sock.recv
+			}.to_not change { manager.subscriptions.length }
+			hdr, body = unpack_message( resmsg )
+
+			expect( body ).to be_nil
+		end
 
 	end
 

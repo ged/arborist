@@ -13,7 +13,7 @@ class Arborist::Subscription
 
 	### Instantiate a new Subscription object given an +event+ pattern
 	### and event +criteria+.
-	def initialize( event_type, criteria={} )
+	def initialize( event_type=nil, criteria={} )
 		@event_type = event_type
 		@criteria   = stringify_keys( criteria )
 		@id         = self.generate_id
