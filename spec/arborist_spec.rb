@@ -11,6 +11,7 @@ describe Arborist do
 	before( :all ) do
 		@original_config_env = ENV[Arborist::CONFIG_ENV]
 		@data_dir = Pathname( __FILE__ ).dirname + 'data'
+		@nodes_dir = @data_dir + 'nodes'
 	end
 
 	before( :each ) do
@@ -133,7 +134,7 @@ describe Arborist do
 
 
 	it "can load all nodes in a directory and return a manager for them" do
-		expect( described_class.manager_for(@data_dir) ).to be_a( Arborist::Manager )
+		expect( described_class.manager_for(@nodes_dir) ).to be_a( Arborist::Manager )
 	end
 
 

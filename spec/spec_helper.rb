@@ -48,7 +48,7 @@ module Arborist::TestHelpers
 
 
 	def make_testing_manager
-		return Arborist.manager_for( SPEC_DATA_DIR )
+		return Arborist.manager_for( SPEC_DATA_DIR + 'nodes' )
 	end
 
 

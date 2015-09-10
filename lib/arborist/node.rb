@@ -123,7 +123,14 @@ class Arborist::Node
 	def self::load( file )
 		self.log.info "Loading node file %s..." % [ file ]
 		Thread.current[ LOADED_INSTANCE_KEY ] = []
-		Kernel.load( file )
+
+		begin
+			Kernel.load( file )
+		rescue => err
+			self.log.error "%p while loading %s: %s" % [ err.class, file, err.message ]
+			raise
+		end
+
 		return Thread.current[ LOADED_INSTANCE_KEY ]
 	ensure
 		Thread.current[ LOADED_INSTANCE_KEY ] = nil
