@@ -1,0 +1,34 @@
+# vim: set nosta noet ts=4 sw=4:
+#
+# This is an LDAP schema, meant to be attached to ipHost, ipService, and
+# dcObject entries, that can then be translated to an Arborist manager
+# tree.
+#
+# Arborist is partially sponsored by LAIKA, LLC, who has a public IANA
+# OID registration.  We'll piggyback on that to ensure globally unique
+# oids.
+#
+# LAIKA Enterprise OID:  1.3.6.1.4.1.24926
+# LDAP object root:      1.3.6.1.4.1.24926.3
+# LDAP attribute root:   1.3.6.1.4.1.24926.3.1
+# LDAP objectClass root: 1.3.6.1.4.1.24926.3.2
+
+objectIdentifier ARBORIST_LDAP 1.3.6.1.4.1.24926.3
+objectIdentifier ARBORIST_ATTR ARBORIST_LDAP:1
+objectIdentifier ARBORIST_OC   ARBORIST_LDAP:2
+
+attributetype ( ARBORIST_ATTR:1.1 NAME 'nodeParent'
+	DESC 'Override the node parent with an LDAP DN, pointing to another ArboristNode object'
+	EQUALITY distinguishedNameMatch
+	SYNTAX 1.3.6.1.4.1.1466.115.121.1.12 SINGLE-VALUE )
+
+attributetype ( ARBORIST_ATTR:1.2 NAME 'nodeTag'
+	DESC 'Searchable categories for cross-selection of Arborist nodes'
+	EQUALITY caseIgnoreIA5Match	  
+	SUBSTR caseIgnoreIA5SubstringsMatch
+	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 )
+
+objectclass ( ARBORIST_OC:1 NAME 'ArboristNode' SUP top AUXILIARY
+	DESC 'An entry which is represented in an Arborist tree as a node'
+	MAY  ( nodeParent $ nodeTag ))
+

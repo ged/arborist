@@ -328,7 +328,6 @@ class Arborist::Manager
 		identifier = node.identifier
 
 		unless self.nodes[identifier].equal?( node )
-			self.log.debug "removing existing '%s' node: %p" % [ identifier, self.nodes[identifier] ]
 			self.remove_node( self.nodes[identifier] )
 			self.nodes[ identifier ] = node
 		end
