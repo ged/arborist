@@ -11,7 +11,7 @@ module FPingWrapper
 	extend Loggability
 	log_to :arborist
 
-	def do_fping( nodes )
+	def exec_arguments( nodes )
 		identifiers = nodes.each_with_object({}) do |(identifier, props), hash|
 			next unless props.key?( 'addresses' )
 			address = props[ 'addresses' ].first
@@ -20,7 +20,10 @@ module FPingWrapper
 
 		return {} if identifiers.empty?
 
-		output = yield( identifiers.keys )
+		return identifiers.keys
+	end
+
+	def parse_output( stdout, stderr )
 		self.log.debug "Got output: %p" % [ output ]
 		# 8.8.8.8 is alive (32.1 ms)
 		# 8.8.4.4 is alive (14.9 ms)
@@ -42,37 +45,35 @@ module FPingWrapper
 
 end
 
-Arborist::Monitor 'ping check' do
-	extend FPingWrapper
 
+Arborist::Monitor 'ping check' do
 	every 20.seconds
 	splay 5.seconds
 	match type: 'host'
 	exclude tag: :laptop
 	use :addresses
 
-	exec 'fping', '-e', '-t', '150', &method( :do_fping )
+	exec 'fping', '-e', '-t', '150'
+	exec_callbacks( FPingWrapper )
 end
 
 Arborist::Monitor 'ping check downed hosts' do
-	extend FPingWrapper
-
 	every 40.seconds
 	splay 15.seconds
 	match type: 'host', status: 'down'
 	include_down true
 	use :addresses
 
-	exec 'fping', '-e', '-t', '150', &method( :do_fping )
+	exec 'fping', '-e', '-t', '150'
+	exec_callbacks( FPingWrapper )
 end
 
 Arborist::Monitor 'transient host pings' do
-	extend FPingWrapper
-
+	every 5.minutes
 	match type: 'host', tag: 'laptop'
 	use :addresses
-	exec 'fping', '-e', '-t', '500', &method( :do_fping )
 
-	every 5.minutes
+	exec 'fping', '-e', '-t', '500'
+	exec_callbacks( FPingWrapper )
 end
 

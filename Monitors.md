@@ -42,12 +42,10 @@ Declare the interval between runs of the monitor. The monitor will be skewed by 
 Manually set the amount of splay (random offset from the interval) the monitor should use. It defaults to `Math.logn( interval )`.
 
 #### exec( command )
-#### exec {|node_attributes| ... }
-#### exec( command ) {|node_attributes| ... }
 
-Specify what should be run to do the actual monitoring. The first form simply `spawn`s the specified command with its STDIN set to a filehandle that is opened to the node attributes of the nodes to be monitored.
+Specify what should be run to do the actual monitoring. The first form simply `spawn`s the specified command with its STDIN opened to a stream of serialized node data. 
 
-The format of the serialized nodes is one node per line, and each line looks like this:
+By default, the format of the serialized nodes is one node per line, and each line looks like this:
 
     «identifier» «attribute1»=«attribute1 value» «attribute2»=«attribute2 value»
 
@@ -59,13 +57,69 @@ For example, the ping checker might receive input like:
     sidonie address="192.168.16.3"
     yevaud address="192.168.16.10"
 
+If the command you are running doesn't support this format, you can override this in one of two ways.
+
+If your command expects the node data as command-line arguments, you can provide a custom `exec_arguments` block. It will receive an Array of Arborist::Node objects and it should generate an Array of arguments to append to the command before `spawn`ing it.
+
+    exec_arguments do |nodes|
+        # Build an address -> node mapping for pairing the updates back up by address
+        @node_map = nodes.each_with_object( {} ) do |node, hash|
+            address = node.address
+            hash[ address ] = node
+        end
+        
+        @node_map.keys
+    end
+
+If your command expects the node data via `STDIN`, but in a different format, you may declare an `exec_input` block. It will be called with the same node array, and additionally an IO open to the STDIN of the running command. This can be combined with the `exec_arguments` block, if you're dealing with something really weird.
+
+    exec_input do |nodes, writer|
+        # Build an address -> node mapping for pairing the updates back up by address
+        @node_map = nodes.each_with_object( {} ) do |node, hash|
+            address = node.address
+            hash[ address ] = node
+        end
+        
+        writer.puts( node_map.values )
+    end
+
 The monitor must write results for any of the listed identifiers that require update in the same format to its STDOUT. For the ping check above, the results might look like:
 
     duir rtt=20ms
     sidonie rtt=103ms
     yevaud rtt= error=Host\ unreachable.
 
+If the program writes its output in some other format, you can provide a `parse_output` block. It will be called with the program's `STDOUT` if the block takes one argument, and if it takes an additional argument its `STDERR` as well. It should return a Hash of update Hashes, keyed by the node identifier it should be sent to.
+
+    parse_output do |out, err|
+        updates = {}
+        
+        out.each_line do |line|
+            address, status = line.split( /\s+:\s+/, 2 )
+            
+            # Use the @node_map we created up in the exec_arguments to map the output
+            # back into identifiers. Error-checking omitted for brevity.
+            identifier = @node_map[ address ].identifier
+
+            # 127.0.0.1 is alive (0.12 ms)
+            # 8.8.8.8 is alive (61.6 ms)
+            # 192.168.16.16 is unreachable
+            if status =~ /is alive \((\d+\.\d+ ms)\)/i
+                updates[ identifier ] = { ping: { rtt: Float($1) } }
+            else
+                updates[ identifier ] = { error: status }
+            end
+        end
+
+        updates
+    end
+
 Unlisted attributes are unchanged.  A listed attribute with an empty value is explicitly cleared. An identifier that isn't listed in the results means no update is necessary for that node.
+
+If you find yourself wanting to repeat one or more of the exec callbacks, you can also wrap them in a module and call `exec_callbacks` with it.
+
+
+#### exec {|node_attributes| ... }
 
 The second form can be used to implement a monitor in Ruby; the block is called with the Hash of node data, keyed by identifier, and it must return a Hash of updates keyed by identifier.
 
@@ -76,4 +130,15 @@ The third form is a combination of the first and second forms: it invokes the bl
 
 Specify the list of properties to provide to the monitor for each node. If this is unspecified, the input to the monitor will be just the list of identifiers.
 
+
+
+    # Does everything in Ruby; gets the Array of Nodes as arguments to the block, expected to
+    # return a Hash of updates keyed by node identifier
+    exec do |nodes|
+        
+    end
+
+
+    # Runs an external
+	exec 'fping', '-e', '-t', '150'
 

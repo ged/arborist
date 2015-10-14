@@ -95,7 +95,7 @@ Fetch a data structure describing the node tree from the node with the specified
 
 ## fetch
 
-Fetch state for 
+Fetch the `address`, `description`, and `status` of all nodes.
 
     [
         {
@@ -117,6 +117,7 @@ Fetch state for
             }
         ]
     ]
+
 
 ### return
 
@@ -160,5 +161,17 @@ With a failure:
                 pingtime: 0.28
             }
         }
+    ]
+
+
+## subscribe
+
+    [
+        {
+            action: subscribe,
+            vresion: 1,
+            event_type: 
+        },
+        [ '28f51427-a160-448b-9051-b2c4f464c5e3' ]
     ]
 

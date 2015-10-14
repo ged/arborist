@@ -294,7 +294,7 @@ class Arborist::Monitor
 	def shellwords_unescape( string )
 		return '' if string == "''"
 		return string.
-			sub( %r{(?!<\\)(?<quote>["'`])(.*?)(?!<\\)\k{quote}}, '\2' ).
+			sub( %r{(?!<\\)(?<quote>["'`])(.*?)(?!<\\)\k<quote>}, '\2' ).
 			gsub( %r{\\([^A-Za-z0-9_\-.,:/@\n])}, '\1' ).
 			gsub( "\\\n", '' )
 	end
