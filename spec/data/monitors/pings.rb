@@ -11,27 +11,28 @@ module FPingWrapper
 	extend Loggability
 	log_to :arborist
 
+	attr_accessor :identifiers
+
 	def exec_arguments( nodes )
-		identifiers = nodes.each_with_object({}) do |(identifier, props), hash|
+		self.identifiers = nodes.each_with_object({}) do |(identifier, props), hash|
 			next unless props.key?( 'addresses' )
 			address = props[ 'addresses' ].first
 			hash[ address ] = identifier
 		end
 
-		return {} if identifiers.empty?
+		return {} if self.identifiers.empty?
 
-		return identifiers.keys
+		return self.identifiers.keys
 	end
 
-	def parse_output( stdout, stderr )
-		self.log.debug "Got output: %p" % [ output ]
+	def handle_results( pid, stdout, stderr )
 		# 8.8.8.8 is alive (32.1 ms)
 		# 8.8.4.4 is alive (14.9 ms)
 		# 8.8.0.1 is unreachable
 
-		return output.each_line.with_object({}) do |line, hash|
+		return stdout.each_line.with_object({}) do |line, hash|
 			address, remainder = line.split( ' ', 2 )
-			identifier = identifiers[ address ] or next
+			identifier = self.identifiers[ address ] or next
 
 			self.log.debug "  parsing result for %s(%s): %p" % [ identifier, address, remainder ]
 

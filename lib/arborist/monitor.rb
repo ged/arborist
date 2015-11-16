@@ -40,6 +40,73 @@ class Arborist::Monitor
 	end
 
 
+	# The module that contains the default logic for invoking an external program
+	# to do the work of a Monitor.
+	module DefaultCallbacks
+
+		### Given one or more +nodes+, return an Array of arguments that should be
+		### appended to the external command.
+		def exec_arguments( nodes )
+			return []
+		end
+
+
+		### Write the specified +nodes+ as serialized data to the given +io+.
+		def exec_input( nodes, io )
+			return if io.closed?
+
+			nodes.each do |node|
+				self.log.debug "Serializing node properties for %s" % [ node.identifier ]
+				prop_map = node.properties.collect do |key, val|
+					"%s=%s" % [key, Shellwords.escape(val)]
+				end
+
+				self.log.debug "  writing %d properties to %p" % [ prop_map.size, io ]
+				io.puts "%s %s" % [ node.identifier, prop_map.join(' ') ]
+				self.log.debug "  wrote the node to FD %d" % [ io.fileno ]
+			end
+
+			self.log.debug "done writing to FD %d" % [ io.fileno ]
+		end
+
+
+		### Return the results of running the external command
+		def handle_results( pid, out, err )
+			err.flush
+			err.close
+			self.log.debug "Closed child's stderr."
+
+		    # identifier key1=val1 key2=val2
+			results = out.each_line.with_object({}) do |line, accum|
+				identifier, attributes = line.split( ' ', 2 )
+				attrhash = Shellwords.shellsplit( attributes ).each_with_object({}) do |pair, hash|
+					key, val = pair.split( '=', 2 )
+					hash[ key ] = val
+				end
+
+				accum[ identifier ] = attrhash
+			end
+			out.close
+
+			self.log.debug "Waiting on PID %d" % [ pid ]
+			Process.waitpid( pid )
+
+			return results
+		end
+
+	end # module DefaultCallbacks
+
+
+	# An object class for creating a disposable binding in which to run the exec
+	# callbacks.
+	class RunContext
+		extend Loggability
+		log_to :arborist
+		include DefaultCallbacks
+	end # class RunContext
+
+
+
 	### Overridden to track instances of created nodes for the DSL.
 	def self::new( * )
 		new_instance = super
@@ -70,13 +137,13 @@ class Arborist::Monitor
 	### Return an iterator for all the monitor files in the specified +directory+.
 	def self::each_in( directory )
 		path = Pathname( directory )
-		iter = if path.directory?
-				Pathname.glob( directory + NODE_FILE_PATTERN ).lazy.flat_map
+		paths = if path.directory?
+				Pathname.glob( directory + NODE_FILE_PATTERN )
 			else
 				[ path ]
 			end
 
-		return iter.lazy.flat_map do |file|
+		return paths.flat_map do |file|
 			file_url = "file://%s" % [ file.expand_path ]
 			monitors = self.load( file )
 			self.log.debug "Loaded monitors %p..." % [ monitors ]
@@ -101,8 +168,9 @@ class Arborist::Monitor
 		@include_down = false
 		@node_properties = []
 
-		@run_command = nil
-		@run_callback = nil
+		@exec_command = nil
+		@exec_block = nil
+		@exec_callbacks_mod = Module.new
 
 		@source = nil
 
@@ -146,12 +214,15 @@ class Arborist::Monitor
 	##
 	# The shell command to exec when running the monitor (if any). This can be
 	# any valid arguments to the `Kernel.spawn` method.
-	attr_accessor :run_command
+	attr_accessor :exec_command
 
 	##
-	# The callback to wrap runs of the `run_command` in (if any). This can be any object
-	# that responds to #call.
-	attr_accessor :run_callback
+	# The callback to invoke when the monitor is run.
+	attr_accessor :exec_block
+
+	##
+	# The monitor's execution callbacks contained in a Module
+	attr_accessor :exec_callbacks_mod
 
 	##
 	# The path to the source this Monitor was loaded from, if applicable
@@ -160,52 +231,48 @@ class Arborist::Monitor
 
 	### Run the monitor
 	def run( nodes )
-		callback = self.run_callback
-		command = self.run_command
-
-		if command
-			return self.run_with_external_command( nodes, command, callback )
-		elsif callback
-			return callback.call( nodes )
-		else
-			raise "Nothing to run! (expected one or both of run callback or command to be set)"
+		if self.exec_block
+			return self.exec_block.call( nodes )
+		elsif self.exec_command
+			command = self.exec_command
+			return self.run_external_command( command, nodes )
 		end
 	end
 
 
-	### Run the external +command+, wrapping it either in the provided +callback+, or if
-	### a callback isn't provided, in the #default_run_callback.
-	def run_with_external_command( nodes, command, callback=nil )
-		callback ||= self.method( :default_run_callback )
+	### Run the external +command+ against the specified +nodes+.
+	def run_external_command( command, nodes )
+		self.log.debug "Running external command %p for %d nodes" % [ command, nodes.size ]
+		context = Arborist::Monitor::RunContext.new
+		context.extend( self.exec_callbacks_mod ) if self.exec_callbacks_mod
 
-		# write each node to the pipe
-		pid = nil
-		updates = callback.call( nodes ) do |*additional_args|
-			command += additional_args.flatten( 1 )
+		arguments = Array( context.exec_arguments(nodes) )
+		command += arguments.flatten( 1 )
+		self.log.debug "  command after adding arguments: %p" % [ command ]
 
-            parent_reader, child_writer = IO.pipe
-            child_reader, parent_writer = IO.pipe
+		child_stdin, parent_writer = IO.pipe
+		parent_reader, child_stdout = IO.pipe
+		parent_err_reader, child_stderr = IO.pipe
 
-			self.log.debug "Spawning command: %s" % [ Shellwords.join(command) ]
-            pid = Process.spawn( *command, out: child_writer, in: child_reader, close_others: true )
-            child_writer.close
-            child_reader.close
+		self.log.debug "Spawning command: %s" % [ Shellwords.join(command) ]
+        pid = Process.spawn( *command, out: child_stdout, in: child_stdin, err: child_stderr )
 
-			yield( parent_writer ) if block_given?
+        child_stdout.close
+        child_stdin.close
+		child_stderr.close
 
-			parent_writer.close
-			output = parent_reader.read
-			self.log.debug "Raw output: %p" % [ output ]
-			output
-		end
+		context.exec_input( nodes, parent_writer )
+		parent_writer.close
 
-		# wait on the pid
+		return context.handle_results( pid, parent_reader, parent_err_reader )
+	ensure
 		if pid
-			self.log.debug "Waiting on PID %d" % [ pid ]
-			Process.waitpid( pid )
+			begin
+				Process.kill( 0, pid ) # waitpid if it's still alive
+				Process.waitpid( pid )
+			rescue Errno::ESRCH
+			end
 		end
-
-		return updates
 	end
 
 
@@ -255,48 +322,45 @@ class Arborist::Monitor
 
 	### Specify what should be run to do the actual monitoring.
 	def exec( *command, &block )
-		@run_command = command unless command.empty?
-		@run_callback = block
+		@exec_command = command unless command.empty?
+		@exec_block = block
 	end
 
 
-	#########
-	protected
-	#########
-
-	### The callback block that is wrapped around the command-only form of monitor.
-	def default_run_callback( nodes, &runner )
-		node_data = self.serialize_node_list( nodes )
-
-		serialized_results = runner.call do |writer|
-			writer.puts node_data
-		end
-
-		return self.deserialize_node_data( serialized_results )
-	end
-
-
-	### Return the given Hash of +node+ property hashes, keyed by identifier, as a String
-	### of node data, one line per identifier.
-	def serialize_node_list( nodes )
-		return nodes.each_with_object( '' ) do |(identifier, properties), buffer|
-			prop_map = properties.collect {|key, val| "%s=%s" % [key, Shellwords.escape(val)] }
-			buffer <<
-				identifier <<
-				prop_map.join( ' ' ) <<
-				"\n"
+	### Declare an argument-building callback for the command run by 'exec'. The +block+
+	### should accept an Array of nodes and return an Array of arguments for the command.
+	def exec_arguments( &block )
+		self.exec_callbacks_mod.instance_exec( block ) do |method_body|
+			define_method( :exec_arguments, &method_body )
 		end
 	end
 
 
-	### Return a copy of the specified +string+, unescaping any shell-escaped
-	### characters.
-	def shellwords_unescape( string )
-		return '' if string == "''"
-		return string.
-			sub( %r{(?!<\\)(?<quote>["'`])(.*?)(?!<\\)\k<quote>}, '\2' ).
-			gsub( %r{\\([^A-Za-z0-9_\-.,:/@\n])}, '\1' ).
-			gsub( "\\\n", '' )
+	### Declare an input-building callback for the command run by 'exec'. The +block+
+	### should accept an Array of nodes and a writable IO object, and should write out
+	### the necessary input to drive the command to the IO.
+	def exec_input( &block )
+		self.exec_callbacks_mod.instance_exec( block ) do |method_body|
+			define_method( :exec_input, &method_body )
+		end
+	end
+
+
+	### Declare a results handler +block+ that will be used to parse the results for
+	### external commands. The block should accept 2 or 3 arguments: a PID, an IO that will
+	### be opened to the command's STDOUT, and optionally an IO that will be opened to the
+	### command's STDERR.
+	def handle_results( &block )
+		self.exec_callbacks_mod.instance_exec( block ) do |method_body|
+			define_method( :handle_results, &method_body )
+		end
+	end
+
+
+	### Set the module to use for the callbacks when interacting with the executed
+	### external command.
+	def exec_callbacks( mod )
+		self.exec_callbacks_mod = mod
 	end
 
 end # class Arborist::Monitor

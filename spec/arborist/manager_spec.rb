@@ -15,20 +15,6 @@ describe Arborist::Manager do
 
 	let( :manager ) { described_class.new }
 
-	let( :node_class ) do
-		Class.new( Arborist::Node )
-	end
-
-
-	#
-	# Fixture Functions
-	#
-
-	def testing_node( identifier, parent=nil )
-		node = node_class.new( identifier )
-		node.parent( parent ) if parent
-		return node
-	end
 
 
 	#
@@ -66,13 +52,13 @@ describe Arborist::Manager do
 	context "a new empty manager" do
 
 		let( :node ) do
-			node_class.new 'italian_lessons'
+			testing_node 'italian_lessons'
 		end
 		let( :node2 ) do
-			node_class.new 'french_laundry'
+			testing_node 'french_laundry'
 		end
 		let( :node3 ) do
-			node_class.new 'german_oak_cats'
+			testing_node 'german_oak_cats'
 		end
 
 
@@ -105,7 +91,7 @@ describe Arborist::Manager do
 
 		it "can replace an existing node" do
 			manager.add_node( node )
-			another_node = node_class.new( 'italian_lessons' )
+			another_node = testing_node( 'italian_lessons' )
 			manager.add_node( another_node )
 
 			expect( manager.nodes ).to include( 'italian_lessons' )
@@ -169,7 +155,7 @@ describe Arborist::Manager do
 
 		it "errors if any of its nodes are missing their parent" do
 			manager = described_class.new
-			orphan = node_class.new( 'orphan' ) do
+			orphan = testing_node( 'orphan' ) do
 				parent 'daddy_warbucks'
 			end
 
@@ -180,7 +166,7 @@ describe Arborist::Manager do
 
 
 		it "grafts a node into the tree when one with a previously unknown identifier is added" do
-			new_node = node_class.new( 'new' ) do
+			new_node = testing_node( 'new' ) do
 				parent 'branch'
 			end
 
@@ -190,7 +176,7 @@ describe Arborist::Manager do
 
 
 		it "replaces a node in the tree when a node with an existing identifier is added" do
-			updated_node = node_class.new( 'leaf' ) do
+			updated_node = testing_node( 'leaf' ) do
 				parent 'trunk'
 			end
 

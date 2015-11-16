@@ -8,5 +8,7 @@ monitors_path = ARGV.shift or raise "No monitor file specified."
 Arborist.load_config( ARGV.shift )
 Arborist.load_all
 
+Loggability.level = :debug
+
 runner = Arborist.monitor_runner_for( monitors_path )
 runner.run

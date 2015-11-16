@@ -65,13 +65,27 @@ module Arborist::TestHelpers
 		return MessagePack.unpack( msg )
 	end
 
+
+	#
+	# Fixture Functions
+	#
+
+	def node_subclass
+		@node_subclass ||= Class.new( Arborist::Node )
+	end
+
+
+	def testing_node( identifier, parent=nil, &block )
+		node = node_subclass.new( identifier, &block )
+		node.parent( parent ) if parent
+		return node
+	end
+
 end
 
 
 
 RSpec.configure do |config|
-	# include Arborist::TestHelpers
-
 	SPEC_DIR = Pathname( __FILE__ ).dirname
 	SPEC_DATA_DIR = SPEC_DIR + 'data'
 

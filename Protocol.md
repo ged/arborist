@@ -133,7 +133,7 @@ Search for nodes that match the filter given in the request body, returning a se
     [
         {
             action: update,
-            vresion: 1
+            version: 1
         },
         {
             duir: {
@@ -169,7 +169,7 @@ With a failure:
     [
         {
             action: subscribe,
-            vresion: 1,
+            version: 1,
             event_type: 
         },
         [ '28f51427-a160-448b-9051-b2c4f464c5e3' ]

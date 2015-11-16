@@ -42,6 +42,7 @@ Declare the interval between runs of the monitor. The monitor will be skewed by 
 Manually set the amount of splay (random offset from the interval) the monitor should use. It defaults to `Math.logn( interval )`.
 
 #### exec( command )
+#### exec {|node_attributes| ... }
 
 Specify what should be run to do the actual monitoring. The first form simply `spawn`s the specified command with its STDIN opened to a stream of serialized node data. 
 
@@ -89,9 +90,9 @@ The monitor must write results for any of the listed identifiers that require up
     sidonie rtt=103ms
     yevaud rtt= error=Host\ unreachable.
 
-If the program writes its output in some other format, you can provide a `parse_output` block. It will be called with the program's `STDOUT` if the block takes one argument, and if it takes an additional argument its `STDERR` as well. It should return a Hash of update Hashes, keyed by the node identifier it should be sent to.
+If the program writes its output in some other format, you can provide a `handle_results` block. It will be called with the program's `STDOUT` if the block takes one argument, and if it takes an additional argument its `STDERR` as well. It should return a Hash of update Hashes, keyed by the node identifier it should be sent to.
 
-    parse_output do |out, err|
+    handle_results do |pid, out, err|
         updates = {}
         
         out.each_line do |line|
@@ -118,12 +119,7 @@ Unlisted attributes are unchanged.  A listed attribute with an empty value is ex
 
 If you find yourself wanting to repeat one or more of the exec callbacks, you can also wrap them in a module and call `exec_callbacks` with it.
 
-
-#### exec {|node_attributes| ... }
-
 The second form can be used to implement a monitor in Ruby; the block is called with the Hash of node data, keyed by identifier, and it must return a Hash of updates keyed by identifier.
-
-The third form is a combination of the first and second forms: it invokes the block with the node data as in the second form, and then when the block `yield`s, it `spawns` the `command` with its STDIN set to the STDOUT of the block. When the `yield` returns, the STDIN of the block is set to the STDOUT of the spawned program. This is generally intended to provide a custom serialization/deserialization wrapper for external commands. The block can also `yield` additional arguments to the command, which are appended to its `ARGV` before it's `spawn`ed.
 
 
 #### use( *properties )

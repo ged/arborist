@@ -97,7 +97,7 @@ class Arborist::Client
 	end
 
 
-	### Add a subscription 
+	### Add a subscription
 	def subscribe( *args )
 		request = self.make_subscribe_request( *args )
 		response = self.send_tree_api_request( request )
