@@ -320,9 +320,23 @@ class Arborist::Monitor
 	end
 
 
-	### Specify what should be run to do the actual monitoring.
+	### Specify what should be run to do the actual monitoring. Accepts an Array of strings
+	### (which are passed to `spawn`), a block, or a Module that implements a #run method.
 	def exec( *command, &block )
-		@exec_command = command unless command.empty?
+		unless command.empty?
+			self.log.warn "Ignored block with exec %s (%p)" % [ command.first, block ] if block
+
+			case command.first
+			when Module
+				@exec_block = command.first.method( :run )
+			when String
+				@exec_command = command
+			else
+				raise ArgumentError, "don't know how to handle command: %p" % [ command ]
+			end
+
+			return
+		end
 		@exec_block = block
 	end
 

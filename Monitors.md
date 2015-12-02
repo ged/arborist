@@ -43,6 +43,7 @@ Manually set the amount of splay (random offset from the interval) the monitor s
 
 #### exec( command )
 #### exec {|node_attributes| ... }
+#### exec( module )
 
 Specify what should be run to do the actual monitoring. The first form simply `spawn`s the specified command with its STDIN opened to a stream of serialized node data. 
 
@@ -119,7 +120,7 @@ Unlisted attributes are unchanged.  A listed attribute with an empty value is ex
 
 If you find yourself wanting to repeat one or more of the exec callbacks, you can also wrap them in a module and call `exec_callbacks` with it.
 
-The second form can be used to implement a monitor in Ruby; the block is called with the Hash of node data, keyed by identifier, and it must return a Hash of updates keyed by identifier.
+The second and third forms can be used to implement a monitor in Ruby. In the second, the block is called with the Hash of node data, keyed by identifier, and it must return a Hash of updates keyed by identifier. The third form expects a Module object that has a module method called `run`, which will be invoked the same way as the block.
 
 
 #### use( *properties )

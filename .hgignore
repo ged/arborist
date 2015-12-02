@@ -4,3 +4,4 @@ coverage/
 \.lock$
 \.devel$
 ^ChangeLog$
+^mon\.cf$

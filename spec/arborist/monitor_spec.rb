@@ -130,6 +130,26 @@ describe Arborist::Monitor do
 	end
 
 
+	it "can specify a module to do the monitor's work" do
+		mod = Module.new do
+			class << self; attr_accessor :was_run ; end
+			@was_run = false
+
+			def self::run( nodes )
+				self.was_run = true
+			end
+		end
+
+
+		mon = described_class.new( "the description" )
+		mon.exec( mod )
+
+		mon.run( testing_nodes )
+
+		expect( mod.was_run ).to be_truthy
+	end
+
+
 	it "can provide a function for building arguments for its command" do
 		mon = described_class.new( "the description" ) do
 
