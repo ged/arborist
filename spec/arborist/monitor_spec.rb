@@ -130,7 +130,7 @@ describe Arborist::Monitor do
 	end
 
 
-	it "can specify a module to do the monitor's work" do
+	it "can specify a runnable object to do the monitor's work" do
 		mod = Module.new do
 			class << self; attr_accessor :was_run ; end
 			@was_run = false
