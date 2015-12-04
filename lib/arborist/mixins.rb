@@ -215,6 +215,18 @@ module Arborist
 			YEARS   = 365.25 * DAYS
 
 
+			### Returns +true+ if the receiver is a Time in the future.
+			def future?
+				return self > Time.now
+			end
+
+
+			### Returns +true+ if the receiver is a Time in the past.
+			def past?
+				return self < Time.now
+			end
+
+
 			### Return a description of the receiving Time object in relation to the current
 			### time.
 			###
@@ -255,7 +267,7 @@ module Arborist
 					when seconds < 2 * WEEKS
 						'about a week'
 					when seconds < 3 * MONTHS
-						"%d weeks" % [ (seconds.to_f / WEEKS).ceil ]
+						"%d weeks" % [ (seconds.to_f / WEEKS).round ]
 					when seconds < 18 * MONTHS
 						"%d months" % [ (seconds.to_f / MONTHS).ceil ]
 					else
