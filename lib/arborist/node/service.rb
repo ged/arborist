@@ -25,7 +25,10 @@ class Arborist::Node::Service < Arborist::Node
 		@parent = host.identifier
 		@app_protocol = options[:app_protocol] || identifier
 		@protocol = options[:protocol] || DEFAULT_PROTOCOL
-		@port = Integer( options[:port] || default_port_for(@app_protocol, @protocol) )
+
+		service_port = options[:port] || default_port_for( @app_protocol, @protocol ) or
+			raise ArgumentError, "can't determine the port for %s/%s" % [ @app_protocol, @protocol ]
+		@port = Integer( service_port )
 
 		self.instance_eval( &block ) if block
 	end
@@ -57,7 +60,9 @@ class Arborist::Node::Service < Arborist::Node
 	### Returns +true+ if the node matches the specified +key+ and +val+ criteria.
 	def match_criteria?( key, val )
 		return case key
-			when 'port' then self.port == val.to_i
+			when 'port'
+				val = default_port_for( val, @protocol ) unless val.is_a?( Fixnum )
+				self.port == val.to_i
 			when 'address'
 				search_addr = IPAddr.new( val )
 				self.addresses.any? {|a| search_addr.include?(a) }
@@ -81,6 +86,15 @@ class Arborist::Node::Service < Arborist::Node
 	end
 
 
+	### Return service-node-specific information for #inspect.
+	def node_description
+		return "{listening on %s port %d}" % [
+			self.protocol,
+			self.port,
+		]
+	end
+
+
 	#######
 	private
 	#######
@@ -90,6 +104,8 @@ class Arborist::Node::Service < Arborist::Node
 	### looked up.
 	def default_port_for( identifier, protocol )
 		return Socket.getservbyname( identifier, protocol )
+	rescue SocketError
+		return nil
 	end
 
 end # class Arborist::Node::Service

@@ -467,5 +467,86 @@ describe Arborist::Node do
 
 	end
 
+
+	describe "matching" do
+
+		let( :node ) do
+			concrete_class.new( 'foo' ) do
+				parent 'bar'
+				description "The prototypical node"
+				tags :chunker, :hunky, :flippin, :hippo
+
+				update(
+					'song' => 'Around the World',
+					'artist' => 'Daft Punk',
+					'length' => '7:09',
+					'cider' => {
+						'description' => 'tasty',
+						'size' => '16oz',
+					},
+					'sausage' => {
+						'description' => 'pork',
+						'size' => 'monsterous',
+						'price' => {
+							'units' => 1200,
+							'currency' => 'usd'
+						}
+					},
+					'music' => '80s'
+				)
+			end
+		end
+
+
+		it "can be matched with its status" do
+			expect( node ).to match_criteria( status: 'up' )
+			expect( node ).to_not match_criteria( status: 'down' )
+		end
+
+
+		it "can be matched with its type" do
+			expect( node ).to match_criteria( type: 'testnode' )
+			expect( node ).to_not match_criteria( type: 'service' )
+		end
+
+
+		it "can be matched with a single tag" do
+			expect( node ).to match_criteria( tag: 'hunky' )
+			expect( node ).to_not match_criteria( tag: 'plucky' )
+		end
+
+
+		it "can be matched with multiple tags" do
+			expect( node ).to match_criteria( tags: ['hunky', 'hippo'] )
+			expect( node ).to_not match_criteria( tags: ['hunky', 'hippo', 'haggis'] )
+		end
+
+
+		it "can be matched with its identifier" do
+			expect( node ).to match_criteria( identifier: 'foo' )
+			expect( node ).to_not match_criteria( identifier: 'bar' )
+		end
+
+
+		it "can be matched with its user properties" do
+			expect( node ).to match_criteria( song: 'Around the World' )
+			expect( node ).to match_criteria( artist: 'Daft Punk' )
+			expect( node ).to match_criteria(
+				sausage: {size: 'monsterous', price: {currency: 'usd'}},
+				cider: { description: 'tasty'}
+			)
+
+			expect( node ).to_not match_criteria( length: '8:01' )
+			expect( node ).to_not match_criteria(
+				sausage: {size: 'lunch', price: {currency: 'usd'}},
+				cider: { description: 'tasty' }
+			)
+			expect( node ).to_not match_criteria( sausage: {size: 'lunch'} )
+			expect( node ).to_not match_criteria( other: 'key' )
+			expect( node ).to_not match_criteria( sausage: 'weißwürst' )
+		end
+
+	end
+
 end
 

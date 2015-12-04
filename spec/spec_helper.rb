@@ -10,11 +10,20 @@ require 'msgpack'
 require 'arborist'
 require 'arborist/manager'
 require 'arborist/node'
+require 'arborist/mixins'
 
 
 class TestNode < Arborist::Node; end
 
 class TestEvent < Arborist::Event; end
+
+
+RSpec::Matchers.define( :match_criteria ) do |criteria|
+	match do |node|
+		criteria = Arborist::HashUtilities.stringify_keys( criteria )
+		node.matches?( criteria )
+	end
+end
 
 
 module Arborist::TestHelpers

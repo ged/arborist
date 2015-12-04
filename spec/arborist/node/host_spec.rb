@@ -22,6 +22,15 @@ describe Arborist::Node::Host do
 	end
 
 
+	it "can be created with an IPAddr object" do
+		result = described_class.new( 'testhost' ) do
+			address IPAddr.new( '192.168.118.3' )
+		end
+
+		expect( result.addresses ).to eq([ IPAddr.new('192.168.118.3') ])
+	end
+
+
 	it "can be created with a single hostname with an IPv4 address" do
 		expect( TCPSocket ).to receive( :gethostbyname ).with( 'arbori.st' ).
 			and_return(['arbori.st', [], Socket::AF_INET, '198.145.180.85'])
@@ -63,6 +72,32 @@ describe Arborist::Node::Host do
 		expect( result.addresses.size ).to eq( 2 )
 		expect( result.addresses ).to include( IPAddr.new('198.145.180.85') )
 		expect( result.addresses ).to include( IPAddr.new('198.145.180.86') )
+	end
+
+
+	describe "matching" do
+
+		let( :node ) do
+			described_class.new( 'testhost' ) do
+				address '192.168.66.12'
+				address '10.2.12.68'
+			end
+		end
+
+
+		it "can be matched with one of its addresses" do
+			expect( node ).to match_criteria( address: '192.168.66.12' )
+			expect( node ).to_not match_criteria( address: '127.0.0.1' )
+		end
+
+
+		it "can be matched with a netblock that includes one of its addresses" do
+			expect( node ).to match_criteria( address: '192.168.66.0/24' )
+			expect( node ).to match_criteria( address: '10.0.0.0/8' )
+			expect( node ).to_not match_criteria( address: '192.168.66.64/27' )
+			expect( node ).to_not match_criteria( address: '127.0.0.0/8' )
+		end
+
 	end
 
 end

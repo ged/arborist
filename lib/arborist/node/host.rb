@@ -78,4 +78,10 @@ class Arborist::Node::Host < Arborist::Node
 	end
 
 
+	### Return host-node-specific information for #inspect.
+	def node_description
+		return "{no addresses}" if self.addresses.empty?
+		return "{addresses: %s}" % [ self.addresses.map(&:to_s).join(', ') ]
+	end
+
 end # class Arborist::Node::Host

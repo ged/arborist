@@ -390,14 +390,16 @@ class Arborist::Node
 	### Returns +true+ if the node matches the specified +key+ and +val+ criteria.
 	def match_criteria?( key, val )
 		return case key
+			when 'status'
+				self.status == val
 			when 'type'
 				self.log.debug "Checking node type %p against %p" % [ self.type, val ]
 				self.type == val
 			when 'tag' then @tags.include?( val.to_s )
 			when 'tags' then Array(val).all? {|tag| @tags.include?(tag) }
-			when 'identifier' then @identifier == identifier
+			when 'identifier' then @identifier == val
 			else
-				@properties[ key ] == val
+				hash_matches( @properties, key, val )
 			end
 	end
 
@@ -494,14 +496,22 @@ class Arborist::Node
 	end
 
 
+	### Return a string describing node details; returns +nil+ for the base class. Subclasses
+	### may override this to add to the output of #inspect.
+	def node_description
+		return nil
+	end
+
+
 	### Return a String representation of the object suitable for debugging.
 	def inspect
-		return "#<%p:%#x [%s] -> %s %p %s, %d children, %s>" % [
+		return "#<%p:%#x [%s] -> %s %p %s%s, %d children, %s>" % [
 			self.class,
 			self.object_id * 2,
 			self.identifier,
 			self.parent || 'root',
 			self.description || "(no description)",
+			self.node_description.to_s,
 			self.source,
 			self.children.length,
 			self.status_description,
@@ -649,6 +659,28 @@ class Arborist::Node
 	### deltas for the #update event.
 	def add_status_to_update_delta( transition )
 		self.update_delta[ 'status' ] = [ transition.from, transition.to ]
+	end
+
+
+	#######
+	private
+	#######
+
+	### Returns true if the specified +hash+ includes the specified +key+, and the value
+	### associated with the +key+ either includes +val+ if it is a Hash, or equals +val+ if it's
+	### anything but a Hash.
+	def hash_matches( hash, key, val )
+		actual = hash[ key ] or return false
+
+		if actual.is_a?( Hash )
+			if val.is_a?( Hash )
+				return val.all? {|subkey, subval| hash_matches(actual, subkey, subval) }
+			else
+				return false
+			end
+		else
+			return actual == val
+		end
 	end
 
 end # class Arborist::Node
