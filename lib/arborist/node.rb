@@ -139,8 +139,14 @@ class Arborist::Node
 
 	### Return an iterator for all the node files in the specified +directory+.
 	def self::each_in( directory )
-		directory = Pathname( directory )
-		return Pathname.glob( directory + NODE_FILE_PATTERN ).lazy.flat_map do |file|
+		path = Pathname( directory )
+		paths = if path.directory?
+				Pathname.glob( directory + NODE_FILE_PATTERN )
+			else
+				[ path ]
+			end
+
+		return paths.flat_map do |file|
 			file_url = "file://%s" % [ file.expand_path ]
 			nodes = self.load( file )
 			self.log.debug "Loaded nodes %p..." % [ nodes ]
@@ -326,6 +332,12 @@ class Arborist::Node
 	ensure
 		self.update_delta.clear
 		self.pending_update_events.clear
+	end
+
+
+	### (Undocumented)
+	def publish_events( *events )
+		self.subscriptions.each
 	end
 
 
