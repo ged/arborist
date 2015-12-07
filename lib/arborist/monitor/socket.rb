@@ -128,16 +128,17 @@ module Arborist::Monitor::Socket
 					self.log.debug "%p became writable: testing connection state" % [ sock ]
 
 					begin
-						self.log.debug "  trying another connection to %p" % [ sock.remote_address.to_sockaddr ]
+						self.log.debug "  trying another connection to %p" %
+							[ sock.remote_address.to_sockaddr ]
 						sock.connect_nonblock( sock.remote_address.to_sockaddr )
 					rescue Errno::EISCONN
 						self.log.debug "  connection successful"
 						results[ identifier ] = {
-							tcp_socket_connect: { time: Time.now, duration: Time.now - start }
+							tcp_socket_connect: { time: Time.now.to_s, duration: Time.now - start }
 						}
-					rescue SocketError, Errno => err
+					rescue SocketError, SystemCallError => err
 						self.log.debug "%p during connection: %s" % [ err.class, err.message ]
-						results[ identifier ] = { error: result.message }
+						results[ identifier ] = { error: err.message }
 					ensure
 						sock.close
 					end

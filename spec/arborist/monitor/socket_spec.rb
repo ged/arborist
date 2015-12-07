@@ -104,6 +104,7 @@ describe Arborist::Monitor::Socket do
 			expect( result.values ).to all( include(
 				tcp_socket_connect: a_hash_including(:time, :duration)
 			) )
+			expect( result.map {|_, res| res[:tcp_socket_connect][:time]} ).to all( be_a(String) )
 		end
 
 
@@ -163,6 +164,22 @@ describe Arborist::Monitor::Socket do
 			expect( result ).to be_a( Hash )
 			expect( result ).to include( 'test-www' )
 			expect( result['test-www'] ).to include( error: 'No route to host - the message' )
+		end
+
+
+		it "updates nodes with an error on a 'getpeername' error" do
+			socket = make_wait_error_mock_socket( www_service_node, Errno::EINVAL, "getpeername(2)" )
+			allow( Socket ).to receive( :new ).and_return( socket )
+			allow( IO ).to receive( :select ).
+				with( nil, [socket], nil, kind_of(Numeric) ).
+				and_return( [nil, [socket], nil] )
+			allow( socket ).to receive( :close )
+
+			result = described_class.run( 'test-www' => www_service_node.fetch_values )
+
+			expect( result ).to be_a( Hash )
+			expect( result ).to include( 'test-www' )
+			expect( result['test-www'] ).to include( error: 'Invalid argument - getpeername(2)' )
 		end
 
 
