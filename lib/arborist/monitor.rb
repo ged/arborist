@@ -24,7 +24,7 @@ class Arborist::Monitor
 
 	##
 	# The glob pattern to use for searching for monitors
-	NODE_FILE_PATTERN = '**/*.rb'
+	MONITOR_FILE_PATTERN = '**/*.rb'
 
 	##
 	# The default monitoring interval, in seconds
@@ -138,7 +138,7 @@ class Arborist::Monitor
 	def self::each_in( directory )
 		path = Pathname( directory )
 		paths = if path.directory?
-				Pathname.glob( directory + NODE_FILE_PATTERN )
+				Pathname.glob( directory + MONITOR_FILE_PATTERN )
 			else
 				[ path ]
 			end
