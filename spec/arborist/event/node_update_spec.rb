@@ -41,7 +41,7 @@ describe Arborist::Event::NodeUpdate do
 	describe "subscription support" do
 
 		it "matches a subscription with only an event type if the type is the same" do
-			sub = Arborist::Subscription.new( 'node.update' )
+			sub = Arborist::Subscription.new( :publisher, 'node.update' )
 			event = described_class.new( node )
 
 			expect( event ).to match( sub )
@@ -49,7 +49,7 @@ describe Arborist::Event::NodeUpdate do
 
 
 		it "matches a subscription with a matching event type and matching criteria" do
-			sub = Arborist::Subscription.new( 'node.update', 'tag' => 'chunker' )
+			sub = Arborist::Subscription.new( :publisher, 'node.update', 'tag' => 'chunker' )
 			event = described_class.new( node )
 
 			expect( event ).to match( sub )
@@ -57,7 +57,7 @@ describe Arborist::Event::NodeUpdate do
 
 
 		it "doesn't match a subscription with a matching event type if the criteria don't match" do
-			sub = Arborist::Subscription.new( 'node.update', 'tag' => 'looper' )
+			sub = Arborist::Subscription.new( :publisher, 'node.update', 'tag' => 'looper' )
 			event = described_class.new( node )
 
 			expect( event ).to_not match( sub )

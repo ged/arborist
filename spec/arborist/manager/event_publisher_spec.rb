@@ -23,7 +23,7 @@ describe Arborist::Manager::EventPublisher do
 
 
 	it "unregisters itself if told to write with an empty event queue" do
-		expect( zloop ).to receive( :remove ).with( socket )
+		expect( zloop ).to receive( :remove ).with( pollitem )
 		expect {
 			publisher.on_writable
 		}.to change { publisher.registered? }.to( false )
@@ -35,7 +35,7 @@ describe Arborist::Manager::EventPublisher do
 		allow( zloop ).to receive( :remove )
 		publisher.on_writable
 
-		expect( zloop ).to receive( :register ).with( socket )
+		expect( zloop ).to receive( :register ).with( pollitem )
 
 		expect {
 			publisher.publish( 'identifier-00aa', event )
@@ -54,7 +54,7 @@ describe Arborist::Manager::EventPublisher do
 			expect( ev['type'] ).to eq( 'test.event' )
 			expect( ev['data'] ).to eq( 'stuff' )
 		end
-		expect( zloop ).to receive( :remove ).with( socket )
+		expect( zloop ).to receive( :remove ).with( pollitem )
 
 		publisher.publish( identifier, event )
 		publisher.on_writable

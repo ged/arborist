@@ -49,18 +49,26 @@ Get notified of every system event (startup, shutdown, reload, etc.)
 
 
 
-## Filters
+subscription
+    * Event to subscribe to
+    * Node to attach subscription to.  No node means 'root', which sees all subnode events.
+    * One or more action blocks
 
-### state change
+Actions have:
+    * a block to execute
+    * Zero or more time-periods, which are unioned together. No time periods means anytime.
 
-- when a host `status` changes from `up` to `down`
-- when a host `status` changes from `down` to `up`
-- every time a webservice `response_status` changes
+Pragmas:
+    * Summarize:
+      (send a single alert summarizing every event received over x period of time, or n events)
+    * Squelch:
 
 
-## Actions
+:MAHLON:
+    The manager should probably serialize subscriptions for its nodes. Otherwise the manager
+    can restart and any running observers will never again receive events because the
+    subscriptions will have disappeared.
 
-...but don't send more than 5 mails per hour.
-...but don't send more than 3 SMSes per hour.
+
 
 

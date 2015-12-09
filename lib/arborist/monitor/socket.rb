@@ -80,6 +80,7 @@ module Arborist::Monitor::Socket
 				# address for a Service?
 				address = node_data['addresses'].first
 				port = node_data['port']
+				sockaddr = nil
 
 				self.log.debug "Creating TCP connection for %s:%d" % [ address, port ]
 				sock = Socket.new( :INET, :STREAM )
@@ -95,7 +96,7 @@ module Arborist::Monitor::Socket
 						err
 					end
 
-				accum[ identifier ] = conn
+				accum[ conn ] = [ identifier, sockaddr ]
 			end
 		end
 
@@ -108,7 +109,7 @@ module Arborist::Monitor::Socket
 			timeout_at = Time.now + self.timeout
 
 			# First strip out all the ones that failed in the first #connect_nonblock
-			connections.delete_if do |identifier, sock|
+			connections.delete_if do |sock, (identifier, _)|
 				next false if sock.respond_to?( :connect_nonblock ) # Keep sockets
 				self.log.debug "  removing connect error for node %s" % [ identifier ]
 				results[ identifier ] = { error: sock.message }
@@ -118,19 +119,17 @@ module Arborist::Monitor::Socket
 			until connections.empty? || timeout_at.past?
 				self.log.debug "Waiting on %d connections for %0.3ds..." %
 					[ connections.values.length, timeout_at - Time.now ]
-				_, ready, _ = IO.select( nil, connections.values, nil, timeout_at - Time.now )
+				_, ready, _ = IO.select( nil, connections.keys, nil, timeout_at - Time.now )
 
 				self.log.debug "  select returned: %p" % [ ready ]
 				ready.each do |sock|
 					self.log.debug "  %p is ready" % [ sock ]
-					identifier = connections.key( sock )
-					connections.delete( identifier )
+					identifier, sockaddr = *connections.delete( sock )
 					self.log.debug "%p became writable: testing connection state" % [ sock ]
 
 					begin
-						self.log.debug "  trying another connection to %p" %
-							[ sock.remote_address.to_sockaddr ]
-						sock.connect_nonblock( sock.remote_address.to_sockaddr )
+						self.log.debug "  trying another connection to %p" % [ sockaddr ]
+						sock.connect_nonblock( sockaddr )
 					rescue Errno::EISCONN
 						self.log.debug "  connection successful"
 						results[ identifier ] = {
@@ -147,7 +146,7 @@ module Arborist::Monitor::Socket
 			end
 
 			# Anything left is a timeout
-			connections.each do |identifier, sock|
+			connections.each do |sock, (identifier, _)|
 				self.log.debug "%s: timeout (no connection in %0.3ds)" % [ identifier, self.timeout ]
 				results[ identifier ] = { error: "Timeout after %0.3fs" % [self.timeout] }
 				sock.close

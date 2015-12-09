@@ -26,14 +26,17 @@ RSpec::Matchers.define( :match_criteria ) do |criteria|
 end
 
 
-module Arborist::TestHelpers
-
+module Arborist::TestConstants
 	SPEC_DIR = Pathname( __FILE__ ).dirname
 	SPEC_DATA_DIR = SPEC_DIR + 'data'
 
-	TESTING_API_SOCK = 'inproc://arborist-api'
-	TESTING_EVENT_SOCK = 'inproc://arborist-events'
+	TESTING_API_SOCK = "inproc://arborist-api"
+	TESTING_EVENT_SOCK = "inproc://arborist-events"
+end
 
+module Arborist::TestHelpers
+
+	include Arborist::TestConstants
 
 	def self::included( mod )
 		super
@@ -49,6 +52,9 @@ module Arborist::TestHelpers
 				example.run
 
 				Arborist.configure
+
+				File.unlink( TESTING_EVENT_SOCK ) if File.exist?( TESTING_EVENT_SOCK )
+				File.unlink( TESTING_API_SOCK ) if File.exist?( TESTING_API_SOCK )
 			else
 				example.run
 			end
@@ -95,11 +101,7 @@ end
 
 
 RSpec.configure do |config|
-	SPEC_DIR = Pathname( __FILE__ ).dirname
-	SPEC_DATA_DIR = SPEC_DIR + 'data'
-
-	TESTING_API_SOCK = 'inproc://arborist-api'
-	TESTING_EVENT_SOCK = 'inproc://arborist-events'
+	include Arborist::TestConstants
 
 	config.run_all_when_everything_filtered = true
 	config.filter_run :focus

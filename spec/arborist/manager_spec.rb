@@ -317,21 +317,21 @@ describe Arborist::Manager do
 
 
 		it "propagates events from an update up the node tree" do
-			expect( manager.root ).to receive( :find_matching_subscriptions ).
-				at_least(:once).
+			expect( manager.root ).to receive( :publish_events ).
+				at_least( :once ).
 				and_call_original
-			expect( manager.nodes['host_c'] ).to receive( :find_matching_subscriptions ).
-				at_least(:once).
+			expect( manager.nodes['host_c'] ).to receive( :publish_events ).
+				at_least( :once ).
 				and_call_original
 			manager.update_node( 'host_c_www', response_status: 504, error: 'Timeout talking to web service.' )
 		end
 
 
 		it "only propagates events to a node's ancestors" do
-			expect( manager.root ).to receive( :find_matching_subscriptions ).
-				at_least(:once).
+			expect( manager.root ).to receive( :publish_events ).
+				at_least( :once ).
 				and_call_original
-			expect( manager.nodes['host_c'] ).to_not receive( :find_matching_subscriptions )
+			expect( manager.nodes['host_c'] ).to_not receive( :publish_events )
 
 			manager.update_node( 'host_b_www', response_status: 504, error: 'Timeout talking to web service.' )
 		end
@@ -412,7 +412,7 @@ describe Arborist::Manager do
 			expect( event_sock ).to receive( :bind ).with( Arborist.event_api_url )
 			expect( event_sock ).to receive( :linger= ).with( 0 )
 
-			expect( ZMQ::Pollitem ).to receive( :new ).with( tree_sock, ZMQ::POLLIN ).
+			expect( ZMQ::Pollitem ).to receive( :new ).with( tree_sock, ZMQ::POLLIN|ZMQ::POLLOUT ).
 				and_return( tree_pollitem )
 			expect( ZMQ::Pollitem ).to receive( :new ).with( event_sock, ZMQ::POLLOUT ).
 				and_return( event_pollitem )

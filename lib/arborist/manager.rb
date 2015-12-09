@@ -109,12 +109,15 @@ class Arborist::Manager
 	ensure
 		self.restore_signal_handlers
 		if @zmq_loop
+			self.log.debug "Unregistering sockets."
 			@zmq_loop.remove( @tree_sock )
 			@tree_sock.pollable.close
-
 			@zmq_loop.remove( @event_sock )
 			@event_sock.pollable.close
 		end
+
+		self.log.debug "Resetting ZMQ context"
+		Arborist.reset_zmq_context
 	end
 
 
@@ -157,17 +160,19 @@ class Arborist::Manager
 	### Set up the ZMQ REP socket for the Tree API.
 	def setup_tree_socket
 		sock = Arborist.zmq_context.socket( :REP )
-		self.log.debug "  binding the tree API socket to %p" % [ Arborist.tree_api_url ]
+		self.log.debug "  binding the tree API socket (%#0x) to %p" %
+			[ sock.object_id * 2, Arborist.tree_api_url ]
 		sock.linger = 0
 		sock.bind( Arborist.tree_api_url )
-		return ZMQ::Pollitem.new( sock, ZMQ::POLLIN )
+		return ZMQ::Pollitem.new( sock, ZMQ::POLLIN|ZMQ::POLLOUT )
 	end
 
 
 	### Set up the ZMQ PUB socket for published events.
 	def setup_event_socket
 		sock = Arborist.zmq_context.socket( :PUB )
-		self.log.debug "  binding the event socket to %p" % [ Arborist.event_api_url ]
+		self.log.debug "  binding the event socket (%#0x) to %p" %
+			[ sock.object_id * 2, Arborist.event_api_url ]
 		sock.linger = 0
 		sock.bind( Arborist.event_api_url )
 		return ZMQ::Pollitem.new( sock, ZMQ::POLLOUT )
@@ -205,8 +210,10 @@ class Arborist::Manager
 
 	### Disable the timer that checks for incoming signals
 	def cancel_signal_timer
+		if @signal_timer
 		@signal_timer.cancel
 		@zmq_loop.cancel_timer( @signal_timer )
+	end
 	end
 
 
@@ -461,7 +468,7 @@ class Arborist::Manager
 		identifier ||= '_'
 
 		node = self.nodes[ identifier ] or raise ArgumentError, "no such node %p" % [ identifier ]
-		sub = Arborist::Subscription.new( event_pattern, criteria )
+		sub = Arborist::Subscription.new( self.event_publisher, event_pattern, criteria )
 
 		self.log.debug "Registering subscription %p" % [ sub ]
 		node.add_subscription( sub )
@@ -484,31 +491,14 @@ class Arborist::Manager
 	### Propagate one or more +events+ to the specified +node+ and its ancestors in the tree,
 	### publishing them to matching subscriptions belonging to the nodes along the way.
 	def propagate_events( node, *events )
-		events.flatten!
-
-		events.each do |event|
-			subscriptions = node.find_matching_subscriptions( event )
-			self.log.debug "Publishing to %d subscriptions" % [ subscriptions.length ]
-
-			subscriptions.each do |sub|
-				self.log.debug "  publishing a %s event to subscription %s" % [ event.type, sub.id ]
-				self.publish_event( sub.id, event )
-			end
-		end
+		self.log.debug "Propagating %d events to node %s" % [ events.length, node.identifier ]
+		node.publish_events( *events )
 
 		if node.parent
-			self.log.debug "Propagating events to the parent of %s: %s" %
-				[ node.identifier, node.parent ]
-			parent = self.nodes[ node.parent ]
+			parent = self.nodes[ node.parent ] or raise "couldn't find parent %p of node %p!" %
+				[ node.parent, node.identifier ]
 			self.propagate_events( parent, *events )
 		end
-	end
-
-
-	### Publish the specified +event+ on the event publication socket with the specified
-	### subscription +identifier+.
-	def publish_event( identifier, event )
-		self.event_publisher.publish( identifier, event )
 	end
 
 

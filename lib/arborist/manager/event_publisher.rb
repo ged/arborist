@@ -18,7 +18,9 @@ class Arborist::Manager::EventPublisher < ZMQ::Handler
 	### Create a new EventPublish that will publish events emitted by
 	### emitters on the specified +manager+ on the given +pollable+.
 	def initialize( pollitem, manager, reactor )
-		self.log.debug "Setting up a %p" % [ self.class ]
+		self.log.debug "Setting up a %p for %p (socket %p)" %
+			[ self.class, pollitem, pollitem.pollable ]
+		@pollable    = pollitem.pollable
 		@pollitem    = pollitem
 		@manager     = manager
 		@reactor     = reactor
@@ -66,14 +68,27 @@ class Arborist::Manager::EventPublisher < ZMQ::Handler
 
 	### Register the publisher with the reactor if it's not already.
 	def register
-		@reactor.register( self.pollitem.pollable ) unless @registered
+		count = 0
+		@reactor.register( self.pollitem ) unless @registered
 		@registered = true
+	rescue => err
+		# :TODO:
+		# This is to work around a weird error that happens sometimes when registering:
+		#   Sys error location: loop.c:424
+		# which then raises a RuntimeError with "Socket operation on non-socket". This is
+		# probably due to a race somewhere, but we can't find it. So this works (at least
+		# for the specs) in the meantime.
+		raise unless err.message.include?( "Socket operation on non-socket" )
+		count += 1
+		raise "Gave up trying to register %p with the reactor" % [ self.pollitem ] if count > 5
+		warn "Retrying registration!"
+		retry
 	end
 
 
 	### Unregister the publisher from the reactor if it's registered.
 	def unregister
-		@reactor.remove( self.pollitem.pollable ) if @registered
+		@reactor.remove( self.pollitem ) if @registered
 		@registered = false
 	end
 

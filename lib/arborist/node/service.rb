@@ -59,6 +59,7 @@ class Arborist::Node::Service < Arborist::Node
 
 	### Returns +true+ if the node matches the specified +key+ and +val+ criteria.
 	def match_criteria?( key, val )
+		self.log.debug "Matching %p: %p against %p" % [ key, val, self ]
 		return case key
 			when 'port'
 				val = default_port_for( val, @protocol ) unless val.is_a?( Fixnum )

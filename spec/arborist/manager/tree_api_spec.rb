@@ -23,7 +23,10 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 
 	after( :each ) do
 		@manager.stop
-		@manager_thread.join
+		unless @manager_thread.join( 5 )
+			$stderr.puts "Manager thread didn't exit on its own; killing it."
+			@manager_thread.kill
+		end
 
 		count = 0
 		while @manager.zmq_loop.running? || count > 30
@@ -117,6 +120,7 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 			)
 			expect( body ).to be_nil
 		end
+
 
 		it "send an error response if the request's body is not a Map or Nil" do
 			sock.send( MessagePack.pack([{version: 1, action: 'list'}, 18]) )

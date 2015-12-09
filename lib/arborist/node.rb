@@ -309,6 +309,14 @@ class Arborist::Node
 	end
 
 
+	### Publish the specified +events+ to any subscriptions the node has which match them.
+	def publish_events( *events )
+		self.subscriptions.each_value do |sub|
+			sub.on_events( *events )
+		end
+	end
+
+
 	### Update specified +properties+ for the node.
 	def update( new_properties )
 		new_properties = stringify_keys( new_properties )
@@ -332,12 +340,6 @@ class Arborist::Node
 	ensure
 		self.update_delta.clear
 		self.pending_update_events.clear
-	end
-
-
-	### (Undocumented)
-	def publish_events( *events )
-		self.subscriptions.each
 	end
 
 
@@ -656,7 +658,7 @@ class Arborist::Node
 
 	### Callback for when a node goes from down to up
 	def on_node_up( transition )
-		self.log.warn "%s is %s" % [ self.status_description ]
+		self.log.warn "%s is %s" % [ self.identifier, self.status_description ]
 	end
 
 

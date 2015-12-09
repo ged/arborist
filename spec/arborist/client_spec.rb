@@ -132,7 +132,7 @@ describe Arborist::Client do
 		end
 
 
-		it "can subscribe a particular kind of event" do
+		it "can subscribe to a particular kind of event" do
 			sub_id = client.subscribe( event_type: 'node.ack' )
 			expect( sub_id ).to be_a( String )
 			expect( sub_id ).to match( /^[\w\-]{16,}/ )

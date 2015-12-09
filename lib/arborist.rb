@@ -135,9 +135,28 @@ module Arborist
 	end
 
 
+	### Return a new Arborist::ObserverRunner for the observers described in files under
+	### the specified +directory+.
+	def self::observer_runner_for( directory )
+		self.load_all
+		observers = Arborist::Observer.each_in( directory )
+		runner = Arborist::ObserverRunner.new
+		runner.load_observers( observers )
+
+		return runner
+	end
+
+
 	### Load all node and event types
 	def self::load_all
 		Arborist::Node.load_all
+	end
+
+
+	### Destroy any existing ZMQ state.
+	def self::reset_zmq_context
+		@zmq_context.destroy if @zmq_context.respond_to?( :destroy )
+		@zmq_context = nil
 	end
 
 
@@ -156,6 +175,7 @@ module Arborist
 	autoload :Monitor, 'arborist/monitor'
 	autoload :MonitorRunner, 'arborist/monitor_runner'
 	autoload :Node, 'arborist/node'
+	autoload :Observer, 'arborist/observer'
 	autoload :Subscription, 'arborist/subscription'
 
 end # module Arborist

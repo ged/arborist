@@ -18,7 +18,8 @@ class Arborist::Event
 
 	### Create a new event with the specified +payload+ data.
 	def initialize( payload )
-		@payload = payload.clone
+		payload = payload.clone unless payload.nil?
+		@payload = payload
 	end
 
 

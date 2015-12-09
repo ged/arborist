@@ -26,7 +26,7 @@ describe Arborist::Event do
 	describe "subscription support" do
 
 		it "matches a subscription with only an event type if the type is the same" do
-			sub = Arborist::Subscription.new( 'test.event' )
+			sub = Arborist::Subscription.new( :publisher, 'test.event' )
 			event = described_class.create( TestEvent, [] )
 
 			expect( event ).to match( sub )
@@ -34,7 +34,7 @@ describe Arborist::Event do
 
 
 		it "always matches a subscription with a nil event type" do
-			sub = Arborist::Subscription.new
+			sub = Arborist::Subscription.new( :publisher )
 			event = described_class.create( TestEvent, [] )
 
 			expect( event ).to match( sub )
