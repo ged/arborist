@@ -5,3 +5,4 @@ coverage/
 \.devel$
 ^ChangeLog$
 ^mon\.cf$
+doc/

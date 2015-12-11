@@ -166,12 +166,49 @@ With a failure:
 
 ## subscribe
 
-    [
-        {
-            action: subscribe,
-            version: 1,
-            event_type: 
-        },
-        [ '28f51427-a160-448b-9051-b2c4f464c5e3' ]
-    ]
+Get node change delta events for every 'host' type node.
+
+    {
+        action: subscribe,
+        version: 1,
+        event_type: node.delta
+    },
+    {
+        type: 'host',
+    }
+
+Get a snapshot of node state on every update for 'service' type nodes under
+the 'bennett' node.
+
+    {
+        action: subscribe,
+        version: 1,
+        event_type: node.update,
+        identifier: 'bennett'
+    },
+    {
+        type: 'service',
+    }
+
+Get events of state changes to services running on port 80.
+
+    {
+        action: subscribe,
+        version: 1,
+        event_type: node.delta
+    },
+    {
+        type: 'service',
+        port: 80
+    }
+
+Get notified of every system event (startup, shutdown, reload, etc.)
+
+    {
+        action: subscribe,
+        version: 1,
+        event_type: sys.*
+    },
+    Nil
+
 

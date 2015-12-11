@@ -211,9 +211,9 @@ class Arborist::Manager
 	### Disable the timer that checks for incoming signals
 	def cancel_signal_timer
 		if @signal_timer
-		@signal_timer.cancel
-		@zmq_loop.cancel_timer( @signal_timer )
-	end
+			@signal_timer.cancel
+			@zmq_loop.cancel_timer( @signal_timer )
+		end
 	end
 
 

@@ -64,6 +64,21 @@ class Arborist::ObserverRunner
 		end
 
 
+		### Remove the specified +observer+ after unsubscribing from its events.
+		def remove_observer( observer )
+			self.log.info "Removing observer: %s" % [ observer.description ]
+
+			self.subscriptions.keys.each do |subid|
+				next unless self.subscriptions[ subid ] == observer
+
+				self.client.unsubscribe( subid )
+				self.subscriptions.delete( subid )
+				self.client.event_api.unsubscribe( subid )
+				self.log.debug "  unsubscribed from %p" % [ subid ]
+			end
+		end
+
+
 		### Read events from the event socket when it becomes readable, and dispatch them to
 		### the correct observer.
 		def on_readable
@@ -122,6 +137,20 @@ class Arborist::ObserverRunner
 		end
 
 		self.reactor.start
+	rescue Interrupt
+		$stderr.puts "Interrupted!"
+		self.stop
+	end
+
+
+	### Stop the observer
+	def stop
+		self.observers.each do |observer|
+			# :TODO: Remove timers associated with this observer
+			self.handler.remove_observer( observer )
+		end
+
+		self.reactor.stop
 	end
 
 

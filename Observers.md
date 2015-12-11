@@ -1,54 +1,5 @@
 # Observers
 
-## Subscription
-
-Get node change delta events for every 'host' type node.
-
-    {
-        action: subscribe,
-        version: 1,
-        event_type: node.delta
-    },
-    {
-        type: 'host',
-    }
-
-Get a snapshot of node state on every update for 'service' type nodes under
-the 'bennett' node.
-
-    {
-        action: subscribe,
-        version: 1,
-        event_type: node.update,
-        identifier: 'bennett'
-    },
-    {
-        type: 'service',
-    }
-
-Get events of state changes to services running on port 80.
-
-    {
-        action: subscribe,
-        version: 1,
-        event_type: node.delta
-    },
-    {
-        type: 'service',
-        port: 80
-    }
-
-Get notified of every system event (startup, shutdown, reload, etc.)
-
-    {
-        action: subscribe,
-        version: 1,
-        event_type: sys.*
-    },
-    Nil
-
-
-
 subscription
     * Event to subscribe to
     * Node to attach subscription to.  No node means 'root', which sees all subnode events.
@@ -68,6 +19,51 @@ Pragmas:
     The manager should probably serialize subscriptions for its nodes. Otherwise the manager
     can restart and any running observers will never again receive events because the
     subscriptions will have disappeared.
+
+
+
+## Examples
+
+    # -*- ruby -*-
+    #encoding: utf-8
+    
+    require 'arborist'
+    
+    WORK_HOURS = '8AM' .. '6PM'
+    OFF_HOURS =  '6PM' .. '8AM'
+    
+    Arborist::Observer "Webservers" do
+        subscribe to: 'node.delta',
+            where: {
+                type: 'service',
+                port: 80,
+                delta: { status: ['up', 'down'] }
+            }
+    
+        action( during: WORK_HOURS ) do |uuid, event|
+            $stderr.puts "Webserver %s is DOWN (%p)" % [ event['data']['identifier'], event['data'] ]
+        end
+        summarize( every: 5.minutes, count: 5, during: OFF_HOURS ) do |*tuples|
+            email to: 'ops@example.com', subject: ""
+        end
+    
+    end
+
+
+
+## Schedulability stuff
+
+schedule = Schedule.new
+schedule |= Period.time( '8AM' .. '8PM' )
+schedule |= Period.day( 'Mon' .. 'Fri' )
+
+
+# Thymelörde! - An Amazeballs Gem for Doing Stuff With Time™
+
+
+schedule = Thymelörde!.yes?( 'Tue-Thur {6am-9pm}' )
+schedule.ehh? #=> false
+schedule.yes? #=> false
 
 
 

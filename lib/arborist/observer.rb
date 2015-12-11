@@ -146,7 +146,7 @@ class Arborist::Observer
 	### Handle a published event.
 	def handle_event( uuid, event )
 		self.actions.each do |opts, action|
-			action.call( uuid, event )
+			action.handle_event( event )
 		end
 	end
 
