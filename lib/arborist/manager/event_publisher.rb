@@ -68,7 +68,7 @@ class Arborist::Manager::EventPublisher < ZMQ::Handler
 
 	### Register the publisher with the reactor if it's not already.
 	def register
-		count = 0
+		count ||= 0
 		@reactor.register( self.pollitem ) unless @registered
 		@registered = true
 	rescue => err
