@@ -11,9 +11,7 @@ using Arborist::TimeRefinements
 
 describe Arborist::Observer::Action do
 
-	let( :event ) {{
-		stuff: :woo
-	}}
+	let( :event ) {{ stuff: :woo }}
 
 
 	it "can be created with just a block" do

@@ -8,7 +8,5 @@ observers_path = ARGV.shift or raise "No observer file specified."
 Arborist.load_config( ARGV.shift )
 Arborist.load_all
 
-Loggability.level = :debug
-
 runner = Arborist.observer_runner_for( observers_path )
 runner.run

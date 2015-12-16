@@ -66,5 +66,7 @@ schedule.ehh? #=> false
 schedule.yes? #=> false
 
 
+Legba -- the gatekeeper?
+
 
 

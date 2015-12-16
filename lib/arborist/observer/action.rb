@@ -65,10 +65,7 @@ class Arborist::Observer::Action
 	### Call the action for the specified +event+.
 	def handle_event( event )
 		self.record_event( event )
-		if self.should_run?
-			self.call_block( event )
-			self.event_history.clear
-		end
+		self.call_block( event ) if self.should_run?
 	end
 
 
@@ -80,6 +77,8 @@ class Arborist::Observer::Action
 		else
 			self.block.call( event.dup )
 		end
+	ensure
+		self.event_history.clear
 	end
 
 

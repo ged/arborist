@@ -14,6 +14,10 @@ class Arborist::Observer
 	log_to :arborist
 
 
+	autoload :Action, 'arborist/observer/action'
+	autoload :Summarize, 'arborist/observer/summarize'
+
+
 	##
 	# The key for the thread local that is used to track instances as they're
 	# loaded.
@@ -124,7 +128,13 @@ class Arborist::Observer
 
 	### Register an action that will be taken when a subscribed event is received.
 	def action( options={}, &block )
-		@actions << [ options, block ]
+		@actions << Arborist::Observer::Action.new( options, &block )
+	end
+
+
+	### Register a summary action.
+	def summarize( options={}, &block )
+		@actions << Arborist::Observer::Summarize.new( options, &block )
 	end
 
 
@@ -145,10 +155,22 @@ class Arborist::Observer
 
 	### Handle a published event.
 	def handle_event( uuid, event )
-		self.actions.each do |opts, action|
+		self.actions.each do |action|
 			action.handle_event( event )
 		end
 	end
 
+
+	### Return an Array of timer callbacks of the form:
+	###
+	###   [ interval_seconds, callable ]
+	###
+	def timers
+		return self.actions.map do |action|
+			next nil unless action.respond_to?( :on_timer ) &&
+				action.time_threshold.nonzero?
+			[ action.time_threshold, action.method(:on_timer) ]
+		end.compact
+	end
 
 end # class Arborist::Observer

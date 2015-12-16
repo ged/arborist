@@ -67,6 +67,79 @@ describe Arborist::Observer do
 
 		expect( observer.actions ).to be_an( Array )
 		expect( observer.actions.length ).to eq( 2 )
+		expect( observer.actions ).to all( be_a(Arborist::Observer::Action) )
+	end
+
+
+	it "can specify a summary action" do
+		observer = described_class.new( "testing observer" ) do
+			summarize( every: 5 ) do |events|
+				puts( events.size )
+			end
+		end
+
+		expect( observer.actions ).to be_an( Array )
+		expect( observer.actions.length ).to eq( 1 )
+		expect( observer.actions.first ).to be_a( Arborist::Observer::Summarize )
+	end
+
+
+	it "can specify a mix of regular and summary actions" do
+		observer = described_class.new( "testing observer" ) do
+			summarize( every: 5 ) do |events|
+				puts( events.size )
+			end
+			action do |uuid, event|
+				$stderr.puts( uuid )
+			end
+		end
+
+		expect( observer.actions ).to be_an( Array )
+		expect( observer.actions.length ).to eq( 2 )
+		expect( observer.actions.first ).to be_a( Arborist::Observer::Summarize )
+		expect( observer.actions.last ).to be_a( Arborist::Observer::Action )
+	end
+
+
+	it "passes events it is given to handle to its actions" do
+		observer = described_class.new( "testing observer" ) do
+			summarize( every: 5 ) do |events|
+				puts( events.size )
+			end
+			action do |uuid, event|
+				$stderr.puts( uuid )
+			end
+		end
+
+		event = {}
+		expect( observer.actions.first ).to receive( :handle_event ).with( event )
+		expect( observer.actions.last ).to receive( :handle_event ).with( event )
+
+		observer.handle_event( "eventid", event )
+	end
+
+
+	it "can build a list of timer callbacks for its actions" do
+		summarize_called = false
+
+		observer = described_class.new( "testing observer" ) do
+			summarize( every: 5 ) do |events|
+				summarize_called = true
+			end
+			action do |uuid, event|
+				$stderr.puts( uuid )
+			end
+		end
+
+		results = observer.timers
+
+		expect( results ).to be_an( Array )
+		expect( results.size ).to eq( 1 )
+		expect( results ).to all( be_an(Array) )
+		expect( results.last[0] ).to eq( 5 )
+
+		observer.handle_event( "eventid", {} )
+		expect { results.last[1].call }.to change { summarize_called }.to( true )
 	end
 
 end

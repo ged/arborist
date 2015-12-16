@@ -102,6 +102,7 @@ class Arborist::ObserverRunner
 	### Create a new Arborist::ObserverRunner
 	def initialize
 		@observers = []
+		@timers = []
 		@handler = nil
 		@reactor = ZMQ::Loop.new
 	end
@@ -113,6 +114,9 @@ class Arborist::ObserverRunner
 
 	# The Array of loaded Arborist::Observers the runner should run.
 	attr_reader :observers
+
+	# The Array of registered ZMQ::Timers
+	attr_reader :timers
 
 	# The ZMQ::Handler subclass that handles all async IO
 	attr_accessor :handler
@@ -146,7 +150,7 @@ class Arborist::ObserverRunner
 	### Stop the observer
 	def stop
 		self.observers.each do |observer|
-			# :TODO: Remove timers associated with this observer
+			self.remove_timers
 			self.handler.remove_observer( observer )
 		end
 
@@ -154,16 +158,24 @@ class Arborist::ObserverRunner
 	end
 
 
-	# :MAHLON: For periodic/rollup/etc. we could do something like this:
-
 	### Register a timer for the specified +observer+.
 	def add_timers_for( observer )
-		# observer.timers.each do |interval, callback|
-		# 	timer = ZMQ::Timer.new( interval, 0, &callback )
-		# 	self.reactor.register_timer( timer )
-		# end
+		observer.timers.each do |interval, callback|
+			self.log.info "Creating timer for %s observer to run %p every %ds" %
+				[ observer.description, callback, interval ]
+			timer = ZMQ::Timer.new( interval, 0, &callback )
+			self.reactor.register_timer( timer )
+			self.timers << timer
+		end
 	end
 
+
+	### Remove any registered timers.
+	def remove_timers
+		self.timers.each do |timer|
+			self.reactor.cancel_timer( timer )
+		end
+	end
 
 end # class Arborist::ObserverRunner
 

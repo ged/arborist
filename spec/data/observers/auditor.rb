@@ -9,5 +9,15 @@ Arborist::Observer "Audit Logger" do
 	action do |uuid, event|
 		$stderr.puts "%s: %p" % [ uuid, event ]
 	end
+	summarize( every: 8 ) do |events|
+		$stderr.puts "Audit summary:"
+		events.each do |time, ev|
+			$stderr.puts "  [%s] %s: %p" % [
+				time.strftime('%Y-%m-%d %H:%M:%S %z'),
+				ev['type'],
+				ev['data']
+			]
+		end
+	end
 end
 
