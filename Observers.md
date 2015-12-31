@@ -29,8 +29,8 @@ Pragmas:
     
     require 'arborist'
     
-    WORK_HOURS = '8AM' .. '6PM'
-    OFF_HOURS =  '6PM' .. '8AM'
+    WORK_HOURS = 'hour {8am-6pm}'
+    OFF_HOURS =  'hour {6pm-8am}'
     
     Arborist::Observer "Webservers" do
         subscribe to: 'node.delta',

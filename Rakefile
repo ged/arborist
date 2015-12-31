@@ -25,6 +25,7 @@ hoespec = Hoe.spec 'arborist' do |spec|
 	spec.developer 'Michael Granger', 'ged@FaerieMUD.org'
 	spec.developer 'Mahlon E. Smith', 'mahlon@martini.nu'
 
+	spec.dependency 'schedulability', '~> 0.1'
 	spec.dependency 'loggability', '~> 0.11'
 	spec.dependency 'configurability', '~> 2.2'
 	spec.dependency 'pluggability', '~> 0.4'

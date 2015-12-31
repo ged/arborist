@@ -1,6 +1,8 @@
 # -*- ruby -*-
 #encoding: utf-8
 
+require 'schedulability'
+require 'schedulability/schedule'
 require 'loggability'
 
 require 'arborist/observer' unless defined?( Arborist::Observer )
@@ -24,7 +26,7 @@ class Arborist::Observer::Summarize
 
 		@time_threshold  = every
 		@count_threshold = count
-		@schedule        = during
+		@schedule        = Schedulability::Schedule.parse( during ) if during
 		@block           = block
 
 		@event_history = {}
@@ -80,7 +82,7 @@ class Arborist::Observer::Summarize
 
 	### Record the specified +event+ in the event history if within the scheduled period(s).
 	def record_event( event )
-		# :TODO: take schedule into account
+		return if self.schedule && !self.schedule.now?
 		self.event_history[ Time.now ] = event
 	end
 
@@ -88,7 +90,7 @@ class Arborist::Observer::Summarize
 	### Returns +true+ if the count threshold is exceeded and the current time is within the
 	### action's schedule.
 	def should_run?
-		return self.count_threshold_exceeded? # && :TODO: self.scheduled?
+		return self.count_threshold_exceeded?
 	end
 
 

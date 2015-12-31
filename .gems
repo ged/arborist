@@ -4,9 +4,11 @@ rspec -v3.2.0
 hoe -v3.13.1
 pluggability -v0.4.1
 configurability -v2.2.1
-msgpack -v0.6.2
+msgpack -v0.7.1
 rbczmq -v1.7.8
-state_machines -v0.3.0
+state_machines -v0.4.0
 treequel -v1.10.0
 timecop -v0.8.0
-simplecov -v0.10.0
+simplecov -v0.11.1
+schedulability -v0.1.0
+rdoc -v4.2.1
