@@ -8,7 +8,7 @@ require 'socket'
 require 'arborist/node'
 
 
-# A node type for Arborist trees that represent network-connected hosts.
+# A node type for Arborist trees that represent services running on hosts.
 class Arborist::Node::Service < Arborist::Node
 
 	# The default transport layer protocol to use for services that don't specify

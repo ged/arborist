@@ -6,3 +6,5 @@ coverage/
 ^ChangeLog$
 ^mon\.cf$
 doc/
+Procfile$
+\.env$

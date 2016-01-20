@@ -20,7 +20,13 @@ hoespec = Hoe.spec 'arborist' do |spec|
 	spec.readme_file = 'README.md'
 	spec.history_file = 'History.md'
 	spec.extra_rdoc_files = FileList[ '*.rdoc', '*.md' ]
-	spec.license 'BSD'
+	self.license 'BSD-3-Clause'
+	spec.urls = {
+		home:   'http://deveiate.org/projects/arborist',
+		code:   'http://bitbucket.org/ged/arborist',
+		docs:   'http://deveiate.org/code/arborist',
+		github: 'http://github.com/ged/arborist',
+	}
 
 	spec.developer 'Michael Granger', 'ged@FaerieMUD.org'
 	spec.developer 'Mahlon E. Smith', 'mahlon@martini.nu'
