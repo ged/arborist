@@ -21,4 +21,3 @@
 
 ## Node
 
-* Add a 'disabled' state, can be set on 'up' nodes by acking them.

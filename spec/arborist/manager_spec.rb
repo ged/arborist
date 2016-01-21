@@ -239,20 +239,31 @@ describe Arborist::Manager do
 			expect( manager.nodes[ 'host_a' ] ).to be_down
 			manager.nodes[ 'host_c' ].update( error: "gamma rays" )
 			expect( manager.nodes[ 'host_c' ] ).to be_down
+			manager.nodes[ 'host_b_nfs' ].
+				update( ack: {sender: 'nancy_kerrigan', message: 'bad case of disk rot'} )
+			expect( manager.nodes[ 'host_b_nfs' ] ).to be_disabled
+			expect( manager.nodes[ 'host_b_nfs' ] ).to_not be_down
 
 			iter = manager.reachable_nodes
 
 			expect( iter ).to be_a( Enumerator )
 
-			nodes = iter.to_a
-			expect( nodes.size ).to eq( 6 )
-			expect( nodes.map(&:identifier) ).to include(
+			nodes = iter.map( &:identifier )
+			expect( nodes ).to include(
 				"_",
 				"router",
 				"host_b",
 				"host_b_www",
-				"host_b_nfs",
 				"host_b_ssh"
+			)
+			expect( nodes ).to_not include(
+				"host_b_nfs",
+				"host_c",
+				"host_c_www",
+				"host_a",
+				'host_a_www',
+				'host_a_smtp',
+				'host_a_imap'
 			)
 		end
 

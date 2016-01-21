@@ -57,18 +57,25 @@ class Arborist::Node
 		state :unknown,
 			:up,
 			:down,
-			:acked
+			:acked,
+			:disabled
 
 		event :update do
-			transition any - [:acked] => :acked, if: :ack_set?
-			transition any - [:up] => :up, if: :last_contact_successful?
-			transition any - [:down, :acked] => :down, unless: :last_contact_successful?
+			transition [:down, :unknown, :acked] => :up, if: :last_contact_successful?
+			transition [:up, :unknown] => :down, unless: :last_contact_successful?
+			transition :down => :acked, if: :ack_set?
+			transition [:unknown, :up] => :disabled, if: :ack_set?
+			transition :disabled => :unknown, unless: :ack_set?
 		end
 
 		after_transition any => :acked, do: :on_ack
 		after_transition :acked => :up, do: :on_ack_cleared
 		after_transition :down => :up, do: :on_node_up
 		after_transition [:unknown, :up] => :down, do: :on_node_down
+		after_transition [:unknown, :up] => :disabled, do: :on_node_disabled
+		after_transition :disabled => :unknown, do: :on_node_enabled
+
+		after_transition any => any, do: :log_transition
 
 		after_transition do: :add_status_to_update_delta
 	end
@@ -323,8 +330,11 @@ class Arborist::Node
 		self.log.debug "Updated: %p" % [ new_properties ]
 
 		self.last_contacted = Time.now
+		if new_properties.key?( 'ack' )
+			self.ack = new_properties.delete( 'ack' )
+		else
 		self.error          = new_properties.delete( 'error' )
-		self.ack            = new_properties.delete( 'ack' ) if new_properties.key?( 'ack' )
+		end
 
 		self.properties.merge!( new_properties, &self.method(:merge_and_record_delta) )
 		compact_hash( self.properties )
@@ -504,6 +514,8 @@ class Arborist::Node
 			return "%s as of %s" % [ self.status.upcase, self.last_contacted ]
 		when 'acked'
 			return "ACKed by %s %s" % [ self.ack.sender, self.ack.time.as_delta ]
+		when 'disabled'
+			return "disabled by %s %s" % [ self.ack.sender, self.ack.time.as_delta ]
 		else
 			return "in an unknown state"
 		end
@@ -607,8 +619,8 @@ class Arborist::Node
 
 	### Ack the node with the specified +ack_data+, which should contain
 	def ack=( ack_data )
-		self.log.debug "ACKed with data: %p" % [ ack_data ]
-
+		if ack_data
+			self.log.info "Node %s ACKed with data: %p" % [ self.identifier, ack_data ]
 		ack_data['time'] ||= Time.now
 		ack_values = ack_data.values_at( *Arborist::Node::ACK.members.map(&:to_s) )
 		new_ack = Arborist::Node::ACK.new( *ack_values )
@@ -618,6 +630,10 @@ class Arborist::Node
 		end
 
 		@ack = new_ack
+		else
+			self.log.info "Node %s ACK cleared explicitly" % [ self.identifier ]
+			@ack = nil
+		end
 	end
 
 
@@ -642,6 +658,13 @@ class Arborist::Node
 	# :section: State Callbacks
 	#
 
+	### Log every status transition
+	def log_transition( transition )
+		self.log.debug "Transitioned %s from %s to %s" %
+			[ self.identifier, transition.from, transition.to ]
+	end
+
+
 	### Callback for when an acknowledgement is set.
 	def on_ack( transition )
 		self.log.warn "ACKed: %s" % [ self.status_description ]
@@ -652,12 +675,14 @@ class Arborist::Node
 
 	### Callback for when an acknowledgement is cleared.
 	def on_ack_cleared( transition )
+		self.error = nil
 		self.log.warn "ACK cleared for %s" % [ self.identifier ]
 	end
 
 
 	### Callback for when a node goes from down to up
 	def on_node_up( transition )
+		self.error = nil
 		self.log.warn "%s is %s" % [ self.identifier, self.status_description ]
 	end
 
@@ -666,6 +691,18 @@ class Arborist::Node
 	def on_node_down( transition )
 		self.log.error "%s is %s" % [ self.identifier, self.status_description ]
 		self.update_delta[ 'error' ] = [ nil, self.error ]
+	end
+
+
+	### Callback for when a node goes from up to disabled
+	def on_node_disabled( transition )
+		self.log.warn "%s is %s" % [ self.identifier, self.status_description ]
+	end
+
+
+	### Callback for when a node goes from disabled to unknown
+	def on_node_enabled( transition )
+		self.log.warn "%s is %s" % [ self.identifier, self.status_description ]
 	end
 
 

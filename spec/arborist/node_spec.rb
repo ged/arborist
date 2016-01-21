@@ -145,11 +145,39 @@ describe Arborist::Node do
 				expect( node ).to be_acked
 			end
 
-			it "transitions to `up` from `acked` status if it's updated with an `ack` property" do
-				node.update( ack: {message: "Maintenance", sender: 'mahlon'}, error: "Offlined"  )
-				node.update( ping_time: 0.02 )
+			it "transitions to `disabled` from `up` status if it's updated with an `ack` property" do
+				node.status = 'up'
+				node.update( ack: {message: "Maintenance", sender: 'mahlon'} )
 
-				expect( node ).to be_up
+				expect( node ).to be_disabled
+			end
+
+			it "stays `disabled` if it gets an error" do
+				node.status = 'up'
+				node.update( ack: {message: "Maintenance", sender: 'mahlon'} )
+				node.update( error: "take me to the virus hospital" )
+
+				expect( node ).to be_disabled
+				expect( node.ack ).to_not be_nil
+			end
+
+			it "stays `disabled` if it gets a successful update" do
+				node.status = 'up'
+				node.update( ack: {message: "Maintenance", sender: 'mahlon'} )
+				node.update( ping: {time: 0.02} )
+
+				expect( node ).to be_disabled
+				expect( node.ack ).to_not be_nil
+			end
+
+			it "transitions to `unknown` from `disabled` status if its ack is cleared" do
+				node.status = 'up'
+				node.update( ack: {message: "Maintenance", sender: 'mahlon'} )
+				node.update( ack: nil )
+
+				expect( node ).to_not be_disabled
+				expect( node ).to be_unknown
+				expect( node.ack ).to be_nil
 			end
 
 		end
@@ -307,7 +335,8 @@ describe Arborist::Node do
 
 
 			it "an ACKed node stays ACKed when reconstituted" do
-				node.update(ack: {
+				node.update( error: "there's a fire" )
+				node.update( ack: {
 					message: 'We know about the fire.  It rages on.',
 					sender: '1986 Labyrinth David Bowie'
 				})
@@ -409,6 +438,7 @@ describe Arborist::Node do
 
 
 		it "generates a node.acked event when a node is acked" do
+			node.update( error: 'ping failed ')
 			events = node.update(ack: {
 				message: "I have a poisonous friend. She's living in the house.",
 				sender: 'Seabound'
