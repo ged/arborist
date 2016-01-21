@@ -333,7 +333,7 @@ class Arborist::Node
 		if new_properties.key?( 'ack' )
 			self.ack = new_properties.delete( 'ack' )
 		else
-		self.error          = new_properties.delete( 'error' )
+			self.error = new_properties.delete( 'error' )
 		end
 
 		self.properties.merge!( new_properties, &self.method(:merge_and_record_delta) )
@@ -621,15 +621,15 @@ class Arborist::Node
 	def ack=( ack_data )
 		if ack_data
 			self.log.info "Node %s ACKed with data: %p" % [ self.identifier, ack_data ]
-		ack_data['time'] ||= Time.now
-		ack_values = ack_data.values_at( *Arborist::Node::ACK.members.map(&:to_s) )
-		new_ack = Arborist::Node::ACK.new( *ack_values )
+			ack_data['time'] ||= Time.now
+			ack_values = ack_data.values_at( *Arborist::Node::ACK.members.map(&:to_s) )
+			new_ack = Arborist::Node::ACK.new( *ack_values )
 
-		if missing = ACK_REQUIRED_PROPERTIES.find {|prop| new_ack[prop].nil? }
-			raise "Missing required ACK attribute %s" % [ missing ]
-		end
+			if missing = ACK_REQUIRED_PROPERTIES.find {|prop| new_ack[prop].nil? }
+				raise "Missing required ACK attribute %s" % [ missing ]
+			end
 
-		@ack = new_ack
+			@ack = new_ack
 		else
 			self.log.info "Node %s ACK cleared explicitly" % [ self.identifier ]
 			@ack = nil
