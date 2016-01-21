@@ -21,7 +21,4 @@ Arborist::Monitor 'port checks on downed tcp services' do
 	exec( Arborist::Monitor::Socket::TCP )
 end
 
-# :MAHLON: A possible equivalent way to provide the above as a default for some monitors:
-# Arborist::Monitor::Socket::TCP.default_monitor
-
 

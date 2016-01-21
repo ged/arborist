@@ -337,7 +337,7 @@ describe Arborist::Node do
 			it "an ACKed node stays ACKed when reconstituted" do
 				node.update( error: "there's a fire" )
 				node.update( ack: {
-					message: 'We know about the fire.  It rages on.',
+					message: 'We know about the fire. It rages on.',
 					sender: '1986 Labyrinth David Bowie'
 				})
 				cloned_node = concrete_class.from_hash( node.to_hash )
