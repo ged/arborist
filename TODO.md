@@ -5,6 +5,7 @@
 * Serialize nodes on shutdown
 * Include a node's subscriptions in its serialized data
 * Implement loading/reloading nodes. 
+* Implement the system events (sys.acked, sys.reloaded, etc.)
 
 ## Tree API
 
@@ -20,4 +21,13 @@
   the delta pairs.
 
 ## Node
+
+* Allow (require?) node types to specify what kinds of nodes can be
+  their parent, and also adds the constructor DSL method to it
+
+
+## Setup/Installation
+
+* Add a CLI for generating a basic setup and then adding 
+  nodes/monitors/observers to it.
 
