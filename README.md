@@ -1,9 +1,16 @@
 # Arborist
 
-home :: http://deveiate.org/projects/Arborist  
-code :: http://bitbucket.org/ged/Arborist  
-github :: https://github.com/ged/arborist  
-docs :: http://deveiate.org/code/arborist  
+home
+: http://deveiate.org/projects/Arborist
+
+code
+: http://bitbucket.org/ged/Arborist
+
+github
+: https://github.com/ged/arborist
+
+docs
+: http://deveiate.org/code/arborist
 
 
 ## Description

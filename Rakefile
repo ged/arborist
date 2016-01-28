@@ -46,7 +46,7 @@ hoespec = Hoe.spec 'arborist' do |spec|
 	spec.require_ruby_version( '>=2.2.0' )
 	spec.hg_sign_tags = true if spec.respond_to?( :hg_sign_tags= )
 
-	self.rdoc_locations << "deveiate:/usr/local/www/public/code/#{remote_rdoc_dir}"
+	spec.rdoc_locations << "deveiate:/usr/local/www/public/code/#{remote_rdoc_dir}"
 end
 
 
@@ -65,6 +65,20 @@ task :coverage do
 	Rake::Task[:spec].invoke
 end
 
+
+# Use the fivefish formatter for docs generated from development checkout
+if File.directory?( '.hg' )
+	require 'rdoc/task'
+
+	Rake::Task[ 'docs' ].clear
+	RDoc::Task.new( 'docs' ) do |rdoc|
+	    rdoc.main = "README.md"
+	    rdoc.rdoc_files.include( "*.rdoc", "*.md", "ChangeLog", "lib/**/*.rb" )
+	    rdoc.generator = :fivefish
+		rdoc.title = 'Arborist'
+	    rdoc.rdoc_dir = 'doc'
+	end
+end
 
 task :gemspec => GEMSPEC
 file GEMSPEC => __FILE__ do |task|
