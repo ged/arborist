@@ -12,11 +12,14 @@ Protocol.md
 README.md
 Rakefile
 TODO.md
-bin/amanagerd
-bin/amonitord
-bin/aobserverd
+bin/arborist
 lib/arborist.rb
+lib/arborist/cli.rb
 lib/arborist/client.rb
+lib/arborist/command/client.rb
+lib/arborist/command/config.rb
+lib/arborist/command/start.rb
+lib/arborist/command/watch.rb
 lib/arborist/event.rb
 lib/arborist/event/node_acked.rb
 lib/arborist/event/node_delta.rb
@@ -24,6 +27,8 @@ lib/arborist/event/node_matching.rb
 lib/arborist/event/node_update.rb
 lib/arborist/event/sys_reloaded.rb
 lib/arborist/exceptions.rb
+lib/arborist/loader.rb
+lib/arborist/loader/file.rb
 lib/arborist/manager.rb
 lib/arborist/manager/event_publisher.rb
 lib/arborist/manager/tree_api.rb
