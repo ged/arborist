@@ -25,7 +25,11 @@ describe Arborist::Monitor do
 	end
 
 
-	let( :testing_nodes ) {[ trunk_node, branch_node, leaf_node ]}
+	let( :testing_nodes ) {{
+		'trunk' => trunk_node.to_hash,
+		'branch' => branch_node.to_hash,
+		'leaf' => leaf_node.to_hash
+	}}
 
 
 	it "can be created with just a description" do
@@ -112,7 +116,7 @@ describe Arborist::Monitor do
 
 		output = mon.run( testing_nodes )
 		expect( output ).to be_a( Hash )
-		expect( output ).to include( *(testing_nodes.map(&:identifier)) )
+		expect( output ).to include( *(testing_nodes.keys) )
 	end
 
 
@@ -159,7 +163,7 @@ describe Arborist::Monitor do
 			exec_input {|*| }
 			exec_arguments do |nodes|
 				Loggability[ Arborist ].debug "In the argument-builder."
-				nodes.map {|n| n.identifier }
+				nodes.keys
 			end
 		end
 
@@ -183,7 +187,7 @@ describe Arborist::Monitor do
 			exec 'cat'
 
 			exec_input do |nodes, writer|
-				writer.puts( nodes.map(&:identifier) )
+				writer.puts( nodes.keys )
 			end
 			handle_results do |pid, out, err|
 				return out.readlines.map( &:chomp )
@@ -192,7 +196,7 @@ describe Arborist::Monitor do
 
 		results = mon.run( testing_nodes )
 
-		expect( results ).to eq( testing_nodes.map(&:identifier) )
+		expect( results ).to eq( testing_nodes.keys )
 	end
 
 
@@ -203,7 +207,7 @@ describe Arborist::Monitor do
 
 			exec_arguments {|*| }
 			exec_input do |nodes, writer|
-				writer.puts( nodes.map(&:identifier) )
+				writer.puts( nodes.keys )
 			end
 			handle_results do |pid, out, err|
 				out.readlines.map( &:chomp ).map( &:upcase )
@@ -212,7 +216,7 @@ describe Arborist::Monitor do
 
 		results = mon.run( testing_nodes )
 
-		expect( results ).to eq( testing_nodes.map(&:identifier).map(&:upcase) )
+		expect( results ).to eq( testing_nodes.keys.map(&:upcase) )
 	end
 
 
@@ -220,7 +224,7 @@ describe Arborist::Monitor do
 		the_module = Module.new do
 
 			def exec_input( nodes, writer )
-				writer.puts( nodes.map {|n| n.identifier } )
+				writer.puts( nodes.keys )
 			end
 
 			def handle_results( pid, out, err )
@@ -241,7 +245,7 @@ describe Arborist::Monitor do
 
 		expect( results ).to be_a( Hash )
 		expect( results.size ).to eq( 3 )
-		expect( results ).to include( *testing_nodes.map(&:identifier) )
+		expect( results ).to include( *testing_nodes.keys )
 		expect( results['trunk'] ).to eq({ echoed: 'yep' })
 		expect( results['branch'] ).to eq({ echoed: 'yep' })
 		expect( results['leaf'] ).to eq({ echoed: 'yep' })

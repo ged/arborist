@@ -63,7 +63,8 @@ module Arborist::TestHelpers
 
 
 	def make_testing_manager
-		return Arborist.manager_for( SPEC_DATA_DIR + 'nodes' )
+		loader = Arborist::Loader.create( :file, SPEC_DATA_DIR + 'nodes' )
+		return Arborist.manager_for( loader )
 	end
 
 

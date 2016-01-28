@@ -10,8 +10,6 @@ describe Arborist do
 
 	before( :all ) do
 		@original_config_env = ENV[Arborist::CONFIG_ENV]
-		@data_dir = Pathname( __FILE__ ).dirname + 'data'
-		@nodes_dir = @data_dir + 'nodes'
 	end
 
 	before( :each ) do
@@ -133,8 +131,37 @@ describe Arborist do
 	end
 
 
-	it "can load all nodes in a directory and return a manager for them" do
-		expect( described_class.manager_for(@nodes_dir) ).to be_a( Arborist::Manager )
+	it "can construct a Manager for all nodes provided by a Loader" do
+		loader = instance_double( Arborist::Loader )
+		expect( loader ).to receive( :nodes ).and_return([
+			testing_node('trunk'),
+			testing_node('branch', 'trunk'),
+			testing_node('leaf', 'branch')
+		])
+
+		expect( described_class.manager_for(loader) ).to be_a( Arborist::Manager )
+	end
+
+
+	it "can construct a MonitorRunner for all monitors provided by a Loader" do
+		loader = instance_double( Arborist::Loader )
+		expect( loader ).to receive( :monitors ).and_return([
+			:a_monitor,
+			:another_monitor
+		])
+
+		expect( described_class.monitor_runner_for(loader) ).to be_a( Arborist::MonitorRunner )
+	end
+
+
+	it "can construct an ObserverRunner for all observers provided by a Loader" do
+		loader = instance_double( Arborist::Loader )
+		expect( loader ).to receive( :observers ).and_return([
+			:an_observer,
+			:another_observer
+		])
+
+		expect( described_class.observer_runner_for(loader) ).to be_a( Arborist::ObserverRunner )
 	end
 
 

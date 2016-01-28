@@ -103,6 +103,8 @@ class Arborist::Node
 	### them.
 	def self::add_loaded_instance( new_instance )
 		instances = Thread.current[ LOADED_INSTANCE_KEY ] or return
+		self.log.debug "Adding new instance %p to loaded instances %p" %
+			[ new_instance, instances ]
 		instances << new_instance
 	end
 

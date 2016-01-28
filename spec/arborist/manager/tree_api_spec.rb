@@ -424,6 +424,7 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 			manager.create_subscription( nil, 'node.delta', {type: 'host'} )
 		end
 
+
 		it "removes the subscription with the specified ID" do
 			msg = pack_message( :unsubscribe, {subscription_id: subscription.id}, nil )
 
