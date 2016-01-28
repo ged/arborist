@@ -14,6 +14,7 @@ module FPingWrapper
 	attr_accessor :identifiers
 
 	def exec_arguments( nodes )
+		self.log.debug "Building fping arguments for %d nodes" % [ nodes.size ]
 		self.identifiers = nodes.each_with_object({}) do |(identifier, props), hash|
 			next unless props.key?( 'addresses' )
 			address = props[ 'addresses' ].first

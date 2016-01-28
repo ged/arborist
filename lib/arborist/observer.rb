@@ -64,7 +64,7 @@ class Arborist::Observer
 	### Return an iterator for all the observers supplied by the specified +loader+.
 	def self::each_in( loader )
 		return loader.observers
-			end
+	end
 
 
 
