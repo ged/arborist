@@ -111,6 +111,8 @@ RSpec.configure do |config|
 		mock.syntax = :expect
 	end
 
+	config.filter_run_excluding( :no_ci ) if ENV['SEMAPHORE'] || ENV['CI']
+
 	config.include( Loggability::SpecHelpers )
 	config.include( Arborist::TestHelpers )
 end

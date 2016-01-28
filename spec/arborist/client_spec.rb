@@ -109,7 +109,7 @@ describe Arborist::Client do
 		end
 
 
-		it "can update the properties of managed nodes" do
+		it "can update the properties of managed nodes", :no_ci do
 			client.update( duir: { ping: {rtt: 24} } )
 
 			expect( manager.nodes['duir'].properties ).to include( 'ping' )
