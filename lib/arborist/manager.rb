@@ -243,6 +243,7 @@ class Arborist::Manager
 		end
 	end
 
+
 	### Handle any queued signals.
 	def process_signal_queue
 		# Look for any signals that arrived and handle them
@@ -288,7 +289,7 @@ class Arborist::Manager
 	end
 
 
-	### Handle a USR1 signal. Writes a message to the log by default.
+	### Handle a USR1 signal. Writes a message to the log.
 	def on_user1_signal( signo )
 		self.log.info "Checkpoint: User signal."
 	end
@@ -491,7 +492,7 @@ class Arborist::Manager
 	### Propagate one or more +events+ to the specified +node+ and its ancestors in the tree,
 	### publishing them to matching subscriptions belonging to the nodes along the way.
 	def propagate_events( node, *events )
-		self.log.debug "Propagating %d events to node %s" % [ events.length, node.identifier ]
+		self.log.info "Propagating %d events to node %s" % [ events.length, node.identifier ]
 		node.publish_events( *events )
 
 		if node.parent

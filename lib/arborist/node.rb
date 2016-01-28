@@ -29,10 +29,6 @@ class Arborist::Node
 	# loaded.
 	LOADED_INSTANCE_KEY = :loaded_node_instances
 
-	##
-	# The glob pattern to use for searching for node
-	NODE_FILE_PATTERN = '**/*.rb'
-
 
 	##
 	# The struct for the 'ack' operational property
@@ -144,24 +140,9 @@ class Arborist::Node
 	end
 
 
-	### Return an iterator for all the node files in the specified +directory+.
-	def self::each_in( directory )
-		path = Pathname( directory )
-		paths = if path.directory?
-				Pathname.glob( directory + NODE_FILE_PATTERN )
-			else
-				[ path ]
-			end
-
-		return paths.flat_map do |file|
-			file_url = "file://%s" % [ file.expand_path ]
-			nodes = self.load( file )
-			self.log.debug "Loaded nodes %p..." % [ nodes ]
-			nodes.each do |node|
-				node.source = file_url
-			end
-			nodes
-		end
+	### Return an iterator for all the nodes supplied by the specified +loader+.
+	def self::each_in( loader )
+		return loader.nodes
 	end
 
 

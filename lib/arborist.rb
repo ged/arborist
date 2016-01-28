@@ -111,11 +111,10 @@ module Arborist
 	end
 
 
-	### Return a new Arborist::Manager for the nodes described in files under
-	### the specified +directory+.
-	def self::manager_for( directory )
+	### Return a new Arborist::Manager for the nodes loaded by the specified +loader+.
+	def self::manager_for( loader )
 		self.load_all
-		nodes = Arborist::Node.each_in( directory )
+		nodes = Arborist::Node.each_in( loader )
 		manager = Arborist::Manager.new
 		manager.load_tree( nodes )
 
@@ -124,10 +123,10 @@ module Arborist
 
 
 	### Return a new Arborist::MonitorRunner for the monitors described in files under
-	### the specified +directory+.
-	def self::monitor_runner_for( directory )
+	### the specified +loader+.
+	def self::monitor_runner_for( loader )
 		self.load_all
-		monitors = Arborist::Monitor.each_in( directory )
+		monitors = Arborist::Monitor.each_in( loader )
 		runner = Arborist::MonitorRunner.new
 		runner.load_monitors( monitors )
 
@@ -136,10 +135,10 @@ module Arborist
 
 
 	### Return a new Arborist::ObserverRunner for the observers described in files under
-	### the specified +directory+.
-	def self::observer_runner_for( directory )
+	### the specified +loader+.
+	def self::observer_runner_for( loader )
 		self.load_all
-		observers = Arborist::Observer.each_in( directory )
+		observers = Arborist::Observer.each_in( loader )
 		runner = Arborist::ObserverRunner.new
 		runner.load_observers( observers )
 
@@ -171,6 +170,7 @@ module Arborist
 
 	autoload :Client, 'arborist/client'
 	autoload :Event, 'arborist/event'
+	autoload :Loader, 'arborist/loader'
 	autoload :Manager, 'arborist/manager'
 	autoload :Monitor, 'arborist/monitor'
 	autoload :MonitorRunner, 'arborist/monitor_runner'

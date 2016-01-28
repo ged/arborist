@@ -61,25 +61,11 @@ class Arborist::Observer
 	end
 
 
-	### Return an iterator for all the observer files in the specified +directory+.
-	def self::each_in( directory )
-		path = Pathname( directory )
-		paths = if path.directory?
-				Pathname.glob( directory + OBSERVER_FILE_PATTERN )
-			else
-				[ path ]
+	### Return an iterator for all the observers supplied by the specified +loader+.
+	def self::each_in( loader )
+		return loader.observers
 			end
 
-		return paths.flat_map do |file|
-			file_url = "file://%s" % [ file.expand_path ]
-			observers = self.load( file )
-			self.log.debug "Loaded observers %p..." % [ observers ]
-			observers.each do |observer|
-				observer.source = file_url
-			end
-			observers
-		end
-	end
 
 
 	### Create a new Observer with the specified +description+.

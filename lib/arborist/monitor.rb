@@ -55,14 +55,14 @@ class Arborist::Monitor
 		def exec_input( nodes, io )
 			return if io.closed?
 
-			nodes.each do |node|
-				self.log.debug "Serializing node properties for %s" % [ node.identifier ]
-				prop_map = node.properties.collect do |key, val|
+			nodes.each do |(identifier, data)|
+				self.log.debug "Serializing node properties for %s" % [ identifier ]
+				prop_map = data.collect do |key, val|
 					"%s=%s" % [key, Shellwords.escape(val)]
 				end
 
 				self.log.debug "  writing %d properties to %p" % [ prop_map.size, io ]
-				io.puts "%s %s" % [ node.identifier, prop_map.join(' ') ]
+				io.puts "%s %s" % [ identifier, prop_map.join(' ') ]
 				self.log.debug "  wrote the node to FD %d" % [ io.fileno ]
 			end
 
@@ -134,24 +134,9 @@ class Arborist::Monitor
 	end
 
 
-	### Return an iterator for all the monitor files in the specified +directory+.
-	def self::each_in( directory )
-		path = Pathname( directory )
-		paths = if path.directory?
-				Pathname.glob( directory + MONITOR_FILE_PATTERN )
-			else
-				[ path ]
-			end
-
-		return paths.flat_map do |file|
-			file_url = "file://%s" % [ file.expand_path ]
-			monitors = self.load( file )
-			self.log.debug "Loaded monitors %p..." % [ monitors ]
-			monitors.each do |monitor|
-				monitor.source = file_url
-			end
-			monitors
-		end
+	### Return an iterator for all the monitors supplied by the specified +loader+.
+	def self::each_in( loader )
+		return loader.monitors
 	end
 
 
@@ -371,6 +356,7 @@ class Arborist::Monitor
 	### Set the module to use for the callbacks when interacting with the executed
 	### external command.
 	def exec_callbacks( mod )
+		self.log.info "Setting exec callbacks handler to: %p" % [ mod.name ]
 		self.exec_callbacks_mod = mod
 	end
 
