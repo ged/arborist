@@ -8,9 +8,11 @@ docs :: http://deveiate.org/code/arborist
 
 ## Description
 
-Arborist is a monitoring framework that follows the UNIX philosophy
+Arborist is a monitoring toolkit that follows the UNIX philosophy
 of small parts and loose coupling for stability, reliability, and
 customizability.
+
+[![Build Status](https://semaphoreci.com/api/v1/projects/13677b60-5f81-4e6e-a9c6-e21d30daa4ca/461532/badge.svg)](https://semaphoreci.com/ged/arborist)
 
 
 ## Prerequisites
@@ -44,7 +46,7 @@ and generate the API documentation.
 
 ## License
 
-Copyright (c) 2015, Michael Granger and Mahlon E. Smith
+Copyright (c) 2015-2016, Michael Granger and Mahlon E. Smith
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without

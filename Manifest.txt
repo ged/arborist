@@ -12,6 +12,7 @@ Protocol.md
 README.md
 Rakefile
 TODO.md
+Tutorial.md
 bin/arborist
 lib/arborist.rb
 lib/arborist/cli.rb
