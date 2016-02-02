@@ -13,4 +13,5 @@ simplecov -v0.11.1
 schedulability -v0.1.0
 rdoc -v4.2.1
 gli -v2.3.14
+highline -v1.7.8
 

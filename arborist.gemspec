@@ -1,14 +1,14 @@
 # -*- encoding: utf-8 -*-
-# stub: arborist 0.0.1.pre20160128152542 ruby lib
+# stub: arborist 0.0.1.pre20160202152927 ruby lib
 
 Gem::Specification.new do |s|
   s.name = "arborist"
-  s.version = "0.0.1.pre20160128152542"
+  s.version = "0.0.1.pre20160202152927"
 
   s.required_rubygems_version = Gem::Requirement.new("> 1.3.1") if s.respond_to? :required_rubygems_version=
   s.require_paths = ["lib"]
   s.authors = ["Michael Granger", "Mahlon E. Smith"]
-  s.date = "2016-01-28"
+  s.date = "2016-02-02"
   s.description = "Arborist is a monitoring toolkit that follows the UNIX philosophy\nof small parts and loose coupling for stability, reliability, and\ncustomizability.\n\n[![Build Status](https://semaphoreci.com/api/v1/projects/13677b60-5f81-4e6e-a9c6-e21d30daa4ca/461532/badge.svg)](https://semaphoreci.com/ged/arborist)"
   s.email = ["ged@FaerieMUD.org", "mahlon@martini.nu"]
   s.executables = ["arborist"]
@@ -32,8 +32,8 @@ Gem::Specification.new do |s|
       s.add_runtime_dependency(%q<state_machines>, ["~> 0.2"])
       s.add_runtime_dependency(%q<msgpack>, ["~> 0.6"])
       s.add_runtime_dependency(%q<rbczmq>, ["~> 1.7"])
+      s.add_runtime_dependency(%q<gli>, ["~> 2.3"])
       s.add_development_dependency(%q<hoe-mercurial>, ["~> 1.4"])
-      s.add_development_dependency(%q<hoe-deveiate>, ["~> 0.7"])
       s.add_development_dependency(%q<hoe-highline>, ["~> 0.2"])
       s.add_development_dependency(%q<rdoc>, ["~> 4.0"])
       s.add_development_dependency(%q<rspec>, ["~> 3.2"])
@@ -48,8 +48,8 @@ Gem::Specification.new do |s|
       s.add_dependency(%q<state_machines>, ["~> 0.2"])
       s.add_dependency(%q<msgpack>, ["~> 0.6"])
       s.add_dependency(%q<rbczmq>, ["~> 1.7"])
+      s.add_dependency(%q<gli>, ["~> 2.3"])
       s.add_dependency(%q<hoe-mercurial>, ["~> 1.4"])
-      s.add_dependency(%q<hoe-deveiate>, ["~> 0.7"])
       s.add_dependency(%q<hoe-highline>, ["~> 0.2"])
       s.add_dependency(%q<rdoc>, ["~> 4.0"])
       s.add_dependency(%q<rspec>, ["~> 3.2"])
@@ -65,8 +65,8 @@ Gem::Specification.new do |s|
     s.add_dependency(%q<state_machines>, ["~> 0.2"])
     s.add_dependency(%q<msgpack>, ["~> 0.6"])
     s.add_dependency(%q<rbczmq>, ["~> 1.7"])
+    s.add_dependency(%q<gli>, ["~> 2.3"])
     s.add_dependency(%q<hoe-mercurial>, ["~> 1.4"])
-    s.add_dependency(%q<hoe-deveiate>, ["~> 0.7"])
     s.add_dependency(%q<hoe-highline>, ["~> 0.2"])
     s.add_dependency(%q<rdoc>, ["~> 4.0"])
     s.add_dependency(%q<rspec>, ["~> 3.2"])
