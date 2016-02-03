@@ -24,29 +24,67 @@ class Arborist::Node
 	       Arborist::MethodUtilities
 
 
-	##
 	# The key for the thread local that is used to track instances as they're
 	# loaded.
 	LOADED_INSTANCE_KEY = :loaded_node_instances
 
-
-	##
 	# The struct for the 'ack' operational property
 	ACK = Struct.new( 'ArboristNodeACK', :message, :via, :sender, :time )
 
-	##
 	# The keys required to be set for an ACK
 	ACK_REQUIRED_PROPERTIES = %w[ message sender ]
 
 
-	##
+
 	# Log via the Arborist logger
 	log_to :arborist
 
-	##
 	# Search for plugins in lib/arborist/node directories in loaded gems
 	plugin_prefixes 'arborist/node'
 
+
+	##
+	# :method: unknown?
+	# Returns +true+ if the node is in an 'unknown' state.
+
+	##
+	# :method: up?
+	# Returns +true+ if the node is in an 'up' state.
+
+	##
+	# :method: down?
+	# Returns +true+ if the node is in an 'down' state.
+
+	##
+	# :method: acked?
+	# Returns +true+ if the node is in an 'acked' state.
+
+	##
+	# :method: disabled?
+	# Returns +true+ if the node is in an 'disabled' state.
+
+	##
+	# :method: human_status_name
+	# Return the node's status as a human-readable String.
+
+	##
+	# :method: status
+	# Return the +status+ of the node. This will be one of: +unknown+, +up+, +down+, +acked+, or
+	# +disabled+.
+
+	##
+	# :method: status=
+	# :call-seq:
+	#   status=( new_status )
+	#
+	# Set the status of the node to +new_status+.
+
+	##
+	# :method: status?
+	# :call-seq:
+	#   status?( status_name )
+	#
+	# Returns +true+ if the node's status is +status_name+.
 
 	state_machine( :status, initial: :unknown ) do
 
