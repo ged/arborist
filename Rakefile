@@ -38,6 +38,8 @@ hoespec = Hoe.spec 'arborist' do |spec|
 	spec.dependency 'state_machines', '~> 0.2'
 	spec.dependency 'msgpack', '~> 0.6'
 	spec.dependency 'rbczmq', '~> 1.7'
+	spec.dependency 'gli', '~> 2.3'
+	spec.dependency 'highline', '~> 1.7'
 
 	spec.dependency 'rspec', '~> 3.2', :developer
 	spec.dependency 'simplecov', '~> 0.9', :developer
