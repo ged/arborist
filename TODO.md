@@ -4,12 +4,13 @@
 
 * Serialize nodes on shutdown
 * Include a node's subscriptions in its serialized data
-* Implement loading/reloading nodes. 
+* Implement API for loading/reloading nodes. 
 * Implement the system events (sys.acked, sys.reloaded, etc.)
 
 ## Tree API
 
 * Add "grafting": node add/removal
+* Modify operational attributes of a node
 
 ## Observers
 
@@ -24,7 +25,7 @@
 
 * Allow (require?) node types to specify what kinds of nodes can be
   their parent, and also adds the constructor DSL method to it
-
+* Allow expressing arbitrary, secondary dependencies between nodes (FTP under host X can't operate if LDAP under host N is down, etc)
 
 ## Setup/Installation
 
