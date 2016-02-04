@@ -212,3 +212,38 @@ Get notified of every system event (startup, shutdown, reload, etc.)
     Nil
 
 
+## graft
+
+    {
+        action: graft,
+        version: 1,
+        type: 'host',
+        identifier: 'bennett'
+    },
+    {
+        addresses: [],
+        tags: []
+    }
+
+
+## prune
+
+    {
+        action: prune,
+        version: 1,
+        identifier: 'bennett'
+    },
+    Nil
+
+
+## modify
+
+    {
+        action: modify,
+        version: 1,
+        identifier: 'bennett'
+    },
+    {
+        addresses: ['10.13.0.22', '10.1.0.23']
+    }
+
