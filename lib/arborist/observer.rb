@@ -28,7 +28,7 @@ class Arborist::Observer
 	OBSERVER_FILE_PATTERN = '**/*.rb'
 
 
-	Arborist.add_dsl_constructor( :Observer ) do |description, &block|
+	Arborist.add_dsl_constructor( self ) do |description, &block|
 		Arborist::Observer.new( description, &block )
 	end
 

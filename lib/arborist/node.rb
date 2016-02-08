@@ -117,7 +117,11 @@ class Arborist::Node
 
 	### Return a curried Proc for the ::create method for the specified +type+.
 	def self::curried_create( type )
+		if type.subnode_type?
+			return self.method( :create ).to_proc.curry( 3 )[ type ]
+		else
 		return self.method( :create ).to_proc.curry( 2 )[ type ]
+	end
 	end
 
 
@@ -151,14 +155,46 @@ class Arborist::Node
 	def self::inherited( subclass )
 		super
 
-		if name = subclass.name
-			name.sub!( /.*::/, '' )
-			body = self.curried_create( subclass )
-			Arborist.add_dsl_constructor( name, &body )
-		else
-			self.log.info "Skipping DSL constructor for anonymous class."
+		body = self.curried_create( subclass )
+		Arborist.add_dsl_constructor( subclass, &body )
+	end
+
+
+	### Get/set the node type instances of the class live under. If no parent_type is set, it
+	### is a top-level node type.
+	def self::parent_types( *types )
+		@parent_types ||= []
+
+		types.each do |new_type|
+			subclass = Arborist::Node.get_subclass( new_type )
+			@parent_types << subclass
+			subclass.add_subnode_factory_method( self )
 		end
 
+		return @parent_types
+	end
+	singleton_method_alias :parent_type, :parent_types
+
+
+	### Returns +true+ if the receiver must be created under a specific node type.
+	def self::subnode_type?
+		return ! self.parent_types.empty?
+	end
+
+
+	### Add a factory method that can be used to create subnodes of the specified +subnode_type+
+	### on instances of the receiving class.
+	def self::add_subnode_factory_method( subnode_type )
+		if subnode_type.name
+			name = subnode_type.plugin_name
+			body = lambda do |identifier, attributes={}, &block|
+				return Arborist::Node.create( name, identifier, self, attributes, &block )
+			end
+
+			define_method( name, &body )
+		else
+			self.log.info "Skipping factory constructor for anonymous subnode class."
+		end
 	end
 
 
@@ -188,12 +224,15 @@ class Arborist::Node
 
 	### Create a new Node with the specified +identifier+, which must be unique to the
 	### loaded tree.
-	def initialize( identifier, &block )
+	def initialize( identifier, *args, &block )
+		attributes  = args.last.is_a?( Hash ) ? args.pop : {}
+		parent_node = args.pop
+
 		raise "Invalid identifier %p" % [identifier] unless
 			identifier =~ /^\w[\w\-]*$/
 
 		@identifier     = identifier
-		@parent         = '_'
+		@parent         = parent_node ? parent_node.identifier : '_'
 		@description    = nil
 		@tags           = Set.new
 		@source         = nil
@@ -213,6 +252,7 @@ class Arborist::Node
 		@pending_update_events = []
 		@subscriptions  = {}
 
+		self.modify( attributes )
 		self.instance_eval( &block ) if block
 	end
 
@@ -273,6 +313,20 @@ class Arborist::Node
 	end
 
 
+	### Set one or more node +attributes+. This should be overridden by subclasses which
+	### wish to allow their operational attributes to be set/updated via the Tree API
+	### (+modify+ and +graft+). Supported attributes are: +parent+, +description+, and
+	### +tags+.
+	def modify( attributes )
+		self.parent( attributes[:parent] ) if attributes[:parent]
+		self.description( attributes[:description] ) if attributes[:description]
+		if attributes[:tags]
+			self.tags.clear
+			self.tags( attributes[:tags] )
+		end
+	end
+
+
 	#
 	# :section: DSLish declaration methods
 	# These methods are both getter and setter for a node's attributes, used
@@ -301,6 +355,7 @@ class Arborist::Node
 
 	### Declare one or more +tags+ for this node.
 	def tags( *tags )
+		tags.flatten!
 		@tags.merge( tags.map(&:to_s) ) unless tags.empty?
 		return @tags.to_a
 	end

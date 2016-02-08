@@ -35,7 +35,7 @@ class Arborist::Monitor
 	DEFAULT_SPLAY = 0
 
 
-	Arborist.add_dsl_constructor( :Monitor ) do |description, &block|
+	Arborist.add_dsl_constructor( self ) do |description, &block|
 		Arborist::Monitor.new( description, &block )
 	end
 

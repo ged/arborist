@@ -15,6 +15,10 @@ require 'arborist/mixins'
 
 class TestNode < Arborist::Node; end
 
+class TestSubNode < Arborist::Node
+	parent_type :test
+end
+
 class TestEvent < Arborist::Event; end
 
 

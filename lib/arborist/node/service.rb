@@ -16,21 +16,27 @@ class Arborist::Node::Service < Arborist::Node
 	DEFAULT_PROTOCOL = 'tcp'
 
 
+	# Services live under Host nodes
+	parent_type :host
+
+
 	### Create a new Service node.
-	def initialize( identifier, host, options={}, &block )
-		my_identifier = "%s-%s" % [ host.identifier, identifier ]
-		super( my_identifier )
+	def initialize( identifier, host, attributes={}, &block )
+		qualified_identifier = "%s-%s" % [ host.identifier, identifier ]
+		@host         = host
 
-		@host = host
-		@parent = host.identifier
-		@app_protocol = options[:app_protocol] || identifier
-		@protocol = options[:protocol] || DEFAULT_PROTOCOL
+		@app_protocol = attributes[ :app_protocol ] || identifier
+		@protocol     = attributes[ :protocol ] || DEFAULT_PROTOCOL
+		@port         = attributes[ :port ]
 
-		service_port = options[:port] || default_port_for( @app_protocol, @protocol ) or
-			raise ArgumentError, "can't determine the port for %s/%s" % [ @app_protocol, @protocol ]
-		@port = Integer( service_port )
+		super( qualified_identifier, host, attributes, &block )
 
-		self.instance_eval( &block ) if block
+		unless @port
+			service_port = default_port_for( @app_protocol, @protocol ) or
+				raise ArgumentError, "can't determine the port for %s/%s" %
+					[ @app_protocol, @protocol ]
+			@port = Integer( service_port )
+		end
 	end
 
 
@@ -42,13 +48,19 @@ class Arborist::Node::Service < Arborist::Node
 	# The network port the service uses
 	attr_reader :port
 
-	##
-	# The transport layer protocol the service uses
-	attr_reader :protocol
 
-	##
-	# The (layer 7) protocol used by the service
-	attr_reader :app_protocol
+	### Get/set the (layer 7) protocol used by the service
+	def app_protocol( new_proto=nil )
+		return @app_protocol unless new_proto
+		@app_protocol = new_proto
+	end
+
+
+	### Get/set the transport layer protocol the service uses
+	def protocol( new_proto=nil )
+		return @protocol unless new_proto
+		@protocol = new_proto
+	end
 
 
 	### Delegate the service's address to its host.
@@ -93,6 +105,14 @@ class Arborist::Node::Service < Arborist::Node
 			self.protocol,
 			self.port,
 		]
+	end
+
+
+	### Overridden to disallow modification of a Service's parent, as it needs a reference to
+	### the Host node for delegation.
+	def parent( new_parent=nil )
+		return super unless new_parent
+		raise "Can't reparent a service; replace the node instead"
 	end
 
 

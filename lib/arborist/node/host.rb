@@ -19,7 +19,7 @@ class Arborist::Node::Host < Arborist::Node
 
 
 	### Create a new Host node.
-	def initialize( identifier, &block )
+	def initialize( identifier, attributes={}, &block )
 		@addresses = []
 		super
 	end
@@ -34,6 +34,20 @@ class Arborist::Node::Host < Arborist::Node
 	attr_reader :addresses
 
 
+	### Set one or more node +attributes+. Supported attributes (in addition to
+	### those supported by Node) are: +addresses+.
+	def modify( attributes )
+		super
+
+		if attributes[:addresses]
+			self.addresses.clear
+			Array( attributes[:addresses] ).each do |addr|
+				self.address( addr )
+			end
+		end
+	end
+
+
 	### Return the host's operational attributes.
 	def operational_values
 		properties = super
@@ -42,7 +56,7 @@ class Arborist::Node::Host < Arborist::Node
 
 
 	### Set an IP address of the host.
-	def address( new_address, options={} )
+	def address( new_address )
 		self.log.debug "Adding address %p to %p" % [ new_address, self ]
 		case new_address
 		when IPAddr
@@ -73,9 +87,9 @@ class Arborist::Node::Host < Arborist::Node
 
 
 	### Add a service to the host
-	def service( name, options={}, &block )
-		return Arborist::Node.create( :service, name, self, options, &block )
-	end
+	# def service( name, attributes={}, &block )
+	# 	return Arborist::Node.create( :service, name, self, attributes, &block )
+	# end
 
 
 	### Return host-node-specific information for #inspect.

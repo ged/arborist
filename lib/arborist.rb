@@ -103,10 +103,17 @@ module Arborist
 
 	### Add a constructor function to the Arborist namespace called +name+
 	### with the specified +method_body+.
-	def self::add_dsl_constructor( name, &method_body )
-		self.log.debug "Adding constructor for %p: %p" % [ name, method_body ]
-		singleton_class.instance_exec( name, method_body ) do |name, body|
-			define_method( name, &body )
+	def self::add_dsl_constructor( subclass, &method_body )
+		name = subclass.name
+
+		if name
+			name.sub!( /.*::/, '' )
+			self.log.debug "Adding factory method for %p: %p" % [ name, method_body ]
+			singleton_class.instance_exec( name, method_body ) do |name, body|
+				define_method( name, &body )
+			end
+		else
+			self.log.info "Skipping DSL constructor for anonymous class."
 		end
 	end
 

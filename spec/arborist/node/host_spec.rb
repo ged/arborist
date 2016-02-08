@@ -75,6 +75,36 @@ describe Arborist::Node::Host do
 	end
 
 
+	it "can be created with address attributes" do
+		result = described_class.new( 'testhost', addresses: '192.168.118.3' )
+		expect( result.addresses ).to include( IPAddr.new('192.168.118.3') )
+	end
+
+
+	it "appends block address arguments to addresses in attributes" do
+		result = described_class.new( 'testhost', addresses: '192.168.118.3' ) do
+			address '127.0.0.1'
+		end
+
+		expect( result.addresses.length ).to eq( 2 )
+		expect( result.addresses ).to include(
+			IPAddr.new( '192.168.118.3' ),
+			IPAddr.new( '127.0.0.1' )
+		)
+	end
+
+
+	it "replaces its addresses when it's updated via #modify" do
+		result = described_class.new( 'testhost' ) do
+			address '192.168.118.3'
+		end
+
+		result.modify( addresses: ['192.168.28.2'] )
+
+		expect( result.addresses ).to include( IPAddr.new('192.168.28.2') )
+		expect( result.addresses ).to_not include( IPAddr.new('192.168.118.3') )
+	end
+
 	describe "matching" do
 
 		let( :node ) do

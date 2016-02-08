@@ -9,9 +9,11 @@ require 'arborist/node'
 describe Arborist::Node do
 
 	let( :concrete_class ) { TestNode }
+	let( :subnode_class ) { TestSubNode }
 
 	let( :identifier ) { 'the_identifier' }
 	let( :identifier2 ) { 'the_other_identifier' }
+
 
 	it "can be loaded from a file" do
 		concrete_instance = nil
@@ -23,6 +25,20 @@ describe Arborist::Node do
 		expect( result ).to be_an( Array )
 		expect( result.length ).to eq( 1 )
 		expect( result ).to include( concrete_instance )
+	end
+
+
+	it "can be constructed from a Hash" do
+		instance = concrete_class.new( identifier,
+			parent: 'branch',
+			description: 'A testing node',
+			tags: ['internal', 'testing']
+		)
+
+		expect( instance ).to be_a( described_class )
+		expect( instance.parent ).to eq( 'branch' )
+		expect( instance.description ).to eq( 'A testing node' )
+		expect( instance.tags ).to include( 'internal', 'testing' )
 	end
 
 
@@ -54,6 +70,23 @@ describe Arborist::Node do
 		expect {
 		   described_class.new 'bad identifier'
 		}.to raise_error( RuntimeError, /identifier/i )
+	end
+
+
+	context "subnode classes" do
+
+		it "can declare the type of node they live under" do
+			expect( subnode_class.parent_types ).to include( described_class.get_subclass(:test) )
+		end
+
+
+		it "can be constructed via a factory method on instances of their parent type" do
+			parent = concrete_class.new( 'branch' )
+			node = parent.testsub( 'leaf' )
+			expect( node ).to be_an_instance_of( subnode_class )
+			expect( node.parent ).to eq( parent.identifier )
+		end
+
 	end
 
 
