@@ -23,8 +23,6 @@
 
 ## Node
 
-* Allow (require?) node types to specify what kinds of nodes can be
-  their parent, and also adds the constructor DSL method to it
 * Allow expressing arbitrary, secondary dependencies between nodes (FTP under host X can't operate if LDAP under host N is down, etc)
 
 ## Setup/Installation
