@@ -133,6 +133,22 @@ class Arborist::Client
 	end
 
 
+	### Remove a node
+	def prune( *args )
+		request = self.make_prune_request( *args )
+		response = self.send_tree_api_request( request )
+		return response
+	end
+
+
+	### Remove the node with the specified +identfier+.
+	def make_prune_request( identifier )
+		self.log.debug "Making prune request for identifier: %s" % [ identifier ]
+
+		return self.pack_message( :prune, identifier: identifier )
+	end
+
+
 	### Send the packed +request+ via the Tree API socket, raise an error on
 	### unsuccessful response, and return the response body.
 	def send_tree_api_request( request )

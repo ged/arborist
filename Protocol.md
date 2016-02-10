@@ -218,7 +218,8 @@ Get notified of every system event (startup, shutdown, reload, etc.)
         action: graft,
         version: 1,
         type: 'host',
-        identifier: 'bennett'
+        identifier: 'joliet',
+        parent: 'bennett' # defaults to root
     },
     {
         addresses: [],

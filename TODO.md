@@ -4,12 +4,13 @@
 
 * Serialize nodes on shutdown
 * Include a node's subscriptions in its serialized data
-* Implement API for loading/reloading nodes. 
+* Implement API for loading/reloading nodes for fsevents or
+  LDAP changes. 
 * Implement the system events (sys.acked, sys.reloaded, etc.)
 
 ## Tree API
 
-* Add "grafting": node add/removal
+* Add "grafting": node add
 * Modify operational attributes of a node
 
 ## Observers

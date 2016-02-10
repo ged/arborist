@@ -190,6 +190,34 @@ describe Arborist::Client do
 			expect( sub.event_type ).to eq( nil )
 		end
 
+
+		it "can unsubscribe from events using a subscription ID" do
+			sub_id = client.subscribe
+			res = client.unsubscribe( sub_id )
+			expect( res ).to be_truthy
+			expect( manager.subscriptions ).to_not include( sub_id )
+		end
+
+
+		it "returns nil without error when unsubscribing to a non-existant subscription" do
+			res = client.unsubscribe( 'a_subid' )
+			expect( res ).to be_nil
+		end
+
+
+		it "can prune nodes from the tree" do
+			res = client.prune( 'sidonie-ssh' )
+
+			expect( res ).to eq( true )
+			expect( manager.nodes ).to_not include( 'sidonie-ssh' )
+		end
+
+
+		it "returns nil without error when pruning a node that doesn't exist" do
+			res = client.prune( 'carrigor' )
+			expect( res ).to be_nil
+		end
+
 	end
 
 

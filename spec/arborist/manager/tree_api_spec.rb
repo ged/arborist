@@ -456,4 +456,54 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 
 	end
 
+
+	describe "prune" do
+
+		it "removes a single node" do
+			msg = pack_message( :prune, {identifier: 'duir-ssh'}, nil )
+			sock.send( msg )
+			resmsg = sock.recv
+
+			hdr, body = unpack_message( resmsg )
+			expect( hdr ).to include( 'success' => true )
+			expect( body ).to eq( true )
+			expect( manager.nodes ).to_not include( 'duir-ssh' )
+		end
+
+
+		it "returns Nil without error if the node to prune didn't exist" do
+			msg = pack_message( :prune, {identifier: 'shemp-ssh'}, nil )
+			sock.send( msg )
+			resmsg = sock.recv
+
+			hdr, body = unpack_message( resmsg )
+			expect( hdr ).to include( 'success' => true )
+			expect( body ).to be_nil
+		end
+
+
+		it "removes children nodes along with the parent" do
+			msg = pack_message( :prune, {identifier: 'duir'}, nil )
+			sock.send( msg )
+			resmsg = sock.recv
+
+			hdr, body = unpack_message( resmsg )
+			expect( hdr ).to include( 'success' => true )
+			expect( body ).to eq( true )
+			expect( manager.nodes ).to_not include( 'duir' )
+			expect( manager.nodes ).to_not include( 'duir-ssh' )
+		end
+
+
+		it "returns an error to the client when missing required attributes" do
+			msg = pack_message( :prune )
+			sock.send( msg )
+			resmsg = sock.recv
+
+			hdr, body = unpack_message( resmsg )
+			expect( hdr ).to include( 'success' => false )
+			expect( hdr['reason'] ).to match( /no identifier/i )
+		end
+	end
 end
+

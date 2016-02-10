@@ -203,5 +203,17 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 		return successful_response( nil )
 	end
 
+
+	### Remove a node and its children.
+	def handle_prune_request( header, body )
+		self.log.info "PRUNE: %p" % [ header ]
+
+		identifier = header[ 'identifier' ] or
+			return error_response( 'client', 'No identifier specified for PRUNE.' )
+		node = @manager.remove_node( identifier )
+
+		return successful_response( node ? true : nil )
+	end
+
 end # class Arborist::Manager::TreeAPI
 
