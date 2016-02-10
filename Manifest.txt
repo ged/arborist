@@ -3,7 +3,6 @@
 ChangeLog
 Events.md
 History.md
-LICENSE
 Manifest.txt
 Monitors.md
 Nodes.md

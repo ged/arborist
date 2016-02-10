@@ -82,10 +82,11 @@ if File.directory?( '.hg' )
 	end
 end
 
-task :gemspec => GEMSPEC
+task :gemspec => [ 'ChangeLog', GEMSPEC ]
 file GEMSPEC => __FILE__ do |task|
 	spec = $hoespec.spec
 	spec.files.delete( '.gemtest' )
+	spec.files.delete( 'LICENSE' )
 	spec.signing_key = nil
 	spec.version = "#{spec.version}.pre#{Time.now.strftime("%Y%m%d%H%M%S")}"
 	File.open( task.name, 'w' ) do |fh|
