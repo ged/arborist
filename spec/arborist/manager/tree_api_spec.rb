@@ -505,5 +505,117 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 			expect( hdr['reason'] ).to match( /no identifier/i )
 		end
 	end
+
+
+	describe "graft" do
+
+		it "can add a node with no explicit parent" do
+			header = {
+				identifier: 'guenter',
+		        type: 'host',
+			}
+			attributes = {
+				description: 'The evil penguin node of doom.',
+				addresses: ['10.2.66.8'],
+				tags: ['internal', 'football']
+			}
+			msg = pack_message( :graft, header, attributes )
+
+			sock.send( msg )
+			resmsg = sock.recv
+
+			hdr, body = unpack_message( resmsg )
+			expect( hdr ).to include( 'success' => true )
+			expect( body ).to eq( 'guenter' )
+
+			new_node = manager.nodes[ 'guenter' ]
+			expect( new_node ).to be_a( Arborist::Node::Host )
+			expect( new_node.identifier ).to eq( header[:identifier] )
+			expect( new_node.description ).to eq( attributes[:description] )
+			expect( new_node.addresses ).to eq([ IPAddr.new(attributes[:addresses].first) ])
+			expect( new_node.tags ).to include( *attributes[:tags] )
+		end
+
+
+		it "can add a node with a parent specified" do
+			header = {
+				identifier: 'orgalorg',
+		        type: 'host',
+				parent: 'duir'
+			}
+			attributes = {
+				description: 'The true form of the evil penguin node of doom.',
+				addresses: ['192.168.22.8'],
+				tags: ['evil', 'space', 'entity']
+			}
+			msg = pack_message( :graft, header, attributes )
+
+			sock.send( msg )
+			resmsg = sock.recv
+
+			hdr, body = unpack_message( resmsg )
+			expect( hdr ).to include( 'success' => true )
+			expect( body ).to eq( 'orgalorg' )
+
+			new_node = manager.nodes[ 'orgalorg' ]
+			expect( new_node ).to be_a( Arborist::Node::Host )
+			expect( new_node.identifier ).to eq( header[:identifier] )
+			expect( new_node.parent ).to eq( header[:parent] )
+			expect( new_node.description ).to eq( attributes[:description] )
+			expect( new_node.addresses ).to eq([ IPAddr.new(attributes[:addresses].first) ])
+			expect( new_node.tags ).to include( *attributes[:tags] )
+		end
+
+
+		it "can add a subordinate node" do
+			header = {
+				identifier: 'echo',
+		        type: 'service',
+				parent: 'duir'
+			}
+			attributes = {
+				description: 'Mmmmm AppleTalk.'
+			}
+			msg = pack_message( :graft, header, attributes )
+
+			sock.send( msg )
+			resmsg = sock.recv
+
+			hdr, body = unpack_message( resmsg )
+			expect( hdr ).to include( 'success' => true )
+			expect( body ).to eq( 'duir-echo' )
+
+			new_node = manager.nodes[ 'duir-echo' ]
+			expect( new_node ).to be_a( Arborist::Node::Service )
+			expect( new_node.identifier ).to eq( 'duir-echo' )
+			expect( new_node.parent ).to eq( header[:parent] )
+			expect( new_node.description ).to eq( attributes[:description] )
+			expect( new_node.port ).to eq( 7 )
+			expect( new_node.protocol ).to eq( 'tcp' )
+			expect( new_node.app_protocol ).to eq( 'echo' )
+		end
+
+
+		it "errors if adding a subordinate node with no parent" do
+			header = {
+				identifier: 'echo',
+		        type: 'service'
+			}
+			attributes = {
+				description: 'Mmmmm AppleTalk.'
+			}
+			msg = pack_message( :graft, header, attributes )
+
+			sock.send( msg )
+			resmsg = sock.recv
+
+			hdr, body = unpack_message( resmsg )
+			expect( hdr ).to include( 'success' => false )
+			expect( hdr['reason'] ).to match( /no host given/i )
+		end
+
+	end
+
+
 end
 

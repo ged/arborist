@@ -17,5 +17,7 @@ module Arborist
 
 	class ServerError < RuntimeError; end
 
+	class NodeError < RuntimeError; end
+
 end # module Arborist
 

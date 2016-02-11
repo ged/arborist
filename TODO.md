@@ -10,14 +10,10 @@
 
 ## Tree API
 
-* Add "grafting": node add
 * Modify operational attributes of a node
 
 ## Observers
 
-* Scheduling time periods for action/summarizing
-* Summarizing and Actions should be 1st order objects
-* Unsubscribe from Arborist and ZMQ subscriptions on shutdown
 * Figure out how to match on delta events: the criteria
   for matching nodes has to be separated from that which matches
   the delta pairs.

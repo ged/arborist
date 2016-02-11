@@ -215,5 +215,34 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 		return successful_response( node ? true : nil )
 	end
 
+
+	### Add a node
+	def handle_graft_request( header, body )
+		self.log.info "GRAFT: %p" % [ header ]
+
+		identifier = header[ 'identifier' ] or
+			return error_response( 'client', 'No identifier specified for GRAFT.' )
+		type = header[ 'type' ] or
+			return error_response( 'client', 'No type specified for GRAFT.' )
+		parent = header[ 'parent' ] || '_'
+		parent_node = @manager.nodes[ parent ] or
+			return error_response( 'client', 'No parent node found for %s.' % [parent] )
+
+		self.log.debug "Grafting a new %s node under %p" % [ type, parent_node ]
+
+		# If the parent has a factory method for the node type, use it, otherwise
+		# use the Pluggability factory
+		node = if parent_node.respond_to?( type )
+				parent_node.method( type ).call( identifier, body )
+			else
+				body.merge!( parent: parent )
+				Arborist::Node.create( type, identifier, body )
+			end
+
+		@manager.add_node( node )
+
+		return successful_response( node ? node.identifier : nil )
+	end
+
 end # class Arborist::Manager::TreeAPI
 

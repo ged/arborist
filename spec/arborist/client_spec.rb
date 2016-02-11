@@ -218,6 +218,30 @@ describe Arborist::Client do
 			expect( res ).to be_nil
 		end
 
+
+		it "can graft new nodes onto the tree" do
+			res = client.graft( 'breakfast-burrito', type: 'host' )
+			expect( res ).to eq( 'breakfast-burrito' )
+			expect( manager.nodes ).to include( 'breakfast-burrito' )
+			expect( manager.nodes['breakfast-burrito'] ).to be_a( Arborist::Node::Host )
+			expect( manager.nodes['breakfast-burrito'].parent ).to eq( '_' )
+		end
+
+
+		it "can graft nodes with attributes onto the tree" do
+			res = client.graft( 'breakfast-burrito',
+				type: 'service',
+				parent: 'duir',
+				port: 9999,
+				tags: ['yusss']
+			)
+			expect( res ).to eq( 'duir-breakfast-burrito' )
+			expect( manager.nodes ).to include( 'duir-breakfast-burrito' )
+			expect( manager.nodes['duir-breakfast-burrito'] ).to be_a( Arborist::Node::Service )
+			expect( manager.nodes['duir-breakfast-burrito'].parent ).to eq( 'duir' )
+			expect( manager.nodes['duir-breakfast-burrito'].port ).to eq( 9999 )
+			expect( manager.nodes['duir-breakfast-burrito'].tags ).to include( 'yusss' )
+		end
 	end
 
 

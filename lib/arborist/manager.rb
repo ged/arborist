@@ -336,7 +336,7 @@ class Arborist::Manager
 	def add_node( node )
 		identifier = node.identifier
 
-		unless self.nodes[identifier].equal?( node )
+		unless self.nodes[ identifier ].equal?( node )
 			self.remove_node( self.nodes[identifier] )
 			self.nodes[ identifier ] = node
 		end

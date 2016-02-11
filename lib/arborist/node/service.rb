@@ -6,10 +6,13 @@ require 'ipaddr'
 require 'socket'
 
 require 'arborist/node'
+require 'arborist/mixins'
 
 
 # A node type for Arborist trees that represent services running on hosts.
 class Arborist::Node::Service < Arborist::Node
+	include Arborist::HashUtilities
+
 
 	# The default transport layer protocol to use for services that don't specify
 	# one
@@ -22,12 +25,13 @@ class Arborist::Node::Service < Arborist::Node
 
 	### Create a new Service node.
 	def initialize( identifier, host, attributes={}, &block )
+		raise Arborist::NodeError, "no host given" unless host.is_a?( Arborist::Node::Host )
 		qualified_identifier = "%s-%s" % [ host.identifier, identifier ]
-		@host         = host
 
-		@app_protocol = attributes[ :app_protocol ] || identifier
-		@protocol     = attributes[ :protocol ] || DEFAULT_PROTOCOL
-		@port         = attributes[ :port ]
+		@host = host
+
+		attributes[ :app_protocol ] ||= identifier
+		attributes[ :protocol ] ||= DEFAULT_PROTOCOL
 
 		super( qualified_identifier, host, attributes, &block )
 
@@ -44,9 +48,23 @@ class Arborist::Node::Service < Arborist::Node
 	public
 	######
 
-	##
-	# The network port the service uses
-	attr_reader :port
+	### Set service +attributes+.
+	def modify( attributes )
+		attributes = stringify_keys( attributes )
+
+		super
+
+		self.port( attributes['port'] )
+		self.app_protocol( attributes['app_protocol'] )
+		self.protocol( attributes['protocol'] )
+	end
+
+
+	### Get/set the port the service is bound to.
+	def port( new_port=nil )
+		return @port unless new_port
+		@port = new_port
+	end
 
 
 	### Get/set the (layer 7) protocol used by the service

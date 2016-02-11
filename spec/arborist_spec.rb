@@ -16,10 +16,6 @@ describe Arborist do
 		ENV.delete(Arborist::CONFIG_ENV)
 	end
 
-	after( :each ) do
-		Arborist::Node::Root.reset
-	end
-
 	after( :all ) do
 		ENV[Arborist::CONFIG_ENV] = @original_config_env
 	end

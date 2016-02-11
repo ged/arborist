@@ -8,11 +8,6 @@ require 'arborist/manager'
 
 describe Arborist::Manager do
 
-	after( :each ) do
-		Arborist::Node::Root.reset
-	end
-
-
 	let( :manager ) { described_class.new }
 
 

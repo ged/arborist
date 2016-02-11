@@ -149,6 +149,31 @@ class Arborist::Client
 	end
 
 
+	### Add a new node to the tree.
+	def graft( *args )
+		request = self.make_graft_request( *args )
+		response = self.send_tree_api_request( request )
+		return response
+	end
+
+
+	### Add a node with the specified +identifier+ and +arguments+.
+	def make_graft_request( identifier, attributes={} )
+		self.log.debug "Making graft request for identifer: %s" % [ identifier ]
+
+		parent = attributes.delete( :parent )
+		type   = attributes.delete( :type )
+
+		header = {
+			identifier: identifier,
+			parent:     parent,
+			type:       type
+		}
+
+		return self.pack_message( :graft, header, attributes )
+	end
+
+
 	### Send the packed +request+ via the Tree API socket, raise an error on
 	### unsuccessful response, and return the response body.
 	def send_tree_api_request( request )

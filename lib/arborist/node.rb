@@ -252,6 +252,7 @@ class Arborist::Node
 		@pending_update_events = []
 		@subscriptions  = {}
 
+		self.log.debug "Setting node attributes to: %p" % [ attributes ]
 		self.modify( attributes )
 		self.instance_eval( &block ) if block
 	end
@@ -318,11 +319,14 @@ class Arborist::Node
 	### (+modify+ and +graft+). Supported attributes are: +parent+, +description+, and
 	### +tags+.
 	def modify( attributes )
-		self.parent( attributes[:parent] ) if attributes[:parent]
-		self.description( attributes[:description] ) if attributes[:description]
-		if attributes[:tags]
+		attributes = stringify_keys( attributes )
+
+		self.parent( attributes['parent'] )
+		self.description( attributes['description'] )
+
+		if attributes['tags']
 			self.tags.clear
-			self.tags( attributes[:tags] )
+			self.tags( attributes['tags'] )
 		end
 	end
 

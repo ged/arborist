@@ -37,11 +37,13 @@ class Arborist::Node::Host < Arborist::Node
 	### Set one or more node +attributes+. Supported attributes (in addition to
 	### those supported by Node) are: +addresses+.
 	def modify( attributes )
+		attributes = stringify_keys( attributes )
+
 		super
 
-		if attributes[:addresses]
+		if attributes['addresses']
 			self.addresses.clear
-			Array( attributes[:addresses] ).each do |addr|
+			Array( attributes['addresses'] ).each do |addr|
 				self.address( addr )
 			end
 		end
