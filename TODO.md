@@ -8,9 +8,6 @@
   LDAP changes. 
 * Implement the system events (sys.acked, sys.reloaded, etc.)
 
-## Tree API
-
-* Modify operational attributes of a node
 
 ## Observers
 

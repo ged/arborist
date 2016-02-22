@@ -244,5 +244,23 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 		return successful_response( node ? node.identifier : nil )
 	end
 
+
+	### Modify a node's operational attributes
+	def handle_modify_request( header, body )
+		self.log.info "MODIFY: %p" % [ header ]
+
+		identifier = header[ 'identifier' ] or
+			return error_response( 'client', 'No identifier specified for MODIFY.' )
+		return error_response( 'client', "Unable to MODIFY root node." ) if identifier == '_'
+		node = @manager.nodes[ identifier ] or
+			return error_response( 'client', "No such node %p" % [identifier] )
+
+		self.log.debug "Modifying operational attributes of the %s node: %p" % [ identifier, body ]
+
+		node.modify( body )
+
+		return successful_response( nil )
+	end
+
 end # class Arborist::Manager::TreeAPI
 

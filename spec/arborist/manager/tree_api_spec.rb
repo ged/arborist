@@ -617,5 +617,86 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 	end
 
 
+	describe "modify" do
+
+		it "can change operational attributes of a node" do
+			header = {
+				identifier: 'sidonie',
+			}
+			attributes = {
+				parent: '_',
+				addresses: ['192.168.32.32', '10.2.2.28']
+			}
+			msg = pack_message( :modify, header, attributes )
+
+			sock.send( msg )
+			resmsg = sock.recv
+
+			hdr, body = unpack_message( resmsg )
+			expect( hdr ).to include( 'success' => true )
+
+			node = manager.nodes[ 'sidonie' ]
+			expect(
+				node.addresses
+			).to eq( [IPAddr.new('192.168.32.32'), IPAddr.new('10.2.2.28')] )
+			expect( node.parent ).to eq( '_' )
+		end
+
+
+		it "ignores modifications to unsupported attributes" do
+			header = {
+				identifier: 'sidonie',
+			}
+			attributes = {
+				identifier: 'somethingelse'
+			}
+			msg = pack_message( :modify, header, attributes )
+
+			sock.send( msg )
+			resmsg = sock.recv
+
+			hdr, body = unpack_message( resmsg )
+			expect( hdr ).to include( 'success' => true )
+
+			expect( manager.nodes['sidonie'] ).to be_an( Arborist::Node )
+			expect( manager.nodes['sidonie'].identifier ).to eq( 'sidonie' )
+		end
+
+
+		it "errors on modifications to the root node" do
+			header = {
+				identifier: '_',
+			}
+			attributes = {
+				identifier: 'somethingelse'
+			}
+			msg = pack_message( :modify, header, attributes )
+
+			sock.send( msg )
+			resmsg = sock.recv
+
+			hdr, body = unpack_message( resmsg )
+			expect( hdr ).to include( 'success' => false )
+			expect( manager.nodes['_'].identifier ).to eq( '_' )
+		end
+
+
+		it "errors on modifications to nonexistent nodes" do
+			header = {
+				identifier: 'nopenopenope',
+			}
+			attributes = {
+				identifier: 'somethingelse'
+			}
+			msg = pack_message( :modify, header, attributes )
+
+			sock.send( msg )
+			resmsg = sock.recv
+
+			hdr, body = unpack_message( resmsg )
+			expect( hdr ).to include( 'success' => false )
+		end
+	end
+
 end
 

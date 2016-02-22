@@ -87,7 +87,8 @@ class Arborist::Client
 	### Update the identified nodes in the manager with the specified data.
 	def update( *args )
 		request = self.make_update_request( *args )
-		return self.send_tree_api_request( request )
+		self.send_tree_api_request( request )
+		return true
 	end
 
 
@@ -171,6 +172,22 @@ class Arborist::Client
 		}
 
 		return self.pack_message( :graft, header, attributes )
+	end
+
+
+	### Modify operational attributes of a node.
+	def modify( *args )
+		request = self.make_modify_request( *args )
+		response = self.send_tree_api_request( request )
+		return true
+	end
+
+
+	### Modify the operations +attributes+ of the node with the specified +identifier+.
+	def make_modify_request( identifier, attributes={} )
+		self.log.debug "Making modify request for identifer: %s" % [ identifier ]
+
+		return self.pack_message( :modify, {identifier: identifier}, attributes )
 	end
 
 

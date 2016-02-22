@@ -110,8 +110,9 @@ describe Arborist::Client do
 
 
 		it "can update the properties of managed nodes", :no_ci do
-			client.update( duir: { ping: {rtt: 24} } )
+			res = client.update( duir: { ping: {rtt: 24} } )
 
+			expect( res ).to be_truthy
 			expect( manager.nodes['duir'].properties ).to include( 'ping' )
 			expect( manager.nodes['duir'].properties['ping'] ).to include( 'rtt' )
 			expect( manager.nodes['duir'].properties['ping']['rtt'] ).to eq( 24 )
@@ -242,6 +243,14 @@ describe Arborist::Client do
 			expect( manager.nodes['duir-breakfast-burrito'].port ).to eq( 9999 )
 			expect( manager.nodes['duir-breakfast-burrito'].tags ).to include( 'yusss' )
 		end
+
+
+		it "can modify operational attributes of a node" do
+			res = client.modify( "duir", tags: 'girlrobot' )
+			expect( res ).to be_truthy
+			expect( manager.nodes['duir'].tags ).to eq( ['girlrobot'] )
+		end
+
 	end
 
 
