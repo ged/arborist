@@ -611,5 +611,44 @@ describe Arborist::Node do
 
 	end
 
+
+	describe "operational attribute modification" do
+
+
+		let( :node ) do
+			concrete_class.new( 'foo' ) do
+				parent 'bar'
+				description "The prototypical node"
+				tags :chunker, :hunky, :flippin, :hippo
+			end
+		end
+
+
+		it "can change its parent" do
+			node.modify( parent: 'foo' )
+			expect( node.parent ).to eq( 'foo' )
+		end
+
+
+		it "can change its description" do
+			node.modify( description: 'A different node' )
+			expect( node.description ).to eq( 'A different node' )
+		end
+
+
+		it "can change its tags" do
+			node.modify( tags: %w[dew dairy daisy dilettante] )
+			expect( node.tags ).to eq( %w[dew dairy daisy dilettante] )
+		end
+
+
+		it "arrayifies tags modifications" do
+			node.modify( tags: 'single' )
+			expect( node.tags ).to eq( %w[single] )
+		end
+
+
+	end
+
 end
 

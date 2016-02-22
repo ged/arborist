@@ -35,6 +35,8 @@ class Arborist::Node
 	ACK_REQUIRED_PROPERTIES = %w[ message sender ]
 
 
+	autoload :Root, 'arborist/node/root'
+
 
 	# Log via the Arborist logger
 	log_to :arborist
@@ -120,8 +122,8 @@ class Arborist::Node
 		if type.subnode_type?
 			return self.method( :create ).to_proc.curry( 3 )[ type ]
 		else
-		return self.method( :create ).to_proc.curry( 2 )[ type ]
-	end
+			return self.method( :create ).to_proc.curry( 2 )[ type ]
+		end
 	end
 
 
@@ -325,7 +327,7 @@ class Arborist::Node
 		self.description( attributes['description'] )
 
 		if attributes['tags']
-			self.tags.clear
+			@tags.clear
 			self.tags( attributes['tags'] )
 		end
 	end
