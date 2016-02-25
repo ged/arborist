@@ -1,26 +1,39 @@
 # To-Do
 
-## Manager
+## First Release (0.1)
+
+* README, Tutorial, Setup docs
+
+
+### Manager
 
 * Serialize nodes on shutdown
-* Include a node's subscriptions in its serialized data
-* Implement API for loading/reloading nodes for fsevents or
-  LDAP changes. 
-* Implement the system events (sys.acked, sys.reloaded, etc.)
+* Broadcast system events:
+    - `sys.node.added`
+    - `sys.node.removed`
+    - `sys.node.acked`
+    - `sys.node.disabled`
+    - `sys.startup`
+    - `sys.shutdown`
+    - `sys.reloaded`
 
 
-## Observers
+### Observers
 
-* Figure out how to match on delta events: the criteria
-  for matching nodes has to be separated from that which matches
-  the delta pairs.
+* Figure out how to match on delta events: how to specify the criteria for matching nodes vs. matching the changes in the delta?
+* Re-subscribe on `sys.startup`, `sys.reloaded`, `sys.node.added`
 
-## Node
+
+### Nodes
 
 * Allow expressing arbitrary, secondary dependencies between nodes (FTP under host X can't operate if LDAP under host N is down, etc)
 
-## Setup/Installation
 
-* Add a CLI for generating a basic setup and then adding 
-  nodes/monitors/observers to it.
+
+## Second Release (0.2)
+
+### Setup/Installation
+
+* Add a CLI for generating a basic setup and then adding nodes/monitors/observers to it.
+* Potential federation / referral for sibling managers
 
