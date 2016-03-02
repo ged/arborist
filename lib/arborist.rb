@@ -32,7 +32,7 @@ module Arborist
 	# Configurability API -- default configuration values
 	CONFIG_DEFAULTS = {
 		tree_api_url:  'ipc:///tmp/arborist_tree.sock',
-		event_api_url: 'ipc:///tmp/arborist_events.sock'
+		event_api_url: 'ipc:///tmp/arborist_events.sock',
 	}
 
 

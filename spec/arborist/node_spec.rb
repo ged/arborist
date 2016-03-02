@@ -336,6 +336,53 @@ describe Arborist::Node do
 			end
 
 
+			it "can restore saved state from an older copy of the node" do
+				old_node = Marshal.load( Marshal.dump(node) )
+
+				old_node.status = 'down'
+				old_node.status_changed = Time.now - 400
+				old_node.error = "Host unreachable"
+				old_node.update( ack: {
+					'time' => Time.now - 200,
+					'message' => "Technician dispatched.",
+					'sender' => 'darby@example.com'
+				} )
+				old_node.properties.replace(
+					'ping' => {
+						'ttl' => 0.23
+					}
+				)
+				old_node.last_contacted = Time.now - 28
+
+				node.restore( old_node )
+
+				expect( node.status ).to eq( old_node.status )
+				expect( node.status_changed ).to eq( old_node.status_changed )
+				expect( node.error ).to eq( old_node.error )
+				expect( node.ack ).to eq( old_node.ack )
+				expect( node.properties ).to include( old_node.properties )
+				expect( node.last_contacted ).to eq( old_node.last_contacted )
+			end
+
+
+			it "doesn't restore operational attributes from the node file on disk with those from saved state" do
+				old_node = Marshal.load( Marshal.dump(node) )
+				node_copy = Marshal.load( Marshal.dump(node) )
+
+				old_node.instance_variable_set( :@parent, 'foo' )
+				old_node.instance_variable_set( :@description, 'Some older description' )
+				old_node.tags( :bunker, :lucky, :tickle, :trucker )
+				old_node.source = '/somewhere/else'
+
+				node.restore( old_node )
+
+				expect( node.parent ).to eq( node_copy.parent )
+				expect( node.description ).to eq( node_copy.description )
+				expect( node.tags ).to eq( node_copy.tags )
+				expect( node.source ).to eq( node_copy.source )
+			end
+
+
 			it "can return a Hash of serializable node data" do
 				result = node.to_hash
 

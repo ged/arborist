@@ -8,3 +8,4 @@ coverage/
 doc/
 Procfile$
 \.env$
+arborist\.(state|tree)$

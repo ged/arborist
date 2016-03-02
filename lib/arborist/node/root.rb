@@ -45,6 +45,12 @@ class Arborist::Node::Root < Arborist::Node
 	end
 
 
+	### Ignore restores of serialized root nodes.
+	def restore( other_node )
+		self.log.info "Ignoring restored root node."
+	end
+
+
 	### Ignore updates to the root node.
 	def update( properties )
 		self.log.warn "Update to the root node ignored."

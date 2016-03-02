@@ -631,6 +631,17 @@ class Arborist::Node
 	# :section: Serialization API
 	#
 
+	### Restore any saved state from the specified +old_node+.
+	def restore( old_node )
+		@status = old_node.status
+		@status_changed = old_node.status_changed
+		@error = old_node.error
+		@properties = old_node.properties.dup
+		@last_contacted = old_node.last_contacted
+		@ack = old_node.ack.dup if old_node.ack
+	end
+
+
 	### Return a Hash of the node's state.
 	def to_hash
 		return {
@@ -672,6 +683,12 @@ class Arborist::Node
 		@error          = hash[:error]
 		@properties     = hash[:properties]
 		@last_contacted = Time.parse( hash[:last_contacted] )
+
+		@update_delta   = Hash.new do |h,k|
+			h[ k ] = Hash.new( &h.default_proc )
+		end
+		@pending_update_events = []
+		@subscriptions  = {}
 
 		if hash[:ack]
 			ack_values = hash[:ack].values_at( *Arborist::Node::ACK.members )

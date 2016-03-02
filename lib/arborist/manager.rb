@@ -2,6 +2,7 @@
 #encoding: utf-8
 
 require 'pathname'
+require 'tempfile'
 require 'configurability'
 require 'loggability'
 require 'rbczmq'
@@ -26,10 +27,45 @@ class Arborist::Manager
 	# The number of seconds to wait between checks for incoming signals
 	SIGNAL_INTERVAL = 0.5
 
+	# Configurability API -- set config defaults
+	CONFIG_DEFAULTS = {
+		state_file: nil,
+		checkpoint_frequency: 30
+	}
 
-	##
+	STATE_FILE_BASENAME = [ 'arborist', 'tree' ]
+
+
 	# Use the Arborist logger
 	log_to :arborist
+
+	# Configurability API -- use the 'arborist' section
+	config_key :arborist
+
+
+	##
+	# The Pathname of the file the manager's node tree state is saved to
+	singleton_attr_accessor :state_file
+
+	##
+	# The number of seconds between automatic state checkpoints
+	singleton_attr_accessor :checkpoint_frequency
+
+
+	### Configurability API -- configure the manager
+	def self::configure( config=nil )
+		config ||= {}
+		config = self.defaults.merge( config[:manager] || {} )
+
+		self.state_file = config[:state_file] && Pathname( config[:state_file] )
+
+		interval = config[:checkpoint_frequency].to_i
+		if interval && interval.nonzero?
+			self.checkpoint_frequency = interval
+		else
+			self.checkpoint_frequency = nil
+		end
+	end
 
 
 	#
@@ -54,6 +90,7 @@ class Arborist::Manager
 
 		@api_handler = nil
 		@event_publisher = nil
+		@checkpoint_timer = nil
 	end
 
 
@@ -114,7 +151,10 @@ class Arborist::Manager
 			@tree_sock.pollable.close
 			@zmq_loop.remove( @event_sock )
 			@event_sock.pollable.close
+			@zmq_loop.cancel_timer( @checkpoint_timer ) if @checkpoint_timer
 		end
+
+		self.save_node_states
 
 		self.log.debug "Resetting ZMQ context"
 		Arborist.reset_zmq_context
@@ -140,6 +180,9 @@ class Arborist::Manager
 		@event_publisher = Arborist::Manager::EventPublisher.new( @event_sock, self, @zmq_loop )
 		@event_sock.handler = @event_publisher
 		@zmq_loop.register( @event_sock )
+
+		@checkpoint_timer = self.start_state_checkpointing
+		@zmq_loop.register_timer( @checkpoint_timer ) if @checkpoint_timer
 
 		self.setup_signal_timer
 		self.start_time = Time.now
@@ -191,6 +234,72 @@ class Arborist::Manager
 		self.ignore_signals
 		self.cancel_signal_timer
 		@zmq_loop.stop if @zmq_loop
+	end
+
+
+	#
+	# :section: Node state saving/reloading
+	#
+
+	### Write out the state of all the manager's nodes to the state_file if one is
+	### configured.
+	def save_node_states
+		path = self.class.state_file or return
+		self.log.info "Saving current node state to %s" % [ path ]
+		tmpfile = Tempfile.create(
+			[path.basename.to_s.sub(path.extname, ''), path.extname],
+			path.dirname.to_s,
+			encoding: 'binary'
+		)
+		Marshal.dump( self.nodes, tmpfile )
+		tmpfile.close
+
+		File.rename( tmpfile.path, path.to_s )
+
+	rescue SystemCallError => err
+		self.log.error "%p while saving node state: %s" % [ err.class, err.message ]
+
+	ensure
+		tmpfile.unlink if tmpfile
+	end
+
+
+	### Attempt to restore the state of loaded node from the configured state file. Returns
+	### true if it succeeded, or false if a state file wasn't configured, doesn't
+	### exist, isn't readable, or couldn't be unmarshalled.
+	def restore_node_states
+		path = self.class.state_file or return false
+		return false unless path.readable?
+
+		self.log.info "Restoring node state from %s" % [ path ]
+		nodes = Marshal.load( path.open('r:binary') )
+
+		nodes.each do |identifier, saved_node|
+			self.log.debug "Loaded node: %p" % [ identifier ]
+			if (( current_node = self.nodes[ identifier ] ))
+				self.log.debug "Restoring state of the %p node." % [ identifier ]
+				current_node.restore( saved_node )
+			else
+				self.log.info "Not restoring state for the %s node: not present in the loaded tree." %
+					[ identifier ]
+			end
+		end
+
+		return true
+	end
+
+
+	### Start a timer that will save a snapshot of the node tree's state to the state
+	### file on a configured interval if it's configured.
+	def start_state_checkpointing
+		return nil unless self.class.state_file
+		interval = self.class.checkpoint_frequency or return nil
+
+		self.log.info "Setting up node state checkpoint every %ds" % [ interval ]
+		checkpoint_timer = ZMQ::Timer.new( interval, 0 ) do
+			self.save_node_states
+		end
+		return checkpoint_timer
 	end
 
 
@@ -292,6 +401,7 @@ class Arborist::Manager
 	### Handle a USR1 signal. Writes a message to the log.
 	def on_user1_signal( signo )
 		self.log.info "Checkpoint: User signal."
+		self.save_node_states
 	end
 
 
@@ -317,6 +427,7 @@ class Arborist::Manager
 			self.link_node_to_parent( node )
 		end
 		self.tree_built = true
+		self.restore_node_states
 	end
 
 
@@ -492,7 +603,6 @@ class Arborist::Manager
 	### Propagate one or more +events+ to the specified +node+ and its ancestors in the tree,
 	### publishing them to matching subscriptions belonging to the nodes along the way.
 	def propagate_events( node, *events )
-		self.log.info "Propagating %d events to node %s" % [ events.length, node.identifier ]
 		node.publish_events( *events )
 
 		if node.parent

@@ -4,9 +4,20 @@ require_relative '../spec_helper'
 
 require 'timecop'
 require 'arborist/manager'
-
+require 'arborist/node/host'
 
 describe Arborist::Manager do
+
+	after( :all ) do
+		Arborist::Manager.state_file = nil
+	end
+	before( :each ) do
+		Arborist::Manager.configure
+	end
+	after( :each ) do
+		Arborist::Node::Root.reset
+	end
+
 
 	let( :manager ) { described_class.new }
 
@@ -41,6 +52,147 @@ describe Arborist::Manager do
 
 	it "has an uptime of 0 if it hasn't yet been started" do
 		expect( manager.uptime ).to eq( 0 )
+	end
+
+
+	describe "state-saving" do
+
+		before( :each ) do
+			Arborist::Manager.state_file = nil
+		end
+
+		let( :router_node ) { Arborist::Host('router') }
+		let( :host_node ) { Arborist::Host( 'host_a', router_node ) }
+		let( :tree ) {[ router_node, host_node ]}
+
+		let( :manager ) do
+			instance = described_class.new
+			instance.load_tree( tree )
+			instance
+		end
+
+
+		it "saves the state of its node tree if the state file is configured" do
+			statefile = Pathname( './arborist.tree' )
+			Arborist::Manager.state_file = statefile
+
+			tempfile = instance_double( Tempfile,
+				path: './arborist20160224-31449-zevoz2.tree', unlink: nil )
+
+			expect( Tempfile ).to receive( :create ).
+				with( ['arborist', '.tree'], '.', encoding: 'binary' ).
+				and_return( tempfile )
+			expect( Marshal ).to receive( :dump ).with( manager.nodes, tempfile )
+			expect( tempfile ).to receive( :close )
+			expect( File ).to receive( :rename ).
+				with( './arborist20160224-31449-zevoz2.tree', './arborist.tree' )
+
+			manager.save_node_states
+		end
+
+
+		it "cleans up the tempfile created by checkpointing if renaming the file fails" do
+			statefile = Pathname( './arborist.tree' )
+			Arborist::Manager.state_file = statefile
+
+			tempfile = instance_double( Tempfile, path: './arborist20160224-31449-zevoz2.tree' )
+
+			expect( Tempfile ).to receive( :create ).
+				with( ['arborist', '.tree'], '.', encoding: 'binary' ).
+				and_return( tempfile )
+			expect( Marshal ).to receive( :dump ).with( manager.nodes, tempfile )
+			expect( tempfile ).to receive( :close )
+			expect( File ).to receive( :rename ).
+				and_raise( Errno::ENOENT.new("no such file or directory") )
+			expect( tempfile ).to receive( :unlink )
+
+			manager.save_node_states
+		end
+
+
+		it "doesn't try to save state if the state file is not configured" do
+			Arborist::Manager.state_file = nil
+
+			expect( Tempfile ).to_not receive( :create )
+			expect( Marshal ).to_not receive( :dump )
+			expect( File ).to_not receive( :rename )
+
+			manager.save_node_states
+		end
+
+
+		it "restores the state of loaded nodes if the state file is configured" do
+			_ = manager
+
+			statefile = Pathname( './arborist.tree' )
+			Arborist::Manager.state_file = statefile
+			state_file_io = instance_double( File )
+
+			saved_router_node = Marshal.load( Marshal.dump(router_node) )
+			saved_router_node.instance_variable_set( :@status, 'up' )
+			saved_host_node = Marshal.load( Marshal.dump(host_node) )
+			saved_host_node.instance_variable_set( :@status, 'down' )
+			saved_host_node.error = 'Stuff happened and it was not good.'
+
+			expect( statefile ).to receive( :readable? ).and_return( true )
+			expect( statefile ).to receive( :open ).with( 'r:binary' ).
+				and_return( state_file_io )
+			expect( Marshal ).to receive( :load ).with( state_file_io ).
+				and_return({ 'router' => saved_router_node, 'host_a' => saved_host_node })
+
+			expect( manager.restore_node_states ).to be_truthy
+
+			expect( manager.nodes['router'].status ).to eq( 'up' )
+			expect( manager.nodes['host_a'].status ).to eq( 'down' )
+			expect( manager.nodes['host_a'].error ).to eq( 'Stuff happened and it was not good.' )
+
+		end
+
+
+		it "doesn't error if the configured state file isn't readable" do
+			_ = manager
+
+			statefile = Pathname( './arborist.tree' )
+			Arborist::Manager.state_file = statefile
+
+			expect( statefile ).to receive( :readable? ).and_return( false )
+			expect( statefile ).to_not receive( :open )
+
+			expect( manager.restore_node_states ).to be_falsey
+		end
+
+
+		it "checkpoints the state file periodically if an interval is configured" do
+			described_class.configure( manager: {checkpoint_frequency: 20, state_file: 'arb.tree'} )
+
+			timer = instance_double( ZMQ::Timer, "checkpoint timer" )
+			expect( ZMQ::Timer ).to receive( :new ).with( 20, 0 ).and_return( timer )
+
+			expect( manager.start_state_checkpointing ).to eq( timer )
+		end
+
+
+		it "doesn't checkpoint if no interval is configured" do
+			described_class.configure( manager: {checkpoint_frequency: nil, state_file: 'arb.tree'} )
+
+			expect( ZMQ::Timer ).to_not receive( :new )
+
+			expect( manager.start_state_checkpointing ).to be_nil
+		end
+
+
+		it "doesn't checkpoint if no state file is configured" do
+			described_class.configure( manager: {checkpoint_frequency: 20, state_file: nil} )
+
+			expect( ZMQ::Timer ).to_not receive( :new )
+
+			expect( manager.start_state_checkpointing ).to be_nil
+		end
+
+
+		it "writes a checkpoint if it receives a SIGUSR1"
+
+
 	end
 
 
@@ -408,7 +560,6 @@ describe Arborist::Manager do
 			allow( event_pollitem ).to receive( :pollable ).and_return( event_sock )
 			allow( event_sock ).to receive( :close )
 		end
-
 
 
 		it "sets up its sockets with handlers and starts the ZMQ loop when started" do
