@@ -7,7 +7,6 @@
 
 ### Manager
 
-* Serialize nodes on shutdown
 * Broadcast system events:
     - `sys.node.added`
     - `sys.node.removed`
@@ -20,7 +19,6 @@
 
 ### Observers
 
-* Figure out how to match on delta events: how to specify the criteria for matching nodes vs. matching the changes in the delta?
 * Re-subscribe on `sys.startup`, `sys.reloaded`, `sys.node.added`
 
 
