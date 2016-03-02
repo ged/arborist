@@ -33,8 +33,6 @@ class Arborist::Manager
 		checkpoint_frequency: 30
 	}
 
-	STATE_FILE_BASENAME = [ 'arborist', 'tree' ]
-
 
 	# Use the Arborist logger
 	log_to :arborist
