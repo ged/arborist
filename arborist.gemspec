@@ -1,14 +1,14 @@
 # -*- encoding: utf-8 -*-
-# stub: arborist 0.0.1.pre20160208163753 ruby lib
+# stub: arborist 0.0.1.pre20160225154641 ruby lib
 
 Gem::Specification.new do |s|
   s.name = "arborist"
-  s.version = "0.0.1.pre20160208163753"
+  s.version = "0.0.1.pre20160225154641"
 
   s.required_rubygems_version = Gem::Requirement.new("> 1.3.1") if s.respond_to? :required_rubygems_version=
   s.require_paths = ["lib"]
   s.authors = ["Michael Granger", "Mahlon E. Smith"]
-  s.date = "2016-02-09"
+  s.date = "2016-02-25"
   s.description = "Arborist is a monitoring toolkit that follows the UNIX philosophy\nof small parts and loose coupling for stability, reliability, and\ncustomizability.\n\n[![Build Status](https://semaphoreci.com/api/v1/projects/13677b60-5f81-4e6e-a9c6-e21d30daa4ca/461532/badge.svg)](https://semaphoreci.com/ged/arborist)"
   s.email = ["ged@FaerieMUD.org", "mahlon@martini.nu"]
   s.executables = ["arborist"]

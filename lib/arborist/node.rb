@@ -496,6 +496,8 @@ class Arborist::Node
 	### Returns +true+ if the node matches the specified +key+ and +val+ criteria.
 	def match_criteria?( key, val )
 		return case key
+			when 'delta'
+				true
 			when 'status'
 				self.status == val
 			when 'type'
@@ -809,28 +811,6 @@ class Arborist::Node
 	### deltas for the #update event.
 	def add_status_to_update_delta( transition )
 		self.update_delta[ 'status' ] = [ transition.from, transition.to ]
-	end
-
-
-	#######
-	private
-	#######
-
-	### Returns true if the specified +hash+ includes the specified +key+, and the value
-	### associated with the +key+ either includes +val+ if it is a Hash, or equals +val+ if it's
-	### anything but a Hash.
-	def hash_matches( hash, key, val )
-		actual = hash[ key ] or return false
-
-		if actual.is_a?( Hash )
-			if val.is_a?( Hash )
-				return val.all? {|subkey, subval| hash_matches(actual, subkey, subval) }
-			else
-				return false
-			end
-		else
-			return actual == val
-		end
 	end
 
 end # class Arborist::Node

@@ -1,6 +1,7 @@
 # -*- ruby -*-
 #encoding: utf-8
 
+require 'loggability'
 require 'pluggability'
 require 'arborist' unless defined?( Arborist )
 
@@ -9,11 +10,15 @@ require 'arborist' unless defined?( Arborist )
 # node state changes, when they're updated, and when various other operational
 # actions take place, e.g., the node tree gets reloaded.
 class Arborist::Event
-	extend Pluggability
+	extend Pluggability,
+	       Loggability
 
 
 	# Pluggability API -- look for events under the specified prefix
 	plugin_prefixes 'arborist/event'
+
+	# Loggability API -- log to the Arborist logger
+	log_to :arborist
 
 
 	### Create a new event with the specified +payload+ data.

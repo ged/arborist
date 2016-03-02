@@ -358,6 +358,23 @@ module Arborist
 		end
 
 
+		### Returns true if the specified +hash+ includes the specified +key+, and the value
+		### associated with the +key+ either includes +val+ if it is a Hash, or equals +val+ if it's
+		### anything but a Hash.
+		def hash_matches( hash, key, val )
+			actual = hash[ key ] or return false
+
+			if actual.is_a?( Hash )
+				if val.is_a?( Hash )
+					return val.all? {|subkey, subval| hash_matches(actual, subkey, subval) }
+				else
+					return false
+				end
+			else
+				return actual == val
+			end
+		end
+
 	end # HashUtilities
 
 end # module Arborist
