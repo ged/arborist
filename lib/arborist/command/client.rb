@@ -17,7 +17,8 @@ module Arborist::CLI::Client
 		cmd.action do |globals, options, args|
 			begin
 				require 'pry'
-			rescue LoadError
+			rescue LoadError => err
+				self.log.debug( err )
 				exit_now! "This command requires the 'pry' gem."
 			end
 

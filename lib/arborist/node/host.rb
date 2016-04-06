@@ -88,16 +88,35 @@ class Arborist::Node::Host < Arborist::Node
 	end
 
 
-	### Add a service to the host
-	# def service( name, attributes={}, &block )
-	# 	return Arborist::Node.create( :service, name, self, attributes, &block )
-	# end
-
-
 	### Return host-node-specific information for #inspect.
 	def node_description
 		return "{no addresses}" if self.addresses.empty?
 		return "{addresses: %s}" % [ self.addresses.map(&:to_s).join(', ') ]
+	end
+
+
+	#
+	# Serialization
+	#
+
+	### Return a Hash of the host node's state.
+	def to_h
+		return super.merge( addresses: self.addresses.map(&:to_s) )
+	end
+
+
+	### Marshal API -- set up the object's state using the +hash+ from a previously-marshalled 
+	### node. Overridden to turn the addresses back into IPAddr objects.
+	def marshal_load( hash )
+		super
+		@addresses = hash[:addresses].map {|addr| IPAddr.new(addr) }
+	end
+
+
+	### Equality operator -- returns +true+ if +other_node+ is equal to the
+	### receiver. Overridden to also compare addresses.
+	def ==( other_host )
+		return super && other_host.addresses == self.addresses
 	end
 
 end # class Arborist::Node::Host

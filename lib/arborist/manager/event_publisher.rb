@@ -41,7 +41,7 @@ class Arborist::Manager::EventPublisher < ZMQ::Handler
 
 	### Publish the specified +event+.
 	def publish( identifier, event )
-		@event_queue << [ identifier, MessagePack.pack(event.to_hash) ]
+		@event_queue << [ identifier, MessagePack.pack(event.to_h) ]
 		self.register
 		return self
 	end

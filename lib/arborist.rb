@@ -172,6 +172,12 @@ module Arborist
 	end
 
 
+	### Set the ZMQ context if it's already been created by something else.
+	def self::zmq_context=( existing_context )
+		@zmq_context = existing_context
+	end
+
+
 	require 'arborist/exceptions'
 	require 'arborist/mixins'
 

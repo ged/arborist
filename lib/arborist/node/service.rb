@@ -28,7 +28,10 @@ class Arborist::Node::Service < Arborist::Node
 		raise Arborist::NodeError, "no host given" unless host.is_a?( Arborist::Node::Host )
 		qualified_identifier = "%s-%s" % [ host.identifier, identifier ]
 
-		@host = host
+		@host         = host
+		@app_protocol = nil
+		@protocol     = nil
+		@port         = nil
 
 		attributes[ :app_protocol ] ||= identifier
 		attributes[ :protocol ] ||= DEFAULT_PROTOCOL
@@ -131,6 +134,40 @@ class Arborist::Node::Service < Arborist::Node
 	def parent( new_parent=nil )
 		return super unless new_parent
 		raise "Can't reparent a service; replace the node instead"
+	end
+
+
+	#
+	# Serialization
+	#
+
+	### Return a Hash of the host node's state.
+	def to_h
+		return super.merge(
+			addresses: self.addresses.map(&:to_s),
+			protocol: self.protocol,
+			app_protocol: self.app_protocol,
+			port: self.port
+		)
+	end
+
+
+	### Marshal API -- set up the object's state using the +hash+ from a previously-marshalled 
+	### node. Overridden to turn the addresses back into IPAddr objects.
+	def marshal_load( hash )
+		super
+		@addresses = hash[:addresses].map {|addr| IPAddr.new(addr) }
+	end
+
+
+	### Equality operator -- returns +true+ if +other_node+ is equal to the
+	### receiver. Overridden to also compare addresses.
+	def ==( other_host )
+		return super &&
+			other_host.addresses == self.addresses &&
+			other_host.protocol == self.protocol &&
+			other_host.app_protocol == self.app_protocol &&
+			other_host.port == self.port
 	end
 
 

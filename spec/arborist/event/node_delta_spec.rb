@@ -29,7 +29,7 @@ describe Arborist::Event::NodeDelta do
 	describe "subscription support" do
 
 		it "matches a subscription with only an event type if the type is the same" do
-			sub = Arborist::Subscription.new( :publisher, 'node.delta' )
+			sub = Arborist::Subscription.new( 'node.delta' ) {}
 			event = described_class.new( node, status: ['up', 'down'] )
 
 			expect( event ).to match( sub )
@@ -37,7 +37,7 @@ describe Arborist::Event::NodeDelta do
 
 
 		it "matches a subscription with a matching event type and matching criteria" do
-			sub = Arborist::Subscription.new( :publisher, 'node.delta', 'tag' => 'triage' )
+			sub = Arborist::Subscription.new( 'node.delta', 'tag' => 'triage' ) {}
 			event = described_class.new( node, status: ['up', 'down'] )
 
 			expect( event ).to match( sub )
@@ -45,12 +45,14 @@ describe Arborist::Event::NodeDelta do
 
 
 		it "matches a subscription with matching event type, node criteria, and delta criteria" do
-			sub = Arborist::Subscription.new( :publisher, 'node.delta',
+			criteria = {
 				'tag' => 'tree',
 				'delta' => {
 					'status' => [ 'up', 'down' ]
 				}
-			)
+			}
+
+			sub = Arborist::Subscription.new( 'node.delta', criteria ) {}
 			event = described_class.new( node, 'status' => ['up', 'down'] )
 
 			expect( event ).to match( sub )

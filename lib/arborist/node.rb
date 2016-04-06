@@ -11,6 +11,8 @@ require 'loggability'
 require 'pluggability'
 require 'arborist' unless defined?( Arborist )
 require 'arborist/mixins'
+require 'arborist/exceptions'
+require 'arborist/dependency'
 
 using Arborist::TimeRefinements
 
@@ -34,9 +36,11 @@ class Arborist::Node
 	# The keys required to be set for an ACK
 	ACK_REQUIRED_PROPERTIES = %w[ message sender ]
 
+	# Regex to match a valid identifier
+	VALID_IDENTIFIER = /^\w[\w\-]*$/
+
 
 	autoload :Root, 'arborist/node/root'
-
 
 	# Log via the Arborist logger
 	log_to :arborist
@@ -94,7 +98,8 @@ class Arborist::Node
 			:up,
 			:down,
 			:acked,
-			:disabled
+			:disabled,
+			:quieted
 
 		event :update do
 			transition [:down, :unknown, :acked] => :up, if: :last_contact_successful?
@@ -104,14 +109,23 @@ class Arborist::Node
 			transition :disabled => :unknown, unless: :ack_set?
 		end
 
+		event :handle_event do
+			transition :unknown => :acked, if: :ack_and_error_set?
+			transition any - [:disabled, :quieted, :acked] => :quieted, if: :has_quieted_reason?
+			transition :quieted => :unknown, unless: :has_quieted_reason?
+		end
+
 		after_transition any => :acked, do: :on_ack
 		after_transition :acked => :up, do: :on_ack_cleared
 		after_transition :down => :up, do: :on_node_up
 		after_transition [:unknown, :up] => :down, do: :on_node_down
 		after_transition [:unknown, :up] => :disabled, do: :on_node_disabled
+		after_transition any => :quieted, do: :on_node_quieted
 		after_transition :disabled => :unknown, do: :on_node_enabled
+		after_transition :quieted => :unknown, do: :on_node_unquieted
 
 		after_transition any => any, do: :log_transition
+		after_transition any => any, do: :make_transition_event
 
 		after_transition do: :add_status_to_update_delta
 	end
@@ -231,24 +245,30 @@ class Arborist::Node
 		parent_node = args.pop
 
 		raise "Invalid identifier %p" % [identifier] unless
-			identifier =~ /^\w[\w\-]*$/
+			identifier =~ VALID_IDENTIFIER
 
-		@identifier     = identifier
-		@parent         = parent_node ? parent_node.identifier : '_'
-		@description    = nil
-		@tags           = Set.new
-		@source         = nil
-		@children       = {}
+		# Attributes of the target
+		@identifier      = identifier
+		@parent          = parent_node ? parent_node.identifier : '_'
+		@description     = nil
+		@tags            = Set.new
+		@properties      = {}
+		@source          = nil
+		@children        = {}
+		@dependencies    = Arborist::Dependency.new( :all )
 
-		@status         = 'unknown'
-		@status_changed = Time.at( 0 )
+		# Primary state
+		@status          = 'unknown'
+		@status_changed  = Time.at( 0 )
 
-		@error          = nil
-		@ack            = nil
-		@properties     = {}
-		@last_contacted = Time.at( 0 )
+		# Attributes that govern state
+		@error           = nil
+		@ack             = nil
+		@last_contacted  = Time.at( 0 )
+		@quieted_reasons = {}
 
-		@update_delta   = Hash.new do |h,k|
+		# Event-handling
+		@update_delta    = Hash.new do |h,k|
 			h[ k ] = Hash.new( &h.default_proc )
 		end
 		@pending_update_events = []
@@ -309,6 +329,16 @@ class Arborist::Node
 	# subscription ID.
 	attr_reader :subscriptions
 
+	##
+	# The node's secondary dependencies, expressed as an Arborist::Node::Sexp
+	attr_accessor :dependencies
+
+
+	##
+	# The reasons this node was quieted. This is a Hash of text descriptions keyed by the
+	# type of dependency it came from (either :primary or :secondary).
+	attr_reader :quieted_reasons
+
 
 	### Set the source of the node to +source+, which should be a valid URI.
 	def source=( source )
@@ -367,6 +397,34 @@ class Arborist::Node
 	end
 
 
+	### Group +identifiers+ together in an 'any of' dependency.
+	def any_of( *identifiers, on: nil )
+		return Arborist::Dependency.on( :any, *identifiers, prefixes: on )
+	end
+
+
+	### Group +identifiers+ together in an 'all of' dependency.
+	def all_of( *identifiers, on: nil )
+		return Arborist::Dependency.on( :all, *identifiers, prefixes: on )
+	end
+
+
+	### Add secondary dependencies to the receiving node.
+	def depends_on( *dependencies, on: nil )
+		dependencies = self.all_of( *dependencies, on: on )
+
+		self.log.debug "Setting secondary dependencies to: %p" % [ dependencies ]
+		self.dependencies = check_dependencies( dependencies )
+	end
+
+
+	### Returns +true+ if the node has one or more secondary dependencies.
+	def has_dependencies?
+		return !self.dependencies.empty?
+	end
+
+
+
 	#
 	# :section: Manager API
 	# Methods used by the manager to manage its nodes.
@@ -398,14 +456,6 @@ class Arborist::Node
 	end
 
 
-	### Publish the specified +events+ to any subscriptions the node has which match them.
-	def publish_events( *events )
-		self.subscriptions.each_value do |sub|
-			sub.on_events( *events )
-		end
-	end
-
-
 	### Update specified +properties+ for the node.
 	def update( new_properties )
 		new_properties = stringify_keys( new_properties )
@@ -428,6 +478,7 @@ class Arborist::Node
 		events << self.make_update_event
 		events << self.make_delta_event unless self.update_delta.empty?
 
+		self.broadcast_events( *events )
 		return events
 	ensure
 		self.update_delta.clear
@@ -541,6 +592,131 @@ class Arborist::Node
 	end
 
 
+	### Register subscriptions for secondary dependencies on the receiving node with the
+	### given +manager+.
+	def register_secondary_dependencies( manager )
+		self.dependencies.all_identifiers.each do |identifier|
+			# Check to be sure the identifier isn't a descendant or ancestor
+			if manager.ancestors_for( self ).any? {|node| node.identifier == identifier}
+				raise Arborist::ConfigError, "Can't depend on ancestor node %p." % [ identifier ]
+			elsif manager.descendants_for( self ).any? {|node| node.identifier == identifier }
+				raise Arborist::ConfigError, "Can't depend on descendant node %p." % [ identifier ]
+			end
+
+			sub = Arborist::Subscription.new do |_, event|
+				self.handle_event( event )
+			end
+			manager.subscribe( identifier, sub )
+		end
+	end
+
+
+	### Publish the specified +events+ to any subscriptions the node has which match them.
+	def publish_events( *events )
+		self.log.debug "Got published events: %p" % [ events ]
+		self.subscriptions.each_value do |sub|
+			sub.on_events( *events )
+		end
+	end
+
+
+	### Send an event to this node's immediate children.
+	def broadcast_events( *events )
+		events.flatten!
+		self.children.each do |identifier, child|
+			self.log.debug "Broadcasting %d events to %p" % [ events.length, identifier ]
+			events.each do |event|
+				child.handle_event( event )
+			end
+		end
+	end
+
+
+	### Handle the specified +event+, delivered either via broadcast or secondary
+	### dependency subscription.
+	def handle_event( event )
+		handler_name = "handle_%s_event" % [ event.type.gsub('.', '_') ]
+		if self.respond_to?( handler_name )
+			self.log.debug "Handling a %s event." % [ event.type ]
+			self.method( handler_name ).call( event )
+		end
+		super
+	end
+
+
+	### Returns +true+ if this node's dependencies are not met.
+	def dependencies_down?
+		return self.dependencies.down?
+	end
+	alias_method :has_downed_dependencies?, :dependencies_down?
+
+
+	### Returns +true+ if this node's dependencies are met.
+	def dependencies_up?
+		return !self.dependencies_down?
+	end
+
+
+	### Returns +true+ if any reasons have been set as to why the node has been
+	### quieted. Guard condition for transition to and from `quieted` state.
+	def has_quieted_reason?
+		return !self.quieted_reasons.empty?
+	end
+
+
+	### Handle a 'node.down' event received via broadcast.
+	def handle_node_down_event( event )
+		self.log.debug "Got a node.down event: %p" % [ event ]
+		self.dependencies.mark_down( event.node.identifier )
+
+		if self.dependencies_down?
+			self.quieted_reasons[ :secondary ] = "Secondary dependencies not met: %s" %
+				[ self.dependencies.down_reason ]
+		end
+
+		if event.node.identifier == self.parent
+			self.quieted_reasons[ :primary ] = "Parent down: %s" % [ event ] # :TODO: backtrace?
+		end
+	end
+
+
+	### Handle a 'node.quieted' event received via broadcast.
+	def handle_node_quieted_event( event )
+		self.log.debug "Got a node.quieted event: %p" % [ event ]
+		self.dependencies.mark_down( event.node.identifier )
+
+		if self.dependencies_down?
+			self.quieted_reasons[ :secondary ] = "Secondary dependencies not met: %s" %
+				[ self.dependencies.down_reason ]
+		end
+
+		if event.node.identifier == self.parent
+			self.quieted_reasons[ :primary ] = "Parent quieted: %s" % [ event ] # :TODO: backtrace?
+		end
+	end
+
+
+	### Handle a 'node.up' event received via broadcast.
+	def handle_node_up_event( event )
+		self.log.debug "Got a node.up event: %p" % [ event ]
+		self.dependencies.mark_up( event.node.identifier )
+
+		if self.dependencies_up?
+			self.log.info "Dependencies are now met for %s." % [ self.identifier ]
+			self.quieted_reasons.delete( :secondary )
+		end
+
+		if event.node.identifier == self.parent
+			self.log.info "Parent of %s (%s) came back up." % [
+				self.identifier,
+				self.parent
+			]
+			self.quieted_reasons.delete( :primary )
+		end
+	end
+
+
+
 	#
 	# :section: Hierarchy API
 	#
@@ -600,6 +776,9 @@ class Arborist::Node
 			return "ACKed by %s %s" % [ self.ack.sender, self.ack.time.as_delta ]
 		when 'disabled'
 			return "disabled by %s %s" % [ self.ack.sender, self.ack.time.as_delta ]
+		when 'quieted'
+			reasons = self.quieted_reasons.values.join( ',' )
+			return "quieted: %s" % [ reasons ]
 		else
 			return "in an unknown state"
 		end
@@ -615,7 +794,7 @@ class Arborist::Node
 
 	### Return a String representation of the object suitable for debugging.
 	def inspect
-		return "#<%p:%#x [%s] -> %s %p %s%s, %d children, %s>" % [
+		return "#<%p:%#x [%s] -> %s %p %s %s, %d children, %s>" % [
 			self.class,
 			self.object_id * 2,
 			self.identifier,
@@ -633,64 +812,77 @@ class Arborist::Node
 	# :section: Serialization API
 	#
 
-	### Restore any saved state from the specified +old_node+.
+	### Restore any saved state from the +old_node+ loaded from the state file.
 	def restore( old_node )
-		@status = old_node.status
-		@status_changed = old_node.status_changed
-		@error = old_node.error
-		@properties = old_node.properties.dup
-		@last_contacted = old_node.last_contacted
-		@ack = old_node.ack.dup if old_node.ack
+		@status          = old_node.status
+		@properties      = old_node.properties.dup
+		@ack             = old_node.ack.dup if old_node.ack
+		@last_contacted  = old_node.last_contacted
+		@status_changed  = old_node.status_changed
+		@error           = old_node.error
+		@quieted_reasons = old_node.quieted_reasons
+
+		@dependencies    = old_node.dependencies
+		# :TODO: Only merge the timestamps; don't replace the dependencies themselves.
+		# old_node.dependencies.each_downed do |identifier, time|
+		# 	@dependencies.mark_down( identifier, time )
+		# end
 	end
 
 
 	### Return a Hash of the node's state.
-	def to_hash
+	def to_h
 		return {
 			identifier: self.identifier,
 			type: self.class.name.to_s.sub( /.+::/, '' ).downcase,
 			parent: self.parent,
 			description: self.description,
 			tags: self.tags,
-			properties: self.properties.dup,
 			status: self.status,
+			properties: self.properties.dup,
 			ack: self.ack ? self.ack.to_h : nil,
 			last_contacted: self.last_contacted ? self.last_contacted.iso8601 : nil,
 			status_changed: self.status_changed ? self.status_changed.iso8601 : nil,
 			error: self.error,
+			dependencies: self.dependencies.to_h,
+			quieted_reasons: self.quieted_reasons,
 		}
 	end
 
 
 	### Marshal API -- return the node as an object suitable for marshalling.
 	def marshal_dump
-		return self.to_hash
+		return self.to_h.merge( dependencies: self.dependencies )
 	end
 
 
 	### Marshal API -- set up the object's state using the +hash+ from a
 	### previously-marshalled node.
 	def marshal_load( hash )
-		@identifier = hash[:identifier]
-		@properties = hash[:properties]
+		@identifier      = hash[:identifier]
+		@properties      = hash[:properties]
 
-		@parent         = hash[:parent]
-		@description    = hash[:description]
-		@tags           = Set.new( hash[:tags] )
-		@children       = {}
+		@parent          = hash[:parent]
+		@description     = hash[:description]
+		@tags            = Set.new( hash[:tags] )
+		@children        = {}
 
-		@status         = hash[:status]
-		@status_changed = Time.parse( hash[:status_changed] )
+		@status          = 'unknown'
+		@status_changed  = Time.parse( hash[:status_changed] )
 
-		@error          = hash[:error]
-		@properties     = hash[:properties]
-		@last_contacted = Time.parse( hash[:last_contacted] )
+		@error           = hash[:error]
+		@properties      = hash[:properties] || {}
+		@last_contacted  = Time.parse( hash[:last_contacted] )
+		@quieted_reasons = hash[:quieted_reasons] || {}
+		self.log.debug "Deps are: %p" % [ hash[:dependencies] ]
+		@dependencies    = hash[:dependencies]
 
-		@update_delta   = Hash.new do |h,k|
+		@update_delta    = Hash.new do |h,k|
 			h[ k ] = Hash.new( &h.default_proc )
 		end
+
 		@pending_update_events = []
-		@subscriptions  = {}
+		@subscriptions         = {}
 
 		if hash[:ack]
 			ack_values = hash[:ack].values_at( *Arborist::Node::ACK.members )
@@ -706,11 +898,7 @@ class Arborist::Node
 			other_node.identifier == self.identifier &&
 			other_node.parent == self.parent &&
 			other_node.description == self.description &&
-			other_node.tags == self.tags &&
-			other_node.properties == self.properties &&
-			other_node.status == self.status &&
-			other_node.ack == self.ack &&
-			other_node.error == self.error
+			other_node.tags == self.tags
 	end
 
 
@@ -755,6 +943,12 @@ class Arborist::Node
 	end
 
 
+	### Returns +true+ if the node has been acked and also has an error set.
+	def ack_and_error_set?
+		return self.error && self.ack_set?
+	end
+
+
 	#
 	# :section: State Callbacks
 	#
@@ -766,11 +960,17 @@ class Arborist::Node
 	end
 
 
+	### Queue up a transition event whenever one happens
+	def make_transition_event( transition )
+		node_type = "node_%s" % [ transition.to ]
+		self.log.debug "Making a %s event for %p" % [ node_type, transition ]
+		self.pending_update_events << Arborist::Event.create( node_type, self )
+	end
+
+
 	### Callback for when an acknowledgement is set.
 	def on_ack( transition )
 		self.log.warn "ACKed: %s" % [ self.status_description ]
-		self.pending_update_events <<
-			Arborist::Event.create( 'node_acked', self.fetch_values, self.ack.to_h )
 	end
 
 
@@ -801,6 +1001,18 @@ class Arborist::Node
 	end
 
 
+	### Callback for when a node goes from any state to quieted
+	def on_node_quieted( transition )
+		self.log.warn "%s is %s" % [ self.identifier, self.status_description ]
+	end
+
+
+	### Callback for when a node transitions from quieted to unknown
+	def on_node_unquieted( transition )
+		self.log.warn "%s is %s" % [ self.identifier, self.status_description ]
+	end
+
+
 	### Callback for when a node goes from disabled to unknown
 	def on_node_enabled( transition )
 		self.log.warn "%s is %s" % [ self.identifier, self.status_description ]
@@ -812,5 +1024,26 @@ class Arborist::Node
 	def add_status_to_update_delta( transition )
 		self.update_delta[ 'status' ] = [ transition.from, transition.to ]
 	end
+
+
+	#######
+	private
+	#######
+
+	### Check the specified +dependencies+ (an Arborist::Dependency) for illegal dependencies
+	### and raise an error if any are found.
+	def check_dependencies( dependencies )
+		identifiers = dependencies.all_identifiers
+
+		self.log.debug "Checking dependency identifiers: %p" % [ identifiers ]
+		if identifiers.include?( '_' )
+			raise Arborist::ConfigError, "a node can't depend on the root node"
+		elsif identifiers.include?( self.identifier )
+			raise Arborist::ConfigError, "a node can't depend on itself"
+		end
+
+		return dependencies
+	end
+
 
 end # class Arborist::Node

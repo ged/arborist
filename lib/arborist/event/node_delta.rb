@@ -2,14 +2,13 @@
 #encoding: utf-8
 
 require 'arborist/event' unless defined?( Arborist::Event )
-require 'arborist/event/node_matching'
+require 'arborist/event/node'
 require 'arborist/mixins'
 
 
 # An event sent when one or more attributes of a node changes.
-class Arborist::Event::NodeDelta < Arborist::Event
-	include Arborist::Event::NodeMatching,
-	        Arborist::HashUtilities
+class Arborist::Event::NodeDelta < Arborist::Event::Node
+	include Arborist::HashUtilities
 
 
 	### Create a new NodeDelta event for the specified +node+. The +delta+

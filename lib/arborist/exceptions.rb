@@ -19,5 +19,7 @@ module Arborist
 
 	class NodeError < RuntimeError; end
 
+	class ConfigError < RuntimeError; end
+
 end # module Arborist
 

@@ -26,7 +26,7 @@ module Arborist::CLI::Start
 			appname = args.shift
 			source  = args.shift
 
-			loader = Arborist::Loader.create( options.loader, source )
+			loader = Arborist::Loader.create( options[:loader], source )
 			runner = case appname
 				when 'manager'
 					Arborist.manager_for( loader )

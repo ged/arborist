@@ -331,6 +331,11 @@ describe Arborist::Node do
 					description "The prototypical node"
 					tags :chunker, :hunky, :flippin, :hippo
 
+					depends_on(
+						all_of('postgres', 'rabbitmq', 'memcached', on: 'svchost'),
+						any_of('webproxy', on: ['fe-host1','fe-host2','fe-host3'])
+					)
+
 					update( 'song' => 'Around the World', 'artist' => 'Daft Punk', 'length' => '7:09' )
 				end
 			end
@@ -342,17 +347,20 @@ describe Arborist::Node do
 				old_node.status = 'down'
 				old_node.status_changed = Time.now - 400
 				old_node.error = "Host unreachable"
-				old_node.update( ack: {
-					'time' => Time.now - 200,
-					'message' => "Technician dispatched.",
-					'sender' => 'darby@example.com'
-				} )
+				old_node.update(
+					ack: {
+						'time' => Time.now - 200,
+						'message' => "Technician dispatched.",
+						'sender' => 'darby@example.com'
+					}
+				)
 				old_node.properties.replace(
 					'ping' => {
 						'ttl' => 0.23
 					}
 				)
 				old_node.last_contacted = Time.now - 28
+				old_node.dependencies.mark_down( 'svchost-postgres' )
 
 				node.restore( old_node )
 
@@ -362,6 +370,7 @@ describe Arborist::Node do
 				expect( node.ack ).to eq( old_node.ack )
 				expect( node.properties ).to include( old_node.properties )
 				expect( node.last_contacted ).to eq( old_node.last_contacted )
+				expect( node.dependencies ).to eql( old_node.dependencies )
 			end
 
 
@@ -380,17 +389,19 @@ describe Arborist::Node do
 				expect( node.description ).to eq( node_copy.description )
 				expect( node.tags ).to eq( node_copy.tags )
 				expect( node.source ).to eq( node_copy.source )
+				expect( node.dependencies ).to eq( node_copy.dependencies )
 			end
 
 
 			it "can return a Hash of serializable node data" do
-				result = node.to_hash
+				result = node.to_h
 
 				expect( result ).to be_a( Hash )
 				expect( result ).to include(
 					:identifier,
-					:parent, :description, :tags, :properties, :status, :ack,
-					:last_contacted, :status_changed, :error
+					:parent, :description, :tags, :properties, :ack, :status,
+					:last_contacted, :status_changed, :error, :quieted_reasons,
+					:dependencies
 				)
 				expect( result[:identifier] ).to eq( 'foo' )
 				expect( result[:type] ).to eq( 'testnode' )
@@ -398,29 +409,33 @@ describe Arborist::Node do
 				expect( result[:description] ).to eq( node.description )
 				expect( result[:tags] ).to eq( node.tags )
 				expect( result[:properties] ).to eq( node.properties )
-				expect( result[:status] ).to eq( node.status )
 				expect( result[:ack] ).to be_nil
 				expect( result[:last_contacted] ).to eq( node.last_contacted.iso8601 )
 				expect( result[:status_changed] ).to eq( node.status_changed.iso8601 )
 				expect( result[:error] ).to be_nil
+				expect( result[:dependencies] ).to be_a( Hash )
+				expect( result[:quieted_reasons] ).to be_a( Hash )
 			end
 
 
 			it "can be reconstituted from a serialized Hash of node data" do
-				hash = node.to_hash
+				hash = node.to_h
 				cloned_node = concrete_class.from_hash( hash )
 
 				expect( cloned_node ).to eq( node )
 			end
 
 
-			it "an ACKed node stays ACKed when reconstituted" do
+			it "an ACKed node goes back to ACKed when re-added to the tree" do
+
 				node.update( error: "there's a fire" )
 				node.update( ack: {
 					message: 'We know about the fire. It rages on.',
 					sender: '1986 Labyrinth David Bowie'
 				})
-				cloned_node = concrete_class.from_hash( node.to_hash )
+				cloned_node = concrete_class.from_hash( node.to_h )
+				node_added_event = Arborist::Event.create( :sys_node_added, cloned_node )
+				cloned_node.handle_event( node_added_event )
 
 				expect( cloned_node ).to be_acked
 			end
@@ -546,7 +561,7 @@ describe Arborist::Node do
 
 
 		it "allows the addition of a Subscription" do
-			sub = Arborist::Subscription.new( 'test', { type: 'host'} )
+			sub = Arborist::Subscription.new {}
 			node.add_subscription( sub )
 			expect( node.subscriptions ).to include( sub.id )
 			expect( node.subscriptions[sub.id] ).to be( sub )
@@ -554,7 +569,7 @@ describe Arborist::Node do
 
 
 		it "allows the removal of a Subscription" do
-			sub = Arborist::Subscription.new( 'test', { type: 'host'} )
+			sub = Arborist::Subscription.new {}
 			node.add_subscription( sub )
 			node.remove_subscription( sub.id )
 			expect( node.subscriptions ).to_not include( sub )
@@ -565,7 +580,7 @@ describe Arborist::Node do
 			events = node.update( 'song' => 'Fear', 'artist' => "Mind.in.a.Box" )
 			delta_event = events.find {|ev| ev.type == 'node.delta' }
 
-			sub = Arborist::Subscription.new( 'node.delta' )
+			sub = Arborist::Subscription.new( 'node.delta' ) {}
 			node.add_subscription( sub )
 
 			results = node.find_matching_subscriptions( delta_event )
@@ -654,6 +669,110 @@ describe Arborist::Node do
 			expect( node ).to_not match_criteria( sausage: {size: 'lunch'} )
 			expect( node ).to_not match_criteria( other: 'key' )
 			expect( node ).to_not match_criteria( sausage: 'weißwürst' )
+		end
+
+	end
+
+
+	describe "secondary dependencies" do
+
+		let( :provider_node_parent ) do
+			concrete_class.new( 'san' )
+		end
+
+		let( :provider_node ) do
+			concrete_class.new( 'san-iscsi' ) do
+				parent 'san'
+			end
+		end
+
+		let( :node ) do
+			concrete_class.new( 'appserver' ) do
+				description "An appserver virtual machine"
+			end
+		end
+
+		let( :manager ) do
+			man = Arborist::Manager.new
+			man.load_tree([ node, provider_node, provider_node_parent ])
+			man
+		end
+
+
+		it "can be declared for a node" do
+			node.depends_on( 'san-iscsi' )
+			expect( node ).to have_dependencies
+			expect( node.dependencies ).to include( 'san-iscsi' )
+		end
+
+
+		it "can't be declared for the root node" do
+			expect {
+				node.depends_on( '_' )
+			}.to raise_exception( Arborist::ConfigError, /root node/i )
+		end
+
+
+		it "can't be declared for itself" do
+			expect {
+				node.depends_on( 'appserver' )
+			}.to raise_exception( Arborist::ConfigError, /itself/i )
+		end
+
+
+		it "can't be declared for any of its ancestors" do
+			provider_node.depends_on( 'san' )
+
+			expect {
+				provider_node.register_secondary_dependencies( manager )
+			}.to raise_exception( Arborist::ConfigError, /ancestor/i )
+		end
+
+
+		it "can't be declared for any of its decendants" do
+			provider_node_parent.depends_on( 'san-iscsi' )
+
+			expect {
+				provider_node_parent.register_secondary_dependencies( manager )
+			}.to raise_exception( Arborist::ConfigError, /descendant/i )
+		end
+
+
+		it "can be declared with a simple identifier" do
+			node.depends_on( 'san-iscsi' )
+
+			expect {
+				node.register_secondary_dependencies( manager )
+			}.to_not raise_exception
+		end
+
+
+		it "can be declared on a service on a host"  do
+			node.depends_on( 'iscsi', on: 'san' )
+			expect( node ).to have_dependencies
+			expect( node.dependencies.behavior ).to eq( :all )
+			expect( node.dependencies.identifiers ).to include( 'san-iscsi' )
+		end
+
+
+		it "can be declared for unrelated identifiers"
+		it "can be declared for related identifiers"
+
+
+		it "can be declared for all of a group of identifiers"
+		it "can be declared for any of a group of identifiers"
+
+
+		it "cause the node to be quieted when the dependent node goes down" do
+			node.depends_on( provider_node.identifier )
+			node.register_secondary_dependencies( manager )
+
+			events = provider_node.update( error: "fatal disk error: offlined" )
+			provider_node.publish_events( *events )
+
+			expect( node ).to be_quieted
+			expect( node ).to have_downed_dependencies
+			# :TODO: Quieted description?
 		end
 
 	end

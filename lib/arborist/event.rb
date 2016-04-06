@@ -54,7 +54,7 @@ class Arborist::Event
 
 
 	### Return the event as a Hash.
-	def to_hash
+	def to_h
 		return {
 			'type' => self.type,
 			'data' => self.payload

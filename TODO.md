@@ -7,13 +7,27 @@
 
 ### Manager
 
+* Include 'quieted' in the list of states that are not reachable
+  via normal node iteration
+
+* Only restore timestamps from serialized node dependencies, not the deps themselves.
+
 * Broadcast system events:
     - `sys.node.added`
     - `sys.node.removed`
-    - `sys.node.acked`
-    - `sys.node.disabled`
     - `sys.startup`
     - `sys.shutdown`
+
+
+(Hook state machine to generate events for state changes)
+Already done
+    - `node.up`
+    - `node.down`
+    - `node.disabled`
+    - `node.quieted`
+    - `node.acked`
+    - `node.delta`
+    - `node.updated`
     - `sys.reloaded`
 
 
@@ -35,3 +49,6 @@
 * Add a CLI for generating a basic setup and then adding nodes/monitors/observers to it.
 * Potential federation / referral for sibling managers
 
+### Nodes
+
+* Ask a node (via tree-api or otherwise) what nodes it affects (immediate children, secondary dependents)

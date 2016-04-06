@@ -4,9 +4,8 @@
 require 'arborist/event' unless defined?( Arborist::Event )
 
 
-# A mixin which adds common functionality to events which related to an
-# Arborist::Node.
-module Arborist::Event::NodeMatching
+# A base class for events which are related to an Arborist::Node.
+class Arborist::Event::Node < Arborist::Event
 
 	### Strip and save the node argument to the constructor.
 	def initialize( node, payload=nil )
@@ -31,7 +30,7 @@ module Arborist::Event::NodeMatching
 
 
 	### Inject the node identifier into the generated hash.
-	def to_hash
+	def to_h
 		return super.merge( identifier: self.node.identifier )
 	end
 

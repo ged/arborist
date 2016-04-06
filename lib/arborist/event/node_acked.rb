@@ -2,17 +2,15 @@
 #encoding: utf-8
 
 require 'arborist/event' unless defined?( Arborist::Event )
-require 'arborist/event/node_matching'
+require 'arborist/event/node'
 
 
 # An event generated when a node is manually ACKed.
-class Arborist::Event::NodeAcked < Arborist::Event
-	include Arborist::Event::NodeMatching
+class Arborist::Event::NodeAcked < Arborist::Event::Node
 
-
-	### Create a new NodeAcked event for the specified +node+ and +ack_info+.
-	def initialize( node, ack_info )
-		super
+	### Create a new NodeAcked event for the specified +node+.
+	def initialize( node )
+		super( node, node.ack.to_h )
 	end
 
 end # class Arborist::Event::NodeAcked

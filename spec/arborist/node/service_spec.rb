@@ -9,8 +9,7 @@ describe Arborist::Node::Service do
 
 	let( :host ) do
 		Arborist::Node.create( 'host', 'testhost' ) do
-			address '192.168.66.12'
-			address '10.2.12.68'
+			address '192.168.118.3'
 		end
 	end
 
@@ -56,7 +55,67 @@ describe Arborist::Node::Service do
 	end
 
 
+	it "includes its service attributes when turned into a Hash" do
+		service = described_class.new( 'dnsd', host, port: 53, protocol: 'udp', app_protocol: 'dns' )
+
+		expect( service.to_h ).to include( :port, :protocol, :app_protocol )
+		expect( service.to_h[:port] ).to eq( service.port )
+		expect( service.to_h[:protocol] ).to eq( service.protocol )
+		expect( service.to_h[:app_protocol] ).to eq( service.app_protocol )
+	end
+
+
+	it "keeps its service attributes when marshalled" do
+		service = described_class.new( 'dnsd', host, port: 53, protocol: 'udp', app_protocol: 'dns' )
+
+		expect( service.to_h ).to include( :port, :protocol, :app_protocol )
+		expect( service.to_h[:port] ).to eq( service.port )
+		expect( service.to_h[:protocol] ).to eq( service.protocol )
+		expect( service.to_h[:app_protocol] ).to eq( service.app_protocol )
+	end
+
+
+	it "is equal to another service node with the same metadata and service attributes" do
+		service1 = described_class.new( 'dnsd', host, port: 53, protocol: 'udp', app_protocol: 'dns' )
+		service2 = described_class.new( 'dnsd', host, port: 53, protocol: 'udp', app_protocol: 'dns' )
+
+		expect( service1 ).to eq( service2 )
+	end
+
+
+	it "is not equal to another service node with the same metadata and different service attributes" do
+		service1 = described_class.new( 'dnsd', host, port: 53, protocol: 'udp', app_protocol: 'dns' )
+		service2 = described_class.new( 'dnsd', host, port: 53, protocol: 'tcp', app_protocol: 'dns' )
+
+		expect( service1 ).to_not eq( service2 )
+	end
+
+
+	it "is not equal to another service node with the same metadata and different port" do
+		service1 = described_class.new( 'dnsd', host, port: 53, protocol: 'udp', app_protocol: 'dns' )
+		service2 = described_class.new( 'dnsd', host, port: 80, protocol: 'udp', app_protocol: 'dns' )
+
+		expect( service1 ).to_not eq( service2 )
+	end
+
+
+	it "is not equal to another service node with the same metadata and different app protocol" do
+		service1 = described_class.new( 'dnsd', host, port: 53, protocol: 'udp', app_protocol: 'dns' )
+		service2 = described_class.new( 'dnsd', host, port: 53, protocol: 'udp', app_protocol: 'smtp' )
+
+		expect( service1 ).to_not eq( service2 )
+	end
+
+
+
 	describe "matching" do
+
+		let( :host ) do
+			Arborist::Node.create( 'host', 'testhost' ) do
+				address '192.168.66.12'
+				address '10.1.33.8'
+			end
+		end
 
 		let( :node ) do
 			described_class.new( 'ssh', host )

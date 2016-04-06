@@ -20,10 +20,16 @@ lib/arborist/command/client.rb
 lib/arborist/command/config.rb
 lib/arborist/command/start.rb
 lib/arborist/command/watch.rb
+lib/arborist/dependency.rb
 lib/arborist/event.rb
+lib/arborist/event/node.rb
 lib/arborist/event/node_acked.rb
 lib/arborist/event/node_delta.rb
-lib/arborist/event/node_matching.rb
+lib/arborist/event/node_disabled.rb
+lib/arborist/event/node_down.rb
+lib/arborist/event/node_quieted.rb
+lib/arborist/event/node_unknown.rb
+lib/arborist/event/node_up.rb
 lib/arborist/event/node_update.rb
 lib/arborist/event/sys_reloaded.rb
 lib/arborist/exceptions.rb
@@ -46,6 +52,8 @@ lib/arborist/observer/summarize.rb
 lib/arborist/observer_runner.rb
 lib/arborist/subscription.rb
 spec/arborist/client_spec.rb
+spec/arborist/dependency_spec.rb
+spec/arborist/event/node_delta_spec.rb
 spec/arborist/event/node_update_spec.rb
 spec/arborist/event_spec.rb
 spec/arborist/manager/event_publisher_spec.rb

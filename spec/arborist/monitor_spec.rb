@@ -26,9 +26,9 @@ describe Arborist::Monitor do
 
 
 	let( :testing_nodes ) {{
-		'trunk' => trunk_node.to_hash,
-		'branch' => branch_node.to_hash,
-		'leaf' => leaf_node.to_hash
+		'trunk' => trunk_node.to_h,
+		'branch' => branch_node.to_h,
+		'leaf' => leaf_node.to_h
 	}}
 
 

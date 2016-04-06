@@ -258,7 +258,7 @@ class Arborist::Manager
 		self.log.error "%p while saving node state: %s" % [ err.class, err.message ]
 
 	ensure
-		tmpfile.unlink if tmpfile
+		File.unlink( tmpfile.path ) if tmpfile && File.exist?( tmpfile.path )
 	end
 
 
@@ -420,11 +420,19 @@ class Arborist::Manager
 	### Build the tree out of all the loaded nodes.
 	def build_tree
 		self.log.info "Building tree from %d loaded nodes." % [ self.nodes.length ]
-		self.nodes.each do |identifier, node|
+
+		# Build primary tree structure
+		self.nodes.each_value do |node|
 			next if node.operational?
 			self.link_node_to_parent( node )
 		end
 		self.tree_built = true
+
+		# Set up secondary dependencies
+		self.nodes.each_value do |node|
+			node.register_secondary_dependencies( self )
+		end
+
 		self.restore_node_states
 	end
 
@@ -432,6 +440,7 @@ class Arborist::Manager
 	### Link the specified +node+ to its parent. Raises an error if the specified +node+'s
 	### parent is not yet loaded.
 	def link_node_to_parent( node )
+		self.log.debug "Linking node %p to its parent" % [ node ]
 		parent_id = node.parent || '_'
 		parent_node = self.nodes[ parent_id ] or
 			raise "no parent '%s' node loaded for %p" % [ parent_id, node ]
@@ -450,8 +459,19 @@ class Arborist::Manager
 			self.nodes[ identifier ] = node
 		end
 
-		self.log.debug "Linking node %p to its parent" % [ node ]
-		self.link_node_to_parent( node ) if self.tree_built?
+		if self.tree_built?
+			self.link_node( node )
+			node.handle_event( Arborist::Event.create(:sys_node_added, node) )
+		end
+	end
+
+
+	### Link the node to other nodes in the tree.
+	def link_node( node )
+		raise "Tree is not built yet" unless self.tree_built?
+
+		self.link_node_to_parent( node )
+		node.register_secondary_dependencies( self )
 	end
 
 
@@ -464,6 +484,7 @@ class Arborist::Manager
 		raise "Can't remove an operational node" if node.operational?
 
 		self.log.info "Removing node %p" % [ node ]
+		node.handle_event( Arborist::Event.create(:sys_node_removed, node) )
 		node.children.each do |identifier, child_node|
 			self.remove_node( child_node )
 		end
@@ -567,24 +588,45 @@ class Arborist::Manager
 	end
 
 
+	### Return an Array of all nodes below the specified +node+.
+	def descendants_for( node )
+		return self.enumerator_for( node ).to_a
+	end
+
+
+	### Return the Array of all nodes above the specified +node+.
+	def ancestors_for( node )
+		parent_id = node.parent or return []
+		parent = self.nodes[ parent_id ]
+		return [ parent ] + self.ancestors_for( parent )
+	end
+
 
 	#
 	# Event API
 	#
 
-	### Create a subscription for the node with the specified +identifier+ and
-	### +event_pattern+, using the given +criteria+ when considering an event.
-	def create_subscription( identifier, event_pattern, criteria )
+	### Add the specified +subscription+ to the node corresponding with the given +identifier+.
+	def subscribe( identifier, subscription )
 		identifier ||= '_'
-
 		node = self.nodes[ identifier ] or raise ArgumentError, "no such node %p" % [ identifier ]
-		sub = Arborist::Subscription.new( self.event_publisher, event_pattern, criteria )
 
-		self.log.debug "Registering subscription %p" % [ sub ]
-		node.add_subscription( sub )
-		self.log.debug " adding '%s' to the subscriptions hash." % [ sub.id ]
-		self.subscriptions[ sub.id ] = node
+		self.log.debug "Registering subscription %p" % [ subscription ]
+		node.add_subscription( subscription )
+		self.log.debug " adding '%s' to the subscriptions hash." % [ subscription.id ]
+		self.subscriptions[ subscription.id ] = node
 		self.log.debug "  subscriptions hash: %#0x" % [ self.subscriptions.object_id ]
+	end
+
+
+	### Create a subscription that publishes to the Manager's event publisher for
+	### the node with the specified +identifier+ and +event_pattern+, using the
+	### given +criteria+ when considering an event.
+	def create_subscription( identifier, event_pattern, criteria )
+		sub = Arborist::Subscription.new( event_pattern, criteria ) do |*args|
+			self.event_publisher.publish( *args )
+		end
+		self.subscribe( identifier, sub )
 
 		return sub
 	end

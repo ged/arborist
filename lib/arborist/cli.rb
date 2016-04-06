@@ -43,7 +43,7 @@ module Arborist::CLI
 	version Arborist::VERSION
 
 	# Use an OpenStruct for options instead of a Hash
-	use_openstruct( true )
+	# use_openstruct( true )
 
 	# Subcommand options are independent of global[:ones]
 	subcommand_option_handling :normal
@@ -96,7 +96,7 @@ module Arborist::CLI
 		# Include a 'lib' directory if there is one
 		$LOAD_PATH.unshift( 'lib' ) if File.directory?( 'lib' )
 
-		self.require_additional_libs( global.requires ) if global.requires
+		self.require_additional_libs( global[:r] ) if global[:r]
 		self.load_config( global )
 		self.install_highline_colorscheme
 
@@ -185,6 +185,7 @@ module Arborist::CLI
 			cs[:down]       = [ :red ]
 			cs[:unknown]    = [ :dark, :yellow ]
 			cs[:disabled]   = [ :dark, :white ]
+			cs[:quieted]    = [ :dark, :green ]
 			cs[:acked]      = [ :yellow ]
 			cs[:highlight]  = [ :bold, :yellow ]
 			cs[:search_hit] = [ :black, :on_white ]
@@ -198,7 +199,7 @@ module Arborist::CLI
 	### Load the config file using either arborist-base's config-loader if available, or
 	### fall back to DEFAULT_CONFIG_FILE
 	def self::load_config( global={} )
-		Arborist.load_config( global.config ) if global.config
+		Arborist.load_config( global[:c] ) if global[:c]
 
 		# Set up the logging formatter
 		Loggability.format_with( :color ) if $stdout.tty?

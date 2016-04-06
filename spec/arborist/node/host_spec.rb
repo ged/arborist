@@ -105,6 +105,55 @@ describe Arborist::Node::Host do
 		expect( result.addresses ).to_not include( IPAddr.new('192.168.118.3') )
 	end
 
+
+	it "includes its addresses when turned into a Hash" do
+		node = described_class.new( 'testhost' ) do
+			address '192.168.118.3'
+		end
+
+		expect( node.to_h ).to include( :addresses )
+		expect( node.to_h[:addresses] ).to eq([ '192.168.118.3' ])
+	end
+
+
+	it "keeps its addresses when marshalled" do
+		node = described_class.new( 'testhost' ) do
+			address '192.168.118.3'
+			address '192.168.67.2'
+		end
+		clone = Marshal.load( Marshal.dump(node) )
+
+		expect( clone.addresses ).to eq( node.addresses )
+	end
+
+
+	it "is equal to another host node with the same metadata and addresses" do
+		node1 = described_class.new( 'testhost' ) do
+			address '192.168.118.3'
+			address '192.168.67.2'
+		end
+		node2 = described_class.new( 'testhost' ) do
+			address '192.168.118.3'
+			address '192.168.67.2'
+		end
+
+		expect( node1 ).to eq( node2 )
+	end
+
+
+	it "is not equal to another host node with the same metadata and different addresses" do
+		node1 = described_class.new( 'testhost' ) do
+			address '192.168.118.3'
+			address '192.168.67.2'
+		end
+		node2 = described_class.new( 'testhost' ) do
+			address '192.168.118.3'
+		end
+
+		expect( node1 ).to_not eq( node2 )
+	end
+
+
 	describe "matching" do
 
 		let( :node ) do

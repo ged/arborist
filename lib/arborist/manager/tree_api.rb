@@ -43,7 +43,15 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 		self.log.error "%p: %s" % [ err.class, err.message ]
 		err.backtrace.each {|frame| self.log.debug "  #{frame}" }
 
-		errtype = err.is_a?( Arborist::RequestError ) ? 'client' : 'server'
+		errtype = case err
+			when Arborist::RequestError,
+			     Arborist::ConfigError,
+			     Arborist::NodeError
+				'client'
+			else
+				'server'
+			end
+
 		return self.error_response( errtype, err.message )
 	end
 
@@ -169,7 +177,7 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 		start_node = @manager.nodes[ from ]
 		self.log.debug "  Listing nodes under %p" % [ start_node ]
 		iter = @manager.enumerator_for( start_node )
-		data = iter.map( &:to_hash )
+		data = iter.map( &:to_h )
 		self.log.debug "  got data for %d nodes" % [ data.length ]
 
 		return successful_response( data )

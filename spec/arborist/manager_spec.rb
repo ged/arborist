@@ -104,7 +104,8 @@ describe Arborist::Manager do
 			expect( tempfile ).to receive( :close )
 			expect( File ).to receive( :rename ).
 				and_raise( Errno::ENOENT.new("no such file or directory") )
-			expect( tempfile ).to receive( :unlink )
+			expect( File ).to receive( :exist? ).with( tempfile.path ).and_return( true )
+			expect( File ).to receive( :unlink ).with( tempfile.path )
 
 			manager.save_node_states
 		end

@@ -20,8 +20,9 @@ class Arborist::Subscription
 
 	### Instantiate a new Subscription object given an +event+ pattern
 	### and event +criteria+.
-	def initialize( publisher, event_type=nil, criteria={} )
-		@publisher  = publisher
+	def initialize( event_type=nil, criteria={}, &callback )
+		raise LocalJumpError, "requires a callback block" unless callback
+		@callback   = callback
 		@event_type = event_type
 		@criteria   = stringify_keys( criteria )
 		@id         = self.generate_id
@@ -32,8 +33,8 @@ class Arborist::Subscription
 	public
 	######
 
-	# The Arborist::Manager::EventPublisher the subscription will use to publish matching events.
-	attr_reader :publisher
+	# The callable that should be called when the subscription receives a matching event
+	attr_reader :callback
 
 	# A unique identifier for this subscription request.
 	attr_reader :id
@@ -54,7 +55,10 @@ class Arborist::Subscription
 	### Publish any of the specified +events+ which match the subscription.
 	def on_events( *events )
 		events.flatten.each do |event|
-			self.publisher.publish( self.id, event ) if self.interested_in?( event )
+			if self.interested_in?( event )
+				self.log.debug "Calling %p for a %s event" % [ self.callback, event.type ]
+				self.callback.call( self.id, event )
+			end
 		end
 	end
 
@@ -70,12 +74,13 @@ class Arborist::Subscription
 
 	### Return a String representation of the object suitable for debugging.
 	def inspect
-		return "#<%p:%#x [%s] for %s events matching: %p>" % [
+		return "#<%p:%#x [%s] for %s events matching: %p -> %p>" % [
 			self.class,
 			self.object_id * 2,
 			self.id,
 			self.event_type,
 			self.criteria,
+			self.callback,
 		]
 	end
 
