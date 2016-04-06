@@ -7,9 +7,6 @@
 
 ### Manager
 
-* Include 'quieted' in the list of states that are not reachable
-  via normal node iteration
-
 * Only restore timestamps from serialized node dependencies, not the deps themselves.
 
 * Broadcast system events:
@@ -38,9 +35,17 @@ Already done
 
 ### Nodes
 
-* Allow expressing arbitrary, secondary dependencies between nodes (FTP under host X can't operate if LDAP under host N is down, etc)
-
 * Allow a service node to not inherit all of its host's addresses (i.e., be bound to one address only or whatever)
+
+### Monitor
+
+* Add some default monitor types and utilities
+  - UDP socket check
+  - Basic monitors for stdlib Net::* protocols/services
+  - 
+
+* Gems for monitor types that have external dependency
+  - SNMP
 
 
 ## Second Release (0.2)

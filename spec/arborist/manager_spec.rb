@@ -62,7 +62,7 @@ describe Arborist::Manager do
 		end
 
 		let( :router_node ) { Arborist::Host('router') }
-		let( :host_node ) { Arborist::Host( 'host_a', router_node ) }
+		let( :host_node ) { Arborist::Host( 'host-a', router_node ) }
 		let( :tree ) {[ router_node, host_node ]}
 
 		let( :manager ) do
@@ -139,13 +139,13 @@ describe Arborist::Manager do
 			expect( statefile ).to receive( :open ).with( 'r:binary' ).
 				and_return( state_file_io )
 			expect( Marshal ).to receive( :load ).with( state_file_io ).
-				and_return({ 'router' => saved_router_node, 'host_a' => saved_host_node })
+				and_return({ 'router' => saved_router_node, 'host-a' => saved_host_node })
 
 			expect( manager.restore_node_states ).to be_truthy
 
 			expect( manager.nodes['router'].status ).to eq( 'up' )
-			expect( manager.nodes['host_a'].status ).to eq( 'down' )
-			expect( manager.nodes['host_a'].error ).to eq( 'Stuff happened and it was not good.' )
+			expect( manager.nodes['host-a'].status ).to eq( 'down' )
+			expect( manager.nodes['host-a'].error ).to eq( 'Stuff happened and it was not good.' )
 
 		end
 
@@ -354,16 +354,21 @@ describe Arborist::Manager do
 
 			[
 				testing_node( 'router' ),
-					testing_node( 'host_a', 'router' ),
-						testing_node( 'host_a_www', 'host_a' ),
-						testing_node( 'host_a_smtp', 'host_a' ),
-						testing_node( 'host_a_imap', 'host_a' ),
-					testing_node( 'host_b', 'router' ),
-						testing_node( 'host_b_www', 'host_b' ),
-						testing_node( 'host_b_nfs', 'host_b' ),
-						testing_node( 'host_b_ssh', 'host_b' ),
-					testing_node( 'host_c', 'router' ),
-						testing_node( 'host_c_www', 'host_c' ),
+					testing_node( 'host-a', 'router' ),
+						testing_node( 'host-a-www', 'host-a' ),
+						testing_node( 'host-a-smtp', 'host-a' ),
+						testing_node( 'host-a-imap', 'host-a' ),
+					testing_node( 'host-b', 'router' ),
+						testing_node( 'host-b-www', 'host-b' ),
+						testing_node( 'host-b-nfs', 'host-b' ),
+						testing_node( 'host-b-ssh', 'host-b' ),
+					testing_node( 'host-c', 'router' ),
+						testing_node( 'host-c-www', 'host-c' ),
+					testing_node( 'host-d', 'router' ),
+						testing_node( 'host-d-ssh', 'host-d' ),
+						testing_node( 'host-d-amqp', 'host-d' ),
+						testing_node( 'host-d-database', 'host-d' ),
+						testing_node( 'host-d-memcached', 'host-d' ),
 			]
 		end
 
@@ -382,15 +387,11 @@ describe Arborist::Manager do
 
 
 		it "can traverse all nodes whose status is 'up'" do
-			manager.nodes.each {|_, node| node.status = :up }
-			manager.nodes[ 'host_a' ].update( error: "ping failed" )
-			expect( manager.nodes[ 'host_a' ] ).to be_down
-			manager.nodes[ 'host_c' ].update( error: "gamma rays" )
-			expect( manager.nodes[ 'host_c' ] ).to be_down
-			manager.nodes[ 'host_b_nfs' ].
-				update( ack: {sender: 'nancy_kerrigan', message: 'bad case of disk rot'} )
-			expect( manager.nodes[ 'host_b_nfs' ] ).to be_disabled
-			expect( manager.nodes[ 'host_b_nfs' ] ).to_not be_down
+			manager.nodes.each {|_, node| node.status = 'up' }
+			manager.nodes[ 'host-a' ].status = 'down'
+			manager.nodes[ 'host-c' ].status = 'down'
+			manager.nodes[ 'host-b-nfs' ].status = 'disabled'
+			manager.nodes[ 'host-b-www' ].status = 'quieted'
 
 			iter = manager.reachable_nodes
 
@@ -400,18 +401,23 @@ describe Arborist::Manager do
 			expect( nodes ).to include(
 				"_",
 				"router",
-				"host_b",
-				"host_b_www",
-				"host_b_ssh"
+				"host-b",
+				"host-b-ssh",
+				"host-d",
+				"host-d-ssh",
+				"host-d-amqp",
+				"host-d-database",
+				"host-d-memcached",
 			)
 			expect( nodes ).to_not include(
-				"host_b_nfs",
-				"host_c",
-				"host_c_www",
-				"host_a",
-				'host_a_www',
-				'host_a_smtp',
-				'host_a_imap'
+				"host-b-www",
+				"host-b-nfs",
+				"host-c",
+				"host-c-www",
+				"host-a",
+				"host-a-www",
+				"host-a-smtp",
+				"host-a-imap",
 			)
 		end
 
@@ -430,16 +436,16 @@ describe Arborist::Manager do
 
 			[
 				testing_node( 'router' ),
-					testing_node( 'host_a', 'router' ),
-						testing_node( 'host_a_www', 'host_a' ),
-						testing_node( 'host_a_smtp', 'host_a' ),
-						testing_node( 'host_a_imap', 'host_a' ),
-					testing_node( 'host_b', 'router' ),
-						testing_node( 'host_b_www', 'host_b' ),
-						testing_node( 'host_b_nfs', 'host_b' ),
-						testing_node( 'host_b_ssh', 'host_b' ),
-					testing_node( 'host_c', 'router' ),
-						testing_node( 'host_c_www', 'host_c' ),
+					testing_node( 'host-a', 'router' ),
+						testing_node( 'host-a-www', 'host-a' ),
+						testing_node( 'host-a-smtp', 'host-a' ),
+						testing_node( 'host-a-imap', 'host-a' ),
+					testing_node( 'host-b', 'router' ),
+						testing_node( 'host-b-www', 'host-b' ),
+						testing_node( 'host-b-nfs', 'host-b' ),
+						testing_node( 'host-b-ssh', 'host-b' ),
+					testing_node( 'host-c', 'router' ),
+						testing_node( 'host-c-www', 'host-c' ),
 			]
 		end
 
@@ -453,24 +459,24 @@ describe Arborist::Manager do
 		it "can fetch a Hash of node states" do
 			states = manager.fetch_matching_node_states( {}, [] )
 			expect( states.size ).to eq( manager.nodes.size )
-			expect( states ).to include( 'host_b_nfs', 'host_c', 'router' )
-			expect( states['host_b_nfs'] ).to be_a( Hash )
-			expect( states['host_c'] ).to be_a( Hash )
+			expect( states ).to include( 'host-b-nfs', 'host-c', 'router' )
+			expect( states['host-b-nfs'] ).to be_a( Hash )
+			expect( states['host-c'] ).to be_a( Hash )
 			expect( states['router'] ).to be_a( Hash )
 		end
 
 
 		it "can update an event by identifier" do
-			manager.update_node( 'host_b_www', http: { status: 200 } )
+			manager.update_node( 'host-b-www', http: { status: 200 } )
 			expect(
-				manager.nodes['host_b_www'].properties
+				manager.nodes['host-b-www'].properties
 			).to include( 'http' => { 'status' => 200 } )
 		end
 
 
 		it "ignores updates to an identifier that is not (any longer) in the tree" do
 			expect {
-				manager.update_node( 'host_y', asset_tag: '2by-n86y7t' )
+				manager.update_node( 'host-y', asset_tag: '2by-n86y7t' )
 			}.to_not raise_error
 		end
 
@@ -479,10 +485,10 @@ describe Arborist::Manager do
 			expect( manager.root ).to receive( :publish_events ).
 				at_least( :once ).
 				and_call_original
-			expect( manager.nodes['host_c'] ).to receive( :publish_events ).
+			expect( manager.nodes['host-c'] ).to receive( :publish_events ).
 				at_least( :once ).
 				and_call_original
-			manager.update_node( 'host_c_www', response_status: 504, error: 'Timeout talking to web service.' )
+			manager.update_node( 'host-c-www', response_status: 504, error: 'Timeout talking to web service.' )
 		end
 
 
@@ -490,9 +496,9 @@ describe Arborist::Manager do
 			expect( manager.root ).to receive( :publish_events ).
 				at_least( :once ).
 				and_call_original
-			expect( manager.nodes['host_c'] ).to_not receive( :publish_events )
+			expect( manager.nodes['host-c'] ).to_not receive( :publish_events )
 
-			manager.update_node( 'host_b_www', response_status: 504, error: 'Timeout talking to web service.' )
+			manager.update_node( 'host-b-www', response_status: 504, error: 'Timeout talking to web service.' )
 		end
 
 	end
@@ -500,7 +506,7 @@ describe Arborist::Manager do
 
 	describe "subscriptions" do
 
-		let( :tree ) {[ testing_node('host_c') ]}
+		let( :tree ) {[ testing_node('host-c') ]}
 		let( :manager ) do
 			instance = described_class.new
 			instance.load_tree( tree )
@@ -511,24 +517,24 @@ describe Arborist::Manager do
 		it "can attach subscriptions to a node by its identifier" do
 			sub = subid = nil
 			expect {
-				sub = manager.create_subscription( 'host_c', 'node.update', type: 'host' )
+				sub = manager.create_subscription( 'host-c', 'node.update', type: 'host' )
 			}.to change { manager.subscriptions.size }.by( 1 )
 
 			node = manager.subscriptions[ sub.id ]
 
 			expect( sub ).to be_a( Arborist::Subscription )
-			expect( node ).to be( manager.nodes['host_c'] )
+			expect( node ).to be( manager.nodes['host-c'] )
 		end
 
 
 		it "can detach subscriptions from a node given the subscription ID" do
-			sub = manager.create_subscription( 'host_c', 'node.ack', type: 'service' )
+			sub = manager.create_subscription( 'host-c', 'node.ack', type: 'service' )
 			rval = nil
 
 			expect {
 				rval = manager.remove_subscription( sub.id )
 			}.to change { manager.subscriptions.size }.by( -1 ).and(
-				change { manager.nodes['host_c'].subscriptions.size }.by( -1 )
+				change { manager.nodes['host-c'].subscriptions.size }.by( -1 )
 			)
 
 			expect( rval ).to be( sub )

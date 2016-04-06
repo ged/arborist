@@ -567,7 +567,7 @@ class Arborist::Manager
 	### an Enumerator if no block is given.
 	def reachable_nodes( &block )
 		iter = self.enumerator_for( self.root ) do |node|
-			!(node.down? || node.disabled?)
+			!(node.down? || node.disabled? || node.quieted?)
 		end
 		return iter.each( &block ) if block
 		return iter

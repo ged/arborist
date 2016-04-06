@@ -635,6 +635,7 @@ class Arborist::Node
 	### Handle the specified +event+, delivered either via broadcast or secondary
 	### dependency subscription.
 	def handle_event( event )
+		self.log.debug "Handling %p" % [ event ]
 		handler_name = "handle_%s_event" % [ event.type.gsub('.', '_') ]
 		if self.respond_to?( handler_name )
 			self.log.debug "Handling a %s event." % [ event.type ]
