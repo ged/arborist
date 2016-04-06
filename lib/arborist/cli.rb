@@ -100,9 +100,7 @@ module Arborist::CLI
 		self.load_config( global )
 		self.install_highline_colorscheme
 
-		if loglevel = global[:loglevel]
-			Loggability.level = loglevel.to_sym
-		end
+		self.setup_output( global )
 
 		true
 	end
