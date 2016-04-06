@@ -152,14 +152,6 @@ class Arborist::Node::Service < Arborist::Node
 	end
 
 
-	### Marshal API -- set up the object's state using the +hash+ from a previously-marshalled 
-	### node. Overridden to turn the addresses back into IPAddr objects.
-	def marshal_load( hash )
-		super
-		@addresses = hash[:addresses].map {|addr| IPAddr.new(addr) }
-	end
-
-
 	### Equality operator -- returns +true+ if +other_node+ is equal to the
 	### receiver. Overridden to also compare addresses.
 	def ==( other_host )
