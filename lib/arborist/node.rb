@@ -699,12 +699,9 @@ class Arborist::Node
 	### Handle a 'node.up' event received via broadcast.
 	def handle_node_up_event( event )
 		self.log.debug "Got a node.up event: %p" % [ event ]
-		self.dependencies.mark_up( event.node.identifier )
 
-		if self.dependencies_up?
-			self.log.info "Dependencies are now met for %s." % [ self.identifier ]
-			self.quieted_reasons.delete( :secondary )
-		end
+		self.dependencies.mark_up( event.node.identifier )
+		self.quieted_reasons.delete( :secondary ) if self.dependencies_up?
 
 		if event.node.identifier == self.parent
 			self.log.info "Parent of %s (%s) came back up." % [
