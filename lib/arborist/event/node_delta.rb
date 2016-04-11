@@ -19,6 +19,11 @@ class Arborist::Event::NodeDelta < Arborist::Event::Node
 	end
 
 
+	### Overridden so delta events only contain the diff of attributes that changed.
+	def payload
+		return @payload
+	end
+
 
 	### Returns +true+ if the specified +object+ matches this event.
 	def match( object )

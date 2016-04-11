@@ -105,7 +105,7 @@ class Arborist::Node::Host < Arborist::Node
 	end
 
 
-	### Marshal API -- set up the object's state using the +hash+ from a previously-marshalled 
+	### Marshal API -- set up the object's state using the +hash+ from a previously-marshalled
 	### node. Overridden to turn the addresses back into IPAddr objects.
 	def marshal_load( hash )
 		super

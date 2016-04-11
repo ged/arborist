@@ -543,7 +543,7 @@ describe Arborist::Node do
 			ack_event = events.find {|ev| ev.type == 'node.acked' }
 
 			expect( ack_event ).to be_a( Arborist::Event )
-			expect( ack_event.payload ).to include( sender: 'Seabound' )
+			expect( ack_event.payload ).to include( ack: a_hash_including(sender: 'Seabound') )
 		end
 
 	end

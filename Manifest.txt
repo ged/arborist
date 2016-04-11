@@ -31,6 +31,8 @@ lib/arborist/event/node_quieted.rb
 lib/arborist/event/node_unknown.rb
 lib/arborist/event/node_up.rb
 lib/arborist/event/node_update.rb
+lib/arborist/event/sys_node_added.rb
+lib/arborist/event/sys_node_removed.rb
 lib/arborist/event/sys_reloaded.rb
 lib/arborist/exceptions.rb
 lib/arborist/loader.rb
@@ -54,6 +56,7 @@ lib/arborist/subscription.rb
 spec/arborist/client_spec.rb
 spec/arborist/dependency_spec.rb
 spec/arborist/event/node_delta_spec.rb
+spec/arborist/event/node_down_spec.rb
 spec/arborist/event/node_update_spec.rb
 spec/arborist/event_spec.rb
 spec/arborist/manager/event_publisher_spec.rb
