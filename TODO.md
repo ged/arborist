@@ -16,18 +16,6 @@
     - `sys.shutdown`
 
 
-(Hook state machine to generate events for state changes)
-Already done
-    - `node.up`
-    - `node.down`
-    - `node.disabled`
-    - `node.quieted`
-    - `node.acked`
-    - `node.delta`
-    - `node.updated`
-    - `sys.reloaded`
-
-
 ### Observers
 
 * Re-subscribe on `sys.startup`, `sys.reloaded`, `sys.node.added`
@@ -46,6 +34,10 @@ Already done
 
 * Gems for monitor types that have external dependency
   - SNMP
+
+### Watch Command
+
+* Re-subscribe on `sys.startup`, `sys.reloaded`, `sys.node.added`
 
 
 ## Second Release (0.2)
