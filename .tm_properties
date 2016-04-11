@@ -3,3 +3,4 @@ TM_RUBY = "/Users/ged/.rvm/bin/rvm-auto-ruby"
 
 
 
+windowTitle = '${TM_FILEPATH:?${TM_FILEPATH/${CWD}.//}:$TM_DISPLAYNAME}$windowTitleProject$windowTitleSCM'

@@ -29,6 +29,12 @@ class Arborist::Event::Node < Arborist::Event
 	end
 
 
+	### Use the node data as this event's payload.
+	def payload
+		return self.node.to_h
+	end
+
+
 	### Inject the node identifier into the generated hash.
 	def to_h
 		return super.merge( identifier: self.node.identifier )
