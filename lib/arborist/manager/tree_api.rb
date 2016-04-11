@@ -133,7 +133,7 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 
 	### Return a response to the `status` action.
 	def handle_status_request( header, body )
-		self.log.info "STATUS: %p" % [ header ]
+		self.log.debug "STATUS: %p" % [ header ]
 		return successful_response(
 			server_version: Arborist::VERSION,
 			state: @manager.running? ? 'running' : 'not running',
@@ -145,7 +145,7 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 
 	### Return a response to the `subscribe` action.
 	def handle_subscribe_request( header, body )
-		self.log.info "SUBSCRIBE: %p" % [ header ]
+		self.log.debug "SUBSCRIBE: %p" % [ header ]
 		event_type      = header[ 'event_type' ]
 		node_identifier = header[ 'identifier' ]
 		subscription    = @manager.create_subscription( node_identifier, event_type, body )
@@ -156,7 +156,7 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 
 	### Return a response to the `unsubscribe` action.
 	def handle_unsubscribe_request( header, body )
-		self.log.info "UNSUBSCRIBE: %p" % [ header ]
+		self.log.debug "UNSUBSCRIBE: %p" % [ header ]
 		subscription_id = header[ 'subscription_id' ] or
 			return error_response( 'client', 'No identifier specified for UNSUBSCRIBE.' )
 		subscription = @manager.remove_subscription( subscription_id ) or
@@ -171,7 +171,7 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 
 	### Return a repsonse to the `list` action.
 	def handle_list_request( header, body )
-		self.log.info "LIST: %p" % [ header ]
+		self.log.debug "LIST: %p" % [ header ]
 		from = header['from'] || '_'
 
 		start_node = @manager.nodes[ from ]
@@ -186,7 +186,7 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 
 	### Return a response to the 'fetch' action.
 	def handle_fetch_request( header, body )
-		self.log.info "FETCH: %p" % [ header ]
+		self.log.debug "FETCH: %p" % [ header ]
 
 		include_down = header['include_down']
 		values = if header.key?( 'return' )
@@ -202,7 +202,7 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 
 	### Update nodes using the data from the update request's +body+.
 	def handle_update_request( header, body )
-		self.log.info "UPDATE: %p" % [ header ]
+		self.log.debug "UPDATE: %p" % [ header ]
 
 		body.each do |identifier, properties|
 			@manager.update_node( identifier, properties )
@@ -214,7 +214,7 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 
 	### Remove a node and its children.
 	def handle_prune_request( header, body )
-		self.log.info "PRUNE: %p" % [ header ]
+		self.log.debug "PRUNE: %p" % [ header ]
 
 		identifier = header[ 'identifier' ] or
 			return error_response( 'client', 'No identifier specified for PRUNE.' )
@@ -226,7 +226,7 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 
 	### Add a node
 	def handle_graft_request( header, body )
-		self.log.info "GRAFT: %p" % [ header ]
+		self.log.debug "GRAFT: %p" % [ header ]
 
 		identifier = header[ 'identifier' ] or
 			return error_response( 'client', 'No identifier specified for GRAFT.' )
@@ -255,7 +255,7 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 
 	### Modify a node's operational attributes
 	def handle_modify_request( header, body )
-		self.log.info "MODIFY: %p" % [ header ]
+		self.log.debug "MODIFY: %p" % [ header ]
 
 		identifier = header[ 'identifier' ] or
 			return error_response( 'client', 'No identifier specified for MODIFY.' )
