@@ -84,6 +84,40 @@ class Arborist::Client
 	end
 
 
+	### Mark a node as 'acknowledged' if it's down, or 'disabled' if
+	### it's up.  (A pre-emptive acknowledgement.)  Requires the node
+	### +identifier+, an acknowledgement +message+, and +sender+.  You
+	### can optionally include a +via+ (source), and override the default
+	### +time+ of now.
+	def acknowledge( node, message, sender, via=nil, time=Time.now )
+		data = {
+			node => {
+				ack: {
+					message: message,
+					sender:  sender,
+					via:     via,
+					time:    time.to_s
+				}
+			}
+		}
+
+		request = self.make_update_request( data )
+		self.send_tree_api_request( request )
+		return true
+	end
+	alias_method :ack, :acknowledge
+
+
+	### Clear an acknowledged/disabled +node+.
+	def clear_acknowledgement( node )
+		data = { node => { ack: nil } }
+		request = self.make_update_request( data )
+		self.send_tree_api_request( request )
+		return true
+	end
+	alias_method :clear_ack, :clear_acknowledgement
+
+
 	### Update the identified nodes in the manager with the specified data.
 	def update( *args )
 		request = self.make_update_request( *args )
