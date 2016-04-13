@@ -30,17 +30,13 @@ class Arborist::Node
 	# loaded.
 	LOADED_INSTANCE_KEY = :loaded_node_instances
 
-	# The struct for the 'ack' operational property
-	ACK = Struct.new( 'ArboristNodeACK', :message, :via, :sender, :time )
-
-	# The keys required to be set for an ACK
-	ACK_REQUIRED_PROPERTIES = %w[ message sender ]
-
 	# Regex to match a valid identifier
 	VALID_IDENTIFIER = /^\w[\w\-]*$/
 
 
 	autoload :Root, 'arborist/node/root'
+	autoload :Ack, 'arborist/node/ack'
+
 
 	# Log via the Arborist logger
 	log_to :arborist
@@ -882,10 +878,7 @@ class Arborist::Node
 		@pending_update_events = []
 		@subscriptions         = {}
 
-		if hash[:ack]
-			ack_values = hash[:ack].values_at( *Arborist::Node::ACK.members )
-			@ack = Arborist::Node::ACK.new( *ack_values )
-		end
+		self.ack = hash[:ack]
 	end
 
 
@@ -908,15 +901,7 @@ class Arborist::Node
 	def ack=( ack_data )
 		if ack_data
 			self.log.info "Node %s ACKed with data: %p" % [ self.identifier, ack_data ]
-			ack_data['time'] ||= Time.now
-			ack_values = ack_data.values_at( *Arborist::Node::ACK.members.map(&:to_s) )
-			new_ack = Arborist::Node::ACK.new( *ack_values )
-
-			if missing = ACK_REQUIRED_PROPERTIES.find {|prop| new_ack[prop].nil? }
-				raise "Missing required ACK attribute %s" % [ missing ]
-			end
-
-			@ack = new_ack
+			@ack = Arborist::Node::Ack.from_hash( ack_data )
 		else
 			self.log.info "Node %s ACK cleared explicitly" % [ self.identifier ]
 			@ack = nil

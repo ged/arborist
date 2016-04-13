@@ -19,6 +19,7 @@
 ### Observers
 
 * Re-subscribe on `sys.startup`, `sys.reloaded`, `sys.node.added`
+* Add `except` to observers DSL
 
 
 ### Nodes

@@ -45,6 +45,7 @@ lib/arborist/monitor.rb
 lib/arborist/monitor/socket.rb
 lib/arborist/monitor_runner.rb
 lib/arborist/node.rb
+lib/arborist/node/ack.rb
 lib/arborist/node/host.rb
 lib/arborist/node/root.rb
 lib/arborist/node/service.rb
@@ -66,6 +67,7 @@ spec/arborist/mixins_spec.rb
 spec/arborist/monitor/socket_spec.rb
 spec/arborist/monitor_runner_spec.rb
 spec/arborist/monitor_spec.rb
+spec/arborist/node/ack_spec.rb
 spec/arborist/node/host_spec.rb
 spec/arborist/node/root_spec.rb
 spec/arborist/node/service_spec.rb
