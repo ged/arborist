@@ -181,6 +181,29 @@ describe Arborist::Monitor do
 	end
 
 
+	it "handles system call errors while running the monitor command" do
+		mon = described_class.new( "the description" ) do
+
+			exec 'the_command'
+
+			handle_results {|*| }
+			exec_input {|*| }
+			exec_arguments do |nodes|
+				Loggability[ Arborist ].debug "In the argument-builder."
+				nodes.keys
+			end
+		end
+
+		expect( Process ).to receive( :spawn ) do |*args|
+			raise Errno::EPIPE, "broken pipe"
+		end
+
+		expect {
+			mon.run( testing_nodes )
+		}.to_not raise_error
+	end
+
+
 	it "can provide a function for providing input to its command" do
 		mon = described_class.new( "the description" ) do
 

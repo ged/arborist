@@ -250,6 +250,15 @@ class Arborist::Monitor
 		parent_writer.close
 
 		return context.handle_results( pid, parent_reader, parent_err_reader )
+	rescue SystemCallError => err
+		self.log.error "%p while running external monitor command `%s`: %s" % [
+			err.class,
+			Shellwords.join( command ),
+			err.message
+		]
+		self.log.debug "  %s" % [ err.backtrace.join("\n  ") ]
+		return {}
+
 	ensure
 		if pid
 			begin
