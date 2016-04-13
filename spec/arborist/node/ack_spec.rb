@@ -35,6 +35,17 @@ describe Arborist::Node::Ack do
 	end
 
 
+	it "can describe itself" do
+		ack = described_class.new( "someone else's problem", "Hike Mix" )
+		expect( ack.description ).to match( /by hike mix -- someone else's problem/i )
+	end
+
+	it "can describe itself with a via source" do
+		ack = described_class.new( "someone else's problem", "Hike Mix", via: "sms" )
+		expect( ack.description ).to match( /by hike mix via sms -- someone else's problem/i )
+	end
+
+
 	describe "time argument" do
 
 		it "can be constructed with a Time" do

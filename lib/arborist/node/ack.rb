@@ -40,6 +40,16 @@ class Arborist::Node::Ack
 	attr_reader :message, :sender, :via, :time
 
 
+	### Return a string description of the acknowledgement for logging and inspection.
+	def description
+		return "by %s%s -- %s" % [
+			self.sender,
+			self.via ? " via #{self.via}" : '',
+			self.message
+		]
+	end
+
+
 	### Return the Ack as a Hash.
 	def to_h
 		return {

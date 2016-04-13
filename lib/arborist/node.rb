@@ -761,15 +761,23 @@ class Arborist::Node
 	# :section: Utility methods
 	#
 
+
+	### Return a description of the ack if it's set, or a generic string otherwise.
+	def acked_description
+		return self.ack.description if self.ack
+		return "(unset)"
+	end
+
+
 	### Return a string describing the node's status.
 	def status_description
 		case self.status
 		when 'up', 'down'
 			return "%s as of %s" % [ self.status.upcase, self.last_contacted ]
 		when 'acked'
-			return "ACKed by %s %s" % [ self.ack.sender, self.ack.time.as_delta ]
+			return "ACKed %s" % [ self.acked_description ]
 		when 'disabled'
-			return "disabled by %s %s" % [ self.ack.sender, self.ack.time.as_delta ]
+			return "disabled %s" % [ self.acked_description ]
 		when 'quieted'
 			reasons = self.quieted_reasons.values.join( ',' )
 			return "quieted: %s" % [ reasons ]
@@ -959,8 +967,8 @@ class Arborist::Node
 
 	### Callback for when an acknowledgement is cleared.
 	def on_ack_cleared( transition )
-		self.ack = nil
 		self.log.warn "ACK cleared for %s" % [ self.identifier ]
+		self.ack = nil
 	end
 
 
