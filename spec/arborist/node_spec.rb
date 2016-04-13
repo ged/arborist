@@ -178,6 +178,26 @@ describe Arborist::Node do
 				expect( node ).to be_acked
 			end
 
+			it "transitions from `acked` to `up` status if its error is cleared" do
+				node.status = 'down'
+				node.error = 'Something is wrong | he falls | betraying the trust | "\
+					"there is a disaster in his life.'
+				node.update( ack: {message: "Leitmotiv", sender: 'ged'}  )
+				node.update( error: nil )
+
+				expect( node ).to be_up
+			end
+
+			it "stays `up` if its error is cleared and stays cleared" do
+				node.status = 'down'
+				node.error = 'stay up damn you!'
+				node.update( ack: {message: "Leitmotiv", sender: 'ged'}  )
+				node.update( error: nil )
+				node.update( error: nil )
+
+				expect( node ).to be_up
+			end
+
 			it "transitions to `disabled` from `up` status if it's updated with an `ack` property" do
 				node.status = 'up'
 				node.update( ack: {message: "Maintenance", sender: 'mahlon'} )

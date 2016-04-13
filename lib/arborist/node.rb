@@ -974,7 +974,7 @@ class Arborist::Node
 
 	### Callback for when an acknowledgement is cleared.
 	def on_ack_cleared( transition )
-		self.error = nil
+		self.ack = nil
 		self.log.warn "ACK cleared for %s" % [ self.identifier ]
 	end
 
