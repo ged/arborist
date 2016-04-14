@@ -62,12 +62,12 @@ class Arborist::MonitorRunner
 
 		### Run the specified +monitor+ and update nodes with the results.
 		def run_monitor( monitor )
-			criteria     = monitor.positive_criteria
+			positive     = monitor.positive_criteria
+			negative     = monitor.negative_criteria
 			include_down = monitor.include_down?
 			props        = monitor.node_properties
 
-			self.fetch( criteria, include_down, props ) do |nodes|
-				# :FIXME: Doesn't apply negative criteria
+			self.fetch( positive, include_down, props, exclude: negative ) do |nodes|
 				results = monitor.run( nodes )
 				self.update( results ) do
 					self.log.debug "Updated %d via the '%s' monitor" %

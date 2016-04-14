@@ -25,7 +25,8 @@ class Arborist::Event::Node < Arborist::Event
 	### Returns +true+ if the specified +object+ matches this event.
 	def match( object )
 		return super &&
-			object.respond_to?( :criteria ) && self.node.matches?( object.criteria )
+			object.respond_to?( :criteria ) && self.node.matches?( object.criteria ) &&
+			( !object.respond_to?(:negative_criteria) || !self.node.matches?(object.negative_criteria) )
 	end
 
 

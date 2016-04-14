@@ -97,6 +97,18 @@ describe Arborist::Client do
 		end
 
 
+		it "can fetch all node properties for 'up' nodes that don't match specified criteria" do
+			res = client.fetch( {}, properties: [:addresses, :status], exclude: {tag: 'testing'} )
+
+			testing_nodes = manager.nodes.values.select {|n| n.tags.include?('testing') }
+
+			expect( res ).to be_a( Hash )
+			expect( res ).to_not be_empty()
+			expect( res.length ).to eq( manager.nodes.length - testing_nodes.length )
+			expect( res.values ).to all( be_a(Hash) )
+		end
+
+
 		it "can fetch all properties for all nodes regardless of their status" do
 			# Down a node
 			manager.nodes['duir'].update( error: 'something happened' )
@@ -297,7 +309,7 @@ describe Arborist::Client do
 			expect( msg.first['version'] ).to eq( Arborist::Client::API_VERSION )
 			expect( msg.first['action'] ).to eq( 'fetch' )
 
-			expect( msg.last ).to eq( {} )
+			expect( msg.last ).to eq([ {}, {} ])
 		end
 
 
@@ -313,9 +325,10 @@ describe Arborist::Client do
 			expect( msg.first['version'] ).to eq( Arborist::Client::API_VERSION )
 			expect( msg.first['action'] ).to eq( 'fetch' )
 
-			expect( msg.last ).to be_a( Hash )
-			expect( msg.last ).to include( 'type' )
-			expect( msg.last['type'] ).to eq( 'host' )
+			body = msg.last
+			expect( body.first ).to be_a( Hash )
+			expect( body.first ).to include( 'type' )
+			expect( body.first['type'] ).to eq( 'host' )
 		end
 
 

@@ -124,8 +124,9 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 		raise Arborist::RequestError, "missing required header 'action'" unless
 			header.key?( 'action' )
 
-		raise Arborist::RequestError, "body must be a Map or Nil" unless
-			body.is_a?( Hash ) || body.nil?
+		raise Arborist::RequestError, "body must be Nil, a Map, or an Array of Maps" unless
+			body.is_a?( Hash ) || body.nil? ||
+			( body.is_a?(Array) && body.all? {|obj| obj.is_a?(Hash) } )
 
 		return header, body
 	end
@@ -194,7 +195,11 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 			else
 				nil
 			end
-		states = @manager.fetch_matching_node_states( body, values, include_down )
+
+		body = [ body ] unless body.is_a?( Array )
+		positive = body.shift
+		negative = body.shift || {}
+		states = @manager.fetch_matching_node_states( positive, values, include_down, negative )
 
 		return successful_response( states )
 	end

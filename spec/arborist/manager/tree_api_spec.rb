@@ -122,14 +122,14 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 		end
 
 
-		it "send an error response if the request's body is not a Map or Nil" do
+		it "send an error response if the request's body is not Nil, a Map, or an Array of Maps" do
 			sock.send( MessagePack.pack([{version: 1, action: 'list'}, 18]) )
 			resmsg = sock.recv
 
 			hdr, body = unpack_message( resmsg )
 			expect( hdr ).to include(
 				'success'  => false,
-				'reason'   => /invalid request.*body must be a map or nil/i,
+				'reason'   => /invalid request.*body must be nil, a map, or an array of maps/i,
 				'category' => 'client'
 			)
 			expect( body ).to be_nil
@@ -217,6 +217,40 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 		end
 
 
+		it "returns an array of full state maps for nodes not matching specified negative criteria" do
+			msg = pack_message( :fetch, [ {}, {type: 'service', port: 22} ] )
+
+			sock.send( msg )
+			resmsg = sock.recv
+
+			hdr, body = unpack_message( resmsg )
+			expect( hdr ).to include( 'success' => true )
+
+			expect( body ).to be_a( Hash )
+			expect( body.length ).to eq( manager.nodes.length - 3 )
+
+			expect( body.values ).to all( be_a(Hash) )
+			expect( body.values ).to all( include('status', 'type') )
+		end
+
+
+		it "returns an array of full state maps for nodes combining positive and negative criteria" do
+			msg = pack_message( :fetch, [ {type: 'service'}, {port: 22} ] )
+
+			sock.send( msg )
+			resmsg = sock.recv
+
+			hdr, body = unpack_message( resmsg )
+			expect( hdr ).to include( 'success' => true )
+
+			expect( body ).to be_a( Hash )
+			expect( body.length ).to eq( 16 )
+
+			expect( body.values ).to all( be_a(Hash) )
+			expect( body.values ).to all( include('status', 'type') )
+		end
+
+
 		it "doesn't return nodes beneath downed nodes by default" do
 			manager.nodes['sidonie'].update( error: 'sunspots' )
 			msg = pack_message( :fetch, type: 'service', port: 22 )
@@ -275,6 +309,7 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 			expect( body ).to include( 'duir-ssh', 'yevaud-ssh', 'sidonie-ssh' )
 			expect( body.values.map(&:keys) ).to all( contain_exactly('status', 'tags', 'addresses') )
 		end
+
 
 	end
 

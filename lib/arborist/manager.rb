@@ -514,7 +514,7 @@ class Arborist::Manager
 	### match the given +filter+, skipping downed nodes and all their children
 	### unless +include_down+ is set. If +return_values+ is set to +nil+, then all
 	### values from the node will be returned.
-	def fetch_matching_node_states( filter, return_values, include_down=false )
+	def fetch_matching_node_states( filter, return_values, include_down=false, negative_filter={} )
 		nodes_iter = if include_down
 				self.all_nodes
 			else
@@ -523,6 +523,7 @@ class Arborist::Manager
 
 		states = nodes_iter.
 			select {|node| node.matches?(filter) }.
+			reject {|node| !negative_filter.empty? && node.matches?(negative_filter) }.
 			each_with_object( {} ) do |node, hash|
 				hash[ node.identifier ] = node.fetch_values( return_values )
 			end

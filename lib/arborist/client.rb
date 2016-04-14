@@ -75,12 +75,12 @@ class Arborist::Client
 
 
 	### Return the manager's current node tree.
-	def make_fetch_request( criteria, include_down: false, properties: :all )
+	def make_fetch_request( criteria, include_down: false, properties: :all, exclude: {} )
 		header = {}
 		header[ :include_down ] = true if include_down
 		header[ :return ] = properties if properties != :all
 
-		return self.pack_message( :fetch, header, criteria )
+		return self.pack_message( :fetch, header, [ criteria, exclude ] )
 	end
 
 

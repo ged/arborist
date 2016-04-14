@@ -437,15 +437,15 @@ describe Arborist::Manager do
 			[
 				testing_node( 'router' ),
 					testing_node( 'host-a', 'router' ),
-						testing_node( 'host-a-www', 'host-a' ),
-						testing_node( 'host-a-smtp', 'host-a' ),
+						testing_node( 'host-a-www', 'host-a' ) { tags :home, :church },
+						testing_node( 'host-a-smtp', 'host-a' ) { tags :home },
 						testing_node( 'host-a-imap', 'host-a' ),
 					testing_node( 'host-b', 'router' ),
-						testing_node( 'host-b-www', 'host-b' ),
+						testing_node( 'host-b-www', 'host-b' ) { tags :church },
 						testing_node( 'host-b-nfs', 'host-b' ),
-						testing_node( 'host-b-ssh', 'host-b' ),
+						testing_node( 'host-b-ssh', 'host-b' ) { tags :work },
 					testing_node( 'host-c', 'router' ),
-						testing_node( 'host-c-www', 'host-c' ),
+						testing_node( 'host-c-www', 'host-c' ) { tags :work, :home },
 			]
 		end
 
@@ -456,13 +456,39 @@ describe Arborist::Manager do
 		end
 
 
-		it "can fetch a Hash of node states" do
+		fit "can fetch a Hash of node states" do
 			states = manager.fetch_matching_node_states( {}, [] )
 			expect( states.size ).to eq( manager.nodes.size )
 			expect( states ).to include( 'host-b-nfs', 'host-c', 'router' )
 			expect( states['host-b-nfs'] ).to be_a( Hash )
 			expect( states['host-c'] ).to be_a( Hash )
 			expect( states['router'] ).to be_a( Hash )
+		end
+
+
+		fit "can fetch a Hash of node states for nodes which match specified criteria" do
+			states = manager.fetch_matching_node_states( {'identifier' => 'host-c'}, [] )
+			expect( states.size ).to eq( 1 )
+			expect( states.keys.first ).to eq( 'host-c' )
+			expect( states['host-c'] ).to be_a( Hash )
+		end
+
+
+		fit "can fetch a Hash of node states for nodes which don't match specified negative criteria" do
+			states = manager.fetch_matching_node_states( {}, [], false, {'identifier' => 'host-c'} )
+			expect( states.size ).to eq( manager.nodes.size - 1 )
+			expect( states ).to_not include( 'host-c' )
+		end
+
+
+		fit "can fetch a Hash of node states for nodes combining positive and negative criteria" do
+			positive = {'tag' => 'home'}
+			negative = {'identifier' => 'host-a-www'}
+
+			states = manager.fetch_matching_node_states( positive, [], false, negative )
+
+			expect( states.size ).to eq( 2 )
+			expect( states ).to_not include( 'host-a-www' )
 		end
 
 
