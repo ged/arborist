@@ -9,3 +9,5 @@ doc/
 Procfile$
 \.env$
 arborist\.(state|tree)$
+\.monitor$
+

@@ -1,2 +1,2 @@
 --- 
-exclude: !ruby/regexp /tmp$|CVS|Gemfile(\.lock)?|Procfile|TAGS|tmtags|\.(idea|hg|svn|git|hoerc|env|DS_Store|rvm(rc|\.gems)|gems|irbrc|pryrc|tm_.*|rspec.*|rbx|travis\.yml|gems)|(logs|coverage|benchmarks|experiments|manual|features|tmp\w*|wiki|\w+-\d+\.\d+\.\d+)\/|\.(bundle|cf|yml|pem|gemspec|state|tree)/
+exclude: !ruby/regexp /tmp$|CVS|Gemfile(\.lock)?|Procfile|TAGS|tmtags|\.(idea|hg|svn|git|hoerc|env|DS_Store|rvm(rc|\.gems)|gems|irbrc|pryrc|tm_.*|rspec.*|rbx|travis\.yml|gems)|(logs|coverage|benchmarks|experiments|manual|features|tmp\w*|wiki|\w+-\d+\.\d+\.\d+)\/|\.(bundle|cf|yml|pem|gemspec|state|tree|monitor)/

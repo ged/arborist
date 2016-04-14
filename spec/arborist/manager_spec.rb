@@ -456,7 +456,7 @@ describe Arborist::Manager do
 		end
 
 
-		fit "can fetch a Hash of node states" do
+		it "can fetch a Hash of node states" do
 			states = manager.fetch_matching_node_states( {}, [] )
 			expect( states.size ).to eq( manager.nodes.size )
 			expect( states ).to include( 'host-b-nfs', 'host-c', 'router' )
@@ -466,7 +466,7 @@ describe Arborist::Manager do
 		end
 
 
-		fit "can fetch a Hash of node states for nodes which match specified criteria" do
+		it "can fetch a Hash of node states for nodes which match specified criteria" do
 			states = manager.fetch_matching_node_states( {'identifier' => 'host-c'}, [] )
 			expect( states.size ).to eq( 1 )
 			expect( states.keys.first ).to eq( 'host-c' )
@@ -474,14 +474,14 @@ describe Arborist::Manager do
 		end
 
 
-		fit "can fetch a Hash of node states for nodes which don't match specified negative criteria" do
+		it "can fetch a Hash of node states for nodes which don't match specified negative criteria" do
 			states = manager.fetch_matching_node_states( {}, [], false, {'identifier' => 'host-c'} )
 			expect( states.size ).to eq( manager.nodes.size - 1 )
 			expect( states ).to_not include( 'host-c' )
 		end
 
 
-		fit "can fetch a Hash of node states for nodes combining positive and negative criteria" do
+		it "can fetch a Hash of node states for nodes combining positive and negative criteria" do
 			positive = {'tag' => 'home'}
 			negative = {'identifier' => 'host-a-www'}
 

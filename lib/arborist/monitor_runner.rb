@@ -67,7 +67,7 @@ class Arborist::MonitorRunner
 			include_down = monitor.include_down?
 			props        = monitor.node_properties
 
-			self.fetch( positive, include_down, props, exclude: negative ) do |nodes|
+			self.fetch( positive, include_down, props, negative ) do |nodes|
 				results = monitor.run( nodes )
 				self.update( results ) do
 					self.log.debug "Updated %d via the '%s' monitor" %
@@ -79,10 +79,11 @@ class Arborist::MonitorRunner
 
 		### Create a fetch request using the runner's client, then queue the request up
 		### with the specified +block+ as the callback.
-		def fetch( criteria, include_down, properties, &block )
+		def fetch( criteria, include_down, properties, negative={}, &block )
 			fetch = self.client.make_fetch_request( criteria,
 				include_down: include_down,
-				properties: properties
+				properties: properties,
+				exclude: negative
 			)
 			self.queue_request( fetch, &block )
 		end
