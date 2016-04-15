@@ -122,6 +122,7 @@ class Arborist::Node
 
 		after_transition any => any, do: :log_transition
 		after_transition any => any, do: :make_transition_event
+		after_transition any => any, do: :update_status_changed
 
 		after_transition do: :add_status_to_update_delta
 	end
@@ -672,7 +673,7 @@ class Arborist::Node
 		end
 
 		if event.node.identifier == self.parent
-			self.quieted_reasons[ :primary ] = "Parent down: %s" % [ event ] # :TODO: backtrace?
+			self.quieted_reasons[ :primary ] = "Parent down: %s" % [ self.parent ] # :TODO: backtrace?
 		end
 	end
 
@@ -688,7 +689,7 @@ class Arborist::Node
 		end
 
 		if event.node.identifier == self.parent
-			self.quieted_reasons[ :primary ] = "Parent quieted: %s" % [ event ] # :TODO: backtrace?
+			self.quieted_reasons[ :primary ] = "Parent quieted: %s" % [ self.parent ] # :TODO: backtrace?
 		end
 	end
 
@@ -948,6 +949,12 @@ class Arborist::Node
 	def log_transition( transition )
 		self.log.debug "Transitioned %s from %s to %s" %
 			[ self.identifier, transition.from, transition.to ]
+	end
+
+
+	### Update the last status change time.
+	def update_status_changed( transition )
+		self.status_changed = Time.now
 	end
 
 
