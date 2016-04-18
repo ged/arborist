@@ -4,6 +4,8 @@
 
 * README, Tutorial, Setup docs
 
+* Performance/profiling examination
+
 
 ### Manager
 
@@ -28,6 +30,9 @@
 ### Nodes
 
 * Allow a service node to not inherit all of its host's addresses (i.e., be bound to one address only or whatever)
+* Resource nodes: disk, load, process checks, etc.  Anything that might
+  be considered a problem, that you'd want to ack independantly of the
+  Host node they are attached to.
 
 ### Monitor
 
@@ -54,3 +59,10 @@
 ### Nodes
 
 * Ask a node (via tree-api or otherwise) what nodes it affects (immediate children, secondary dependents)
+
+### Observers
+
+ * Action dependencies -- as an example, if an action sends an email,
+   don't trigger if the email service is offline.  Potential action
+   "chains", ie:  If the email service is down, use a separate
+   out-of-band action that sends SMS.
