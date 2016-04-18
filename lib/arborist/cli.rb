@@ -62,7 +62,8 @@ module Arborist::CLI
 
 
 	# Global options
-	desc "Specify the config file to load"
+	desc "Load the specified CONFIGFILE."
+	arg_name :CONFIGFILE
 	flag [:c, :config], type: Pathname
 
 	desc 'Enable debugging output'
@@ -73,6 +74,7 @@ module Arborist::CLI
 
 	desc 'Set log level to LEVEL (one of %s)' % [Loggability::LOG_LEVELS.keys.join(', ')]
 	default_value Loggability[self].level
+	arg_name :LEVEL
 	flag [:l, :loglevel], must_match: Loggability::LOG_LEVELS.keys
 
 	desc "Don't actually do anything, just show what would happen."
@@ -86,24 +88,39 @@ module Arborist::CLI
 	# GLI Event callbacks
 	#
 
+	# Set up global options
 	pre do |global, command, options, args|
-		if loglevel = global[:loglevel]
-			Loggability.level = loglevel.to_sym
-		else
-			Loggability.level = :fatal
-		end
+		self.set_logging_level( global[:l] )
 
 		# Include a 'lib' directory if there is one
 		$LOAD_PATH.unshift( 'lib' ) if File.directory?( 'lib' )
 
 		self.require_additional_libs( global[:r] ) if global[:r]
 		self.load_config( global )
+		self.set_logging_level( global[:l] ) if global[:l] # again; override config file
 		self.install_highline_colorscheme
 
 		self.setup_output( global )
 
 		true
 	end
+
+
+	# Write the error to the log on exceptions.
+	on_error do |exception|
+		case exception
+		when OptionParser::ParseError, GLI::CustomExit
+			self.log.debug( exception )
+		else
+			self.log.error( exception )
+		end
+
+		exception.backtrace.each {|frame| self.log.debug(frame) }
+
+		true
+	end
+
+
 
 
 	##
@@ -161,6 +178,16 @@ module Arborist::CLI
 	### testing.
 	def self::reset_prompt
 		@prompt = nil
+	end
+
+
+	### Set the global logging +level+ if it's defined.
+	def self::set_logging_level( level=nil )
+		if level
+			Loggability.level = level.to_sym
+		else
+			Loggability.level = :fatal
+		end
 	end
 
 
@@ -224,21 +251,6 @@ module Arborist::CLI
 			$DEBUG = true
 			Loggability.level = :debug
 		end
-	end
-
-
-	# Write the error to the log on exceptions.
-	on_error do |exception|
-		case exception
-		when OptionParser::ParseError, GLI::CustomExit
-			self.log.debug( exception )
-		else
-			self.log.error( exception )
-		end
-
-		exception.backtrace.each {|frame| self.log.debug(frame) }
-
-		true
 	end
 
 
