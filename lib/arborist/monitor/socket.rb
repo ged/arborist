@@ -119,6 +119,8 @@ module Arborist::Monitor::Socket
 			until connections.empty? || timeout_at.past?
 				self.log.debug "Waiting on %d connections for %0.3ds..." %
 					[ connections.values.length, timeout_at - Time.now ]
+
+				# :FIXME: Race condition: errors if timeout_at - Time.now is 0
 				_, ready, _ = IO.select( nil, connections.keys, nil, timeout_at - Time.now )
 
 				self.log.debug "  select returned: %p" % [ ready ]
