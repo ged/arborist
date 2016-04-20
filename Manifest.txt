@@ -58,6 +58,7 @@ spec/arborist/client_spec.rb
 spec/arborist/dependency_spec.rb
 spec/arborist/event/node_delta_spec.rb
 spec/arborist/event/node_down_spec.rb
+spec/arborist/event/node_spec.rb
 spec/arborist/event/node_update_spec.rb
 spec/arborist/event_spec.rb
 spec/arborist/manager/event_publisher_spec.rb
