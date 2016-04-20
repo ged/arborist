@@ -223,7 +223,7 @@ module Arborist::Monitor::Socket
 				conn = begin
 					sockaddr = Socket.sockaddr_in( port, address )
 					sock.connect( sockaddr )
-					sock.send( 'test!', 0 )
+					sock.send( '', 0 )
 					sock
 				rescue SocketError => err
 					self.log.error "  %p setting up connection: %s" % [ err.class, err.message ]
