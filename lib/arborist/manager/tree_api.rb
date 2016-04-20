@@ -173,11 +173,18 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 	### Return a repsonse to the `list` action.
 	def handle_list_request( header, body )
 		self.log.debug "LIST: %p" % [ header ]
-		from = header['from'] || '_'
+		from  = header['from'] || '_'
+		depth = header['depth']
 
 		start_node = @manager.nodes[ from ]
 		self.log.debug "  Listing nodes under %p" % [ start_node ]
-		iter = @manager.enumerator_for( start_node )
+		iter = if depth
+			self.log.debug "    depth limited to %d" % [ depth ]
+			@manager.depth_limited_enumerator_for( start_node, depth )
+		else
+			self.log.debug "    no depth limit"
+			@manager.enumerator_for( start_node )
+		end
 		data = iter.map( &:to_h )
 		self.log.debug "  got data for %d nodes" % [ data.length ]
 

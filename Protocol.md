@@ -52,6 +52,7 @@ Request:
             action: list,
             version: 1
             [from: «identifier»]
+            [depth: «arg»]
         }
     ]
 

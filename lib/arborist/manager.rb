@@ -575,7 +575,7 @@ class Arborist::Manager
 	end
 
 
-	### Return an enumerator for the specified +node+.
+	### Return an enumerator for the specified +start_node+.
 	def enumerator_for( start_node, &filter )
 		return Enumerator.new do |yielder|
 			traverse = ->( node ) do
@@ -585,6 +585,25 @@ class Arborist::Manager
 				end
 			end
 			traverse.call( start_node )
+		end
+	end
+
+
+	### Return a +depth+ limited enumerator for the specified +start_node+.
+	def depth_limited_enumerator_for( start_node, depth, &filter )
+		return Enumerator.new do |yielder|
+			traverse = ->( node, current_depth ) do
+				self.log.debug "Enumerating nodes from %s at depth: %p" %
+					[ node.identifier, current_depth ]
+
+				if !filter || filter.call( node )
+					yielder.yield( node )
+					node.each do |child|
+						traverse[ child, current_depth - 1 ]
+					end if current_depth > 0
+				end
+			end
+			traverse.call( start_node, depth )
 		end
 	end
 

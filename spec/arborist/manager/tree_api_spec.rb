@@ -327,11 +327,25 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 			expect( body ).to all( be_a(Hash) )
 			expect( body ).to include( hash_including('identifier' => '_') )
 			expect( body ).to include( hash_including('identifier' => 'duir') )
+			expect( body ).to include( hash_including('identifier' => 'sidonie') )
 			expect( body ).to include( hash_including('identifier' => 'sidonie-ssh') )
 			expect( body ).to include( hash_including('identifier' => 'sidonie-demon-http') )
 			expect( body ).to include( hash_including('identifier' => 'yevaud') )
 		end
 
+		it "can be limited by depth" do
+			msg = pack_message( :list, {depth: 1}, nil )
+			sock.send( msg )
+			resmsg = sock.recv
+
+			hdr, body = unpack_message( resmsg )
+			expect( hdr ).to include( 'success' => true )
+			expect( body.length ).to eq( 3 )
+			expect( body ).to all( be_a(Hash) )
+			expect( body ).to include( hash_including('identifier' => '_') )
+			expect( body ).to include( hash_including('identifier' => 'duir') )
+			expect( body ).to_not include( hash_including('identifier' => 'duir-ssh') )
+		end
 	end
 
 

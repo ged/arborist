@@ -18,9 +18,6 @@
     - `sys.shutdown`
 
 
-* Add a 'depth' argument to the 'list' API.
-
-
 ### Observers
 
 * Re-subscribe on `sys.startup`, `sys.reloaded`, `sys.node.added`

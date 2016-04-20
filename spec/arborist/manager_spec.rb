@@ -422,7 +422,11 @@ describe Arborist::Manager do
 		end
 
 
-		it "can create an Enumerator for all of a node's parents from leaf to root"
+		it "can create an Enumerator for all of its children to a specified depth" do
+			nodes = manager.depth_limited_enumerator_for( manager.nodes['_'], 2 ).to_a
+			expect( nodes.length ).to eq( 6 )
+			expect( nodes.map(&:identifier) ).to eq( %w[_ router host-a host-b host-c host-d] )
+		end
 
 	end
 
