@@ -50,7 +50,7 @@ describe Arborist::Node::Service do
 
 	it "raises a sensible error when created without a host" do
 		expect {
-			described_class.new( 'dnsd', port: 53 )
+			described_class.new( 'dnsd', nil )
 		}.to raise_error( Arborist::NodeError, /no host/i )
 	end
 
