@@ -24,7 +24,6 @@ module Arborist::CLI::Start
 
 		cmd.desc "Run under the profiler in the given MODE (one of wall, cpu, or object; defaults to wall)."
 		cmd.arg_name :MODE
-		cmd.default_value 'wall'
 		cmd.flag [:p, 'profiler'], must_match: ['wall', 'cpu', 'object']
 
 		cmd.action do |globals, options, args|
