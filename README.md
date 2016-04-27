@@ -29,12 +29,9 @@ customizability.
 
 ## Installation
 
+This isn't really ready for serious usage yet, but when it is you can install it like so:
+
     $ gem install arborist
-
-
-## Further Reading
-
-You'll likely want to start with [the Tutorial](Tutorial.html).
 
 
 ## Contributing
