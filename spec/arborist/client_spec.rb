@@ -64,6 +64,20 @@ describe Arborist::Client do
 		end
 
 
+		it "can list a depth-limited subtree of the node of the managed it's connected to" do
+			res = client.list( depth: 2 )
+			expect( res ).to be_an( Array )
+			expect( res.length ).to eq( 8 )
+		end
+
+
+		it "can list a depth-limited subtree of the nodes of the manager it's connected to" do
+			res = client.list( from: 'duir', depth: 1 )
+			expect( res ).to be_an( Array )
+			expect( res.length ).to eq( 5 )
+		end
+
+
 		it "can fetch all node properties for all 'up' nodes" do
 			res = client.fetch
 			expect( res ).to be_a( Hash )

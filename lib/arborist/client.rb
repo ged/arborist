@@ -58,10 +58,11 @@ class Arborist::Client
 
 
 	### Return the manager's current node tree.
-	def make_list_request( from: nil )
+	def make_list_request( from: nil, depth: nil )
 		header = {}
 		self.log.debug "From is: %p" % [ from ]
 		header[:from] = from if from
+		header[:depth] = depth if depth
 
 		return self.pack_message( :list, header )
 	end
