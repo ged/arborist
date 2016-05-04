@@ -135,6 +135,29 @@ class Arborist::Dependency
 	end
 
 
+	### Yield each unique identifier and Time of downed nodes from both direct and
+	### sub-dependencies.
+	def each_downed
+		return enum_for( __method__ ) unless block_given?
+
+		yielded = Set.new
+		self.identifier_states.each do |ident, time|
+			if time
+				yield( ident, time ) unless yielded.include?( ident )
+				yielded.add( ident )
+			end
+		end
+		self.subdeps.each do |subdep|
+			subdep.each_downed do |ident, time|
+				if time
+					yield( ident, time ) unless yielded.include?( ident )
+					yielded.add( ident )
+				end
+			end
+		end
+	end
+
+
 	### Returns +true+ if the receiver includes all of the given +identifiers+.
 	def include?( *identifiers )
 		return self.all_identifiers.include?( *identifiers )

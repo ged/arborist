@@ -825,11 +825,10 @@ class Arborist::Node
 		@error           = old_node.error
 		@quieted_reasons = old_node.quieted_reasons
 
-		@dependencies    = old_node.dependencies
-		# :TODO: Only merge the timestamps; don't replace the dependencies themselves.
-		# old_node.dependencies.each_downed do |identifier, time|
-		# 	@dependencies.mark_down( identifier, time )
-		# end
+		# Only merge in downed dependencies.
+		old_node.dependencies.each_downed do |identifier, time|
+			@dependencies.mark_down( identifier, time )
+		end
 	end
 
 

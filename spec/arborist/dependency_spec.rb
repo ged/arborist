@@ -212,6 +212,22 @@ describe Arborist::Dependency do
 	end
 
 
+	it "can iterate over its downed elements" do
+		dep1 = described_class.new( :all, 'node1', 'node2' )
+		dep2 = described_class.new( :all, 'node2', 'node3' )
+		dep3 = described_class.new( :any, 'node2', 'node5' )
+
+		top_dep = described_class.new( :all, 'node2', dep1, dep2, 'node4', dep3 )
+		top_dep.mark_down( 'node2' )
+		top_dep.mark_down( 'node5' )
+
+		results = top_dep.each_downed.to_a
+		expect( results.length ).to eq( 2 )
+		expect( results[0] ).to include( 'node2', an_instance_of(Time) )
+		expect( results[1] ).to include( 'node5', an_instance_of(Time) )
+	end
+
+
 	it "is equal to another node with the same identifiers" do
 		dep1 = described_class.new( :all, 'node1', 'node2', 'node3' )
 		dep2 = described_class.new( :all, 'node1', 'node2', 'node3' )

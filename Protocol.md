@@ -1,6 +1,6 @@
 # Monitors
 
-## Protocol
+## Basic Protocol
 
 ZMQ REQ socket, msgpack message consisting of an Array of two elements:
 
@@ -20,7 +20,25 @@ Header is a Map of the form:
 Body is either Nil, a Map of key-value pairs, or an Array of Maps appropriate to the `action`.
 
 
-## status
+## Commands
+
+
+### «commandname»
+
+«description»
+
+#### Header
+
+#### Body
+
+#### Return
+
+#### Examples
+
+
+
+
+### status
 
 Fetch the status of the Manager.
 
@@ -43,7 +61,13 @@ Response:
     }
 
 
-## list
+### list
+
+Retrieve an Array of Maps that describes all or part of the node tree. 
+
+#### Required 
+ from the node with the specified `identifier`, or the root node if no `identifier` is specified.
+
 
 Request:
 
@@ -90,11 +114,9 @@ failure example:
         }
     ]
 
-Fetch a data structure describing the node tree from the node with the specified
-`identifier`, or the root node if no `identifier` is specified.
 
 
-## fetch
+### fetch
 
 Fetch the `address`, `description`, and `status` of all nodes.
 
@@ -120,7 +142,7 @@ Fetch the `address`, `description`, and `status` of all nodes.
     ]
 
 
-### return
+#### return
 
 - not specified : returns everything.
 - `Nil` : returns just identifiers
@@ -129,7 +151,7 @@ Fetch the `address`, `description`, and `status` of all nodes.
 Search for nodes that match the filter given in the request body, returning a serialized map of node identifiers to requested state.
 
 
-## update
+### update
 
     [
         {
@@ -165,7 +187,7 @@ With a failure:
     ]
 
 
-## subscribe
+### subscribe
 
 Get node change delta events for every 'host' type node.
 
@@ -213,7 +235,7 @@ Get notified of every system event (startup, shutdown, reload, etc.)
     Nil
 
 
-## graft
+### graft
 
     {
         action: graft,
@@ -228,7 +250,7 @@ Get notified of every system event (startup, shutdown, reload, etc.)
     }
 
 
-## prune
+### prune
 
     {
         action: prune,
@@ -238,7 +260,7 @@ Get notified of every system event (startup, shutdown, reload, etc.)
     Nil
 
 
-## modify
+### modify
 
     {
         action: modify,

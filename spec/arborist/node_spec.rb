@@ -413,6 +413,25 @@ describe Arborist::Node do
 			end
 
 
+			it "doesn't replace dependencies if they've changed" do
+				old_node = Marshal.load( Marshal.dump(node) )
+				old_node.dependencies.mark_down( 'svchost-postgres' )
+				old_node.dependencies.mark_down( 'svchost-rabbitmq' )
+
+				# Drop 'svchost-rabbitmq'
+				node.depends_on(
+					node.all_of('postgres', 'memcached', on: 'svchost'),
+					node.any_of('webproxy', on: ['fe-host1','fe-host2','fe-host3'])
+				)
+
+				node.restore( old_node )
+
+				expect( node.dependencies ).to_not eql( old_node.dependencies )
+				expect( node.dependencies.all_identifiers ).to_not include( 'svchost-rabbitmq' )
+				expect( node.dependencies.down_subdeps.length ).to eq( 1 )
+			end
+
+
 			it "can return a Hash of serializable node data" do
 				result = node.to_h
 

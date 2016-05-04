@@ -29,7 +29,8 @@ customizability.
 
 ## Installation
 
-This isn't really ready for serious usage yet, but when it is you can install it like so:
+This isn't really ready for serious usage yet, but when it is you can install
+it like so:
 
     $ gem install arborist
 
