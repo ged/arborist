@@ -73,7 +73,6 @@ module Arborist::CLI
 	switch [:v, :verbose]
 
 	desc 'Set log level to LEVEL (one of %s)' % [Loggability::LOG_LEVELS.keys.join(', ')]
-	default_value Loggability[self].level
 	arg_name :LEVEL
 	flag [:l, :loglevel], must_match: Loggability::LOG_LEVELS.keys
 
