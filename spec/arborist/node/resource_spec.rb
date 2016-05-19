@@ -26,5 +26,31 @@ describe Arborist::Node::Resource do
 		}.to raise_error( Arborist::NodeError, /no host/i )
 	end
 
+	describe "matching" do
+
+		let( :host ) do
+			Arborist::Node.create( 'host', 'testhost' ) do
+				address '192.168.66.12'
+				address '10.1.33.8'
+			end
+		end
+
+		let( :node ) do
+			described_class.new( 'disk', host )
+		end
+
+
+		it "can be matched with one of its host's addresses" do
+			expect( node ).to match_criteria( address: '192.168.66.12' )
+			expect( node ).to_not match_criteria( address: '127.0.0.1' )
+		end
+
+		it "can be matched with a netblock that includes one of its host's addresses" do
+			expect( node ).to match_criteria( address: '192.168.66.0/24' )
+			expect( node ).to match_criteria( address: '10.0.0.0/8' )
+			expect( node ).to_not match_criteria( address: '192.168.66.64/27' )
+			expect( node ).to_not match_criteria( address: '127.0.0.0/8' )
+		end
+	end
 end
 

@@ -23,11 +23,51 @@ class Arborist::Node::Resource < Arborist::Node
 	end
 
 
+	### Returns +true+ if the node matches the specified +key+ and +val+ criteria.
+	def match_criteria?( key, val )
+		self.log.debug "Matching %p: %p against %p" % [ key, val, self ]
+		return case key
+			when 'address'
+				search_addr = IPAddr.new( val )
+				self.addresses.any? {|a| search_addr.include?(a) }
+			else
+				super
+			end
+	end
+
+
+	### Return a Hash of the operational values that are included with the node's
+	### monitor state.
+	def operational_values
+		return super.merge(
+			addresses: self.addresses.map( &:to_s )
+		)
+	end
+
+
+	### Delegate the resources's address to its host.
+	def addresses
+		return @host.addresses
+	end
+
+
 	### Overridden to disallow modification of a Resource parent, as it needs a
 	### reference to the Host node for delegation.
 	def parent( new_parent=nil )
 		return super unless new_parent
 		raise "Can't reparent a resource; replace the node instead"
+	end
+
+
+	#
+	# Serialization
+	#
+
+	### Return a Hash of the host node's state.
+	def to_h
+		return super.merge(
+			addresses: self.addresses.map( &:to_s )
+		)
 	end
 
 end # class Arborist::Node::Resource
