@@ -8,6 +8,28 @@ require 'arborist/node'
 
 
 # A node type for Arborist trees that represent network-connected hosts.
+#
+#    host_node = Arborist::Node.create( :host, 'acme' ) do
+#        description "Public-facing webserver"
+#        address '93.184.216.34'
+#
+#        tags :public, :dmz
+#        
+#        resource 'disk'
+#        resource 'memory' do
+#            config hwm: '3.4G'
+#        end
+#        resource 'loadavg'
+#        resource 'processes' do
+#            config expect: { nginx: 2 }
+#        end
+#        
+#        service 'ssh'
+#        service 'www'
+#
+#    end
+#
+#
 class Arborist::Node::Host < Arborist::Node
 
 	# A union of IPv4 and IPv6 regular expressions.

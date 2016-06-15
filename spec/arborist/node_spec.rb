@@ -356,6 +356,8 @@ describe Arborist::Node do
 						any_of('webproxy', on: ['fe-host1','fe-host2','fe-host3'])
 					)
 
+					config os: 'freebsd-10'
+
 					update( 'song' => 'Around the World', 'artist' => 'Daft Punk', 'length' => '7:09' )
 				end
 			end
@@ -400,6 +402,7 @@ describe Arborist::Node do
 
 				old_node.instance_variable_set( :@parent, 'foo' )
 				old_node.instance_variable_set( :@description, 'Some older description' )
+				old_node.instance_variable_set( :@config, {'os' => 'freebsd-8'} )
 				old_node.tags( :bunker, :lucky, :tickle, :trucker )
 				old_node.source = '/somewhere/else'
 
@@ -410,6 +413,7 @@ describe Arborist::Node do
 				expect( node.tags ).to eq( node_copy.tags )
 				expect( node.source ).to eq( node_copy.source )
 				expect( node.dependencies ).to eq( node_copy.dependencies )
+				expect( node.config ).to eq( node_copy.config )
 			end
 
 
@@ -639,6 +643,7 @@ describe Arborist::Node do
 				parent 'bar'
 				description "The prototypical node"
 				tags :chunker, :hunky, :flippin, :hippo
+				config os: 'freebsd-10'
 
 				update(
 					'song' => 'Around the World',
@@ -689,6 +694,12 @@ describe Arborist::Node do
 		it "can be matched with its identifier" do
 			expect( node ).to match_criteria( identifier: 'foo' )
 			expect( node ).to_not match_criteria( identifier: 'bar' )
+		end
+
+
+		it "can be matched with config values" do
+			expect( node ).to match_criteria( config: {os: 'freebsd-10'} )
+			expect( node ).to_not match_criteria( config: {os: 'macosx-10.11.3'} )
 		end
 
 

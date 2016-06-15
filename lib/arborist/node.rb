@@ -250,6 +250,7 @@ class Arborist::Node
 		@description     = nil
 		@tags            = Set.new
 		@properties      = {}
+		@config          = {}
 		@source          = nil
 		@children        = {}
 		@dependencies    = Arborist::Dependency.new( :all )
@@ -421,6 +422,13 @@ class Arborist::Node
 	end
 
 
+	### Get or set the node's configuration hash. This can be used to pass per-node
+	### information to systems using the tree (e.g., monitors, subscribers).
+	def config( new_config=nil )
+		@config = stringify_keys( new_config ) if new_config
+		return @config
+	end
+
 
 	#
 	# :section: Manager API
@@ -554,6 +562,8 @@ class Arborist::Node
 			when 'tag' then @tags.include?( val.to_s )
 			when 'tags' then Array(val).all? {|tag| @tags.include?(tag) }
 			when 'identifier' then @identifier == val
+			when 'config'
+				val.all? {|ikey, ival| hash_matches(@config, ikey, ival) }
 			else
 				hash_matches( @properties, key, val )
 			end
@@ -840,6 +850,7 @@ class Arborist::Node
 			parent: self.parent,
 			description: self.description,
 			tags: self.tags,
+			config: self.config,
 			status: self.status,
 			properties: self.properties.dup,
 			ack: self.ack ? self.ack.to_h : nil,
@@ -867,6 +878,7 @@ class Arborist::Node
 		@parent          = hash[:parent]
 		@description     = hash[:description]
 		@tags            = Set.new( hash[:tags] )
+		@config          = hash[:config]
 		@children        = {}
 
 		@status          = 'unknown'
