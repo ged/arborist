@@ -6,8 +6,8 @@ require 'arborist'
 
 Arborist::Observer "Audit Logger" do
 	subscribe to: 'node.update', on: 'localhost'
-	action do |uuid, event|
-		$stderr.puts "%s: %p" % [ uuid, event ]
+	action do |event|
+		$stderr.puts "%p" % [ event ]
 	end
 	summarize( every: 8 ) do |events|
 		$stderr.puts "Audit summary:"

@@ -45,8 +45,8 @@ describe Arborist::Observer do
 
 	it "can specify an action to run when a subscribed event is received" do
 		observer = described_class.new( "testing observer" ) do
-			action do |uuid, event|
-				puts( uuid )
+			action do |event|
+				# no-op
 			end
 		end
 
@@ -57,11 +57,11 @@ describe Arborist::Observer do
 
 	it "can specify more than one action to run when a subscribed event is received" do
 		observer = described_class.new( "testing observer" ) do
-			action do |uuid, event|
-				puts( uuid )
+			action do |event|
+				# no-op
 			end
-			action do |uuid, event|
-				$stderr.puts( uuid )
+			action do |event|
+				# no-op
 			end
 		end
 
@@ -74,7 +74,7 @@ describe Arborist::Observer do
 	it "can specify a summary action" do
 		observer = described_class.new( "testing observer" ) do
 			summarize( every: 5 ) do |events|
-				puts( events.size )
+				# no-op
 			end
 		end
 
@@ -87,10 +87,10 @@ describe Arborist::Observer do
 	it "can specify a mix of regular and summary actions" do
 		observer = described_class.new( "testing observer" ) do
 			summarize( every: 5 ) do |events|
-				puts( events.size )
+				# no-op
 			end
-			action do |uuid, event|
-				$stderr.puts( uuid )
+			action do |event|
+				# no-op
 			end
 		end
 
@@ -104,10 +104,10 @@ describe Arborist::Observer do
 	it "passes events it is given to handle to its actions" do
 		observer = described_class.new( "testing observer" ) do
 			summarize( every: 5 ) do |events|
-				puts( events.size )
+				# no-op
 			end
-			action do |uuid, event|
-				$stderr.puts( uuid )
+			action do |event|
+				# no-op
 			end
 		end
 
@@ -126,8 +126,8 @@ describe Arborist::Observer do
 			summarize( every: 5 ) do |events|
 				summarize_called = true
 			end
-			action do |uuid, event|
-				$stderr.puts( uuid )
+			action do |event|
+				# no-op
 			end
 		end
 
