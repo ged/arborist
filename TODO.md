@@ -7,14 +7,8 @@
 * Performance/profiling examination
 
 
-### Manager
-
-
-
 ### Observers
 
-* Destroy subscriptions on `sys.shutdown`
-* Re-subscribe on `sys.startup`, `sys.node.added`
 * Add `except` to observers DSL
 
 
@@ -22,20 +16,17 @@
 
 * Allow a service node to not inherit all of its host's addresses (i.e., be bound to one address only or whatever)
 
+        service 'ssh', address: '54.18.22.18'
+
 ### Monitor
 
 * Add some default monitor types and utilities
-  - UDP socket check
-  - Basic monitors for stdlib Net::* protocols/services
-  - 
+  - ftp
+  - imap
+  - pop
+  - smtp
 
-* Gems for monitor types that have external dependency
-  - SNMP
-
-### Watch Command
-
-* Destroy subscriptions on `sys.shutdown`
-* Re-subscribe on `sys.startup`, `sys.node.added`
+* Write a gem for `fping` monitor 
 
 
 ## Second Release (0.2)
