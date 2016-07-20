@@ -1,17 +1,17 @@
-hoe-deveiate -v0.3.0
-loggability -v0.11.0
-rspec -v3.2.0
-hoe -v3.13.1
-pluggability -v0.4.1
-configurability -v2.2.1
-msgpack -v0.7.1
-rbczmq -v1.7.8
-state_machines -v0.4.0
-treequel -v1.10.0
-timecop -v0.8.0
-simplecov -v0.11.1
-schedulability -v0.1.0
-rdoc -v4.2.1
-gli -v2.3.14
-highline -v1.7.8
+hoe-deveiate -v"~> 0.3"
+loggability -v"~> 0.11"
+rspec -v"~> 3.2"
+hoe -v"~> 3.13"
+pluggability -v"~> 0.4"
+configurability -v"~> 2.2"
+msgpack -v"~> 0.7"
+rbczmq -v"~> 1.7"
+state_machines -v"~> 0.4"
+treequel -v"~> 1.10"
+timecop -v"~> 0.8"
+simplecov -v"~> 0.11"
+schedulability -v"~> 0.1"
+rdoc -v"~> 4.2"
+gli -v"~> 2.3"
+highline -v"~> 1.7"
 

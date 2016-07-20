@@ -9,27 +9,18 @@
 
 ### Manager
 
-* Only restore timestamps from serialized node dependencies, not the deps themselves.
-
-* Broadcast system events:
-    - `sys.node.added`
-    - `sys.node.removed`
-    - `sys.startup`
-    - `sys.shutdown`
 
 
 ### Observers
 
-* Re-subscribe on `sys.startup`, `sys.reloaded`, `sys.node.added`
+* Destroy subscriptions on `sys.shutdown`
+* Re-subscribe on `sys.startup`, `sys.node.added`
 * Add `except` to observers DSL
 
 
 ### Nodes
 
 * Allow a service node to not inherit all of its host's addresses (i.e., be bound to one address only or whatever)
-* Resource nodes: disk, load, process checks, etc.  Anything that might
-  be considered a problem, that you'd want to ack independantly of the
-  Host node they are attached to.
 
 ### Monitor
 
@@ -43,7 +34,8 @@
 
 ### Watch Command
 
-* Re-subscribe on `sys.startup`, `sys.reloaded`, `sys.node.added`
+* Destroy subscriptions on `sys.shutdown`
+* Re-subscribe on `sys.startup`, `sys.node.added`
 
 
 ## Second Release (0.2)

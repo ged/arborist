@@ -60,7 +60,6 @@ describe Arborist::Manager::EventPublisher do
 		publisher.on_writable
 	end
 
-
 end
 
 

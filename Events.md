@@ -2,19 +2,19 @@
 
 ## Event Types
 
-«type».«subtype».«identifier»
+«type».«subtype»
 
-    sys.reload
-    sys.shutdown
+    node.acked
     node.delta
+    node.disabled
+    node.down
+    node.quieted
+    node.unknown
+    node.up
     node.update
-    node.ack
-
-Second part of the event name is the verb.
-
-- update
-- change (delta)
-- reload
-- shutdown / startup
+    sys.node_added
+    sys.node_removed
+    sys.reloaded
+    sys.hearbeat
 
 

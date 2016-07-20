@@ -8,7 +8,8 @@ require 'arborist/manager' unless defined?( Arborist::Manager )
 
 
 class Arborist::Manager::TreeAPI < ZMQ::Handler
-	extend Loggability
+	extend Loggability,
+	       Arborist::MethodUtilities
 
 
 	# Loggability API -- log to the arborist logger
@@ -20,8 +21,14 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 	def initialize( pollable, manager )
 		self.log.debug "Setting up a %p" % [ self.class ]
 		@pollitem = pollable
+		@enabled  = true
 		@manager  = manager
 	end
+
+
+	##
+	# True if the Tree API is accepting commands
+	attr_predicate :enabled
 
 
 	### ZMQ::Handler API -- Read and handle an incoming request.
@@ -35,6 +42,8 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 	### Handle the specified +raw_request+ and return a response.
 	def handle_request( raw_request )
 		self.log.debug "Handling request: %p" % [ raw_request ]
+
+		raise "Manager is shutting down" unless self.enabled?
 
 		header, body = self.parse_request( raw_request )
 		return self.dispatch_request( header, body )
@@ -280,6 +289,12 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 		node.modify( body )
 
 		return successful_response( nil )
+	end
+
+
+	### Disable the API, returning errors for any future requests.
+	def shutdown
+		@enabled = false
 	end
 
 end # class Arborist::Manager::TreeAPI

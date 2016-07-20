@@ -25,6 +25,7 @@ class Arborist::Manager::EventPublisher < ZMQ::Handler
 		@manager     = manager
 		@reactor     = reactor
 		@registered  = true
+		@enabled     = true
 		@event_queue = []
 	end
 
@@ -38,9 +39,18 @@ class Arborist::Manager::EventPublisher < ZMQ::Handler
 	# to write published events).
 	attr_predicate :registered
 
+	##
+	# The Queue of pending events to publish
+	attr_reader :event_queue
+
+	##
+	# A on/off toggle for publishing events
+	attr_predicate :enabled
+
 
 	### Publish the specified +event+.
 	def publish( identifier, event )
+		return self unless self.enabled?
 		@event_queue << [ identifier, MessagePack.pack(event.to_h) ]
 		self.register
 		return self
@@ -62,6 +72,24 @@ class Arborist::Manager::EventPublisher < ZMQ::Handler
 	end
 
 
+	### Stop accepting events to be published
+	def shutdown
+		@enabled = false
+		return if @event_queue.empty?
+
+		start   = Time.now
+		timeout = start + (@manager.linger.to_f / 2000)
+
+		self.log.warn "Waiting to empty the event queue..."
+		until @event_queue.empty?
+			sleep 0.1
+			break if Time.now > timeout
+		end
+		self.log.warn "  ... waited %0.1f seconds" % [ Time.now - start ]
+	end
+
+
+
 	#########
 	protected
 	#########
@@ -70,6 +98,7 @@ class Arborist::Manager::EventPublisher < ZMQ::Handler
 	def register
 		count ||= 0
 		@reactor.register( self.pollitem ) unless @registered
+		# self.log.info "Publisher socket is now registered!"
 		@registered = true
 	rescue => err
 		# :TODO:

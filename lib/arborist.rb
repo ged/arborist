@@ -168,7 +168,11 @@ module Arborist
 
 	### Fetch the ZMQ context for Arborist.
 	def self::zmq_context
-		return @zmq_context ||= ZMQ::Context.new
+		return @zmq_context ||= begin
+			self.log.info "Using ZeroMQ %s/CZMQ %s" %
+				[ ZMQ.version.join('.'), ZMQ.czmq_version.join('.') ]
+			ZMQ::Context.new
+		end
 	end
 
 

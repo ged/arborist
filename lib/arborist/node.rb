@@ -648,7 +648,7 @@ class Arborist::Node
 			self.log.debug "Handling a %s event." % [ event.type ]
 			self.method( handler_name ).call( event )
 		end
-		super
+		super # to state-machine
 	end
 
 

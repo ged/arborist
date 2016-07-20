@@ -164,35 +164,51 @@ describe Arborist::Manager do
 
 
 		it "checkpoints the state file periodically if an interval is configured" do
-			described_class.configure( manager: {checkpoint_frequency: 20, state_file: 'arb.tree'} )
+			described_class.configure( manager: {checkpoint_frequency: 20_000, state_file: 'arb.tree'} )
 
+			zloop = instance_double( ZMQ::Loop, register: nil, :verbose= => nil )
 			timer = instance_double( ZMQ::Timer, "checkpoint timer" )
-			expect( ZMQ::Timer ).to receive( :new ).with( 20, 0 ).and_return( timer )
+			expect( ZMQ::Loop ).to receive( :new ).and_return( zloop )
+			allow( ZMQ::Timer ).to receive( :new ).and_call_original
+			expect( ZMQ::Timer ).to receive( :new ).with( 20.0, 0 ).and_return( timer )
 
-			expect( manager.start_state_checkpointing ).to eq( timer )
+			manager = described_class.new
+			expect( manager.checkpoint_timer ).to eq( timer )
 		end
 
 
 		it "doesn't checkpoint if no interval is configured" do
 			described_class.configure( manager: {checkpoint_frequency: nil, state_file: 'arb.tree'} )
 
-			expect( ZMQ::Timer ).to_not receive( :new )
-
-			expect( manager.start_state_checkpointing ).to be_nil
+			manager = described_class.new
+			expect( manager.checkpoint_timer ).to be_nil
 		end
 
 
 		it "doesn't checkpoint if no state file is configured" do
 			described_class.configure( manager: {checkpoint_frequency: 20, state_file: nil} )
 
-			expect( ZMQ::Timer ).to_not receive( :new )
-
-			expect( manager.start_state_checkpointing ).to be_nil
+			manager = described_class.new
+			expect( manager.checkpoint_timer ).to be_nil
 		end
 
 
 		it "writes a checkpoint if it receives a SIGUSR1"
 
+
+	end
+
+
+	context "heartbeat event" do
+
+		it "errors if configured with a heartbeat of 0" do
+			expect {
+				described_class.configure( manager: {heartbeat_frequency: 0} )
+			}.to raise_error( Arborist::ConfigError, /positive non-zero/i )
+		end
+
+
+		it "is sent at the configured "
 
 	end
 
@@ -583,12 +599,14 @@ describe Arborist::Manager do
 		let( :event_pollitem ) { instance_double(ZMQ::Pollitem, "event API pollitem") }
 		let( :signal_timer ) { instance_double(ZMQ::Timer, "signal timer") }
 
+
 		before( :each ) do
 			allow( ZMQ::Loop ).to receive( :new ).and_return( zmq_loop )
 
 			allow( zmq_context ).to receive( :socket ).with( :REP ).and_return( tree_sock )
 			allow( zmq_context ).to receive( :socket ).with( :PUB ).and_return( event_sock )
 
+			allow( zmq_loop ).to receive( :verbose= )
 			allow( zmq_loop ).to receive( :remove ).with( tree_pollitem )
 			allow( zmq_loop ).to receive( :remove ).with( event_pollitem )
 
@@ -596,41 +614,52 @@ describe Arborist::Manager do
 			allow( tree_sock ).to receive( :close )
 			allow( event_pollitem ).to receive( :pollable ).and_return( event_sock )
 			allow( event_sock ).to receive( :close )
+
+			allow( tree_sock ).to receive( :bind ).with( Arborist.tree_api_url )
+			allow( tree_sock ).to receive( :linger= )
+
+			allow( event_sock ).to receive( :bind ).with( Arborist.event_api_url )
+			allow( event_sock ).to receive( :linger= )
+
+			allow( ZMQ::Pollitem ).to receive( :new ).with( tree_sock, ZMQ::POLLIN|ZMQ::POLLOUT ).
+				and_return( tree_pollitem )
+			allow( ZMQ::Pollitem ).to receive( :new ).with( event_sock, ZMQ::POLLOUT ).
+				and_return( event_pollitem )
+
+			allow( tree_pollitem ).to receive( :handler= ).
+				with( an_instance_of(Arborist::Manager::TreeAPI) )
+			allow( zmq_loop ).to receive( :register ).with( tree_pollitem )
+			allow( event_pollitem ).to receive( :handler= ).
+				with( an_instance_of(Arborist::Manager::EventPublisher) )
+			allow( zmq_loop ).to receive( :register ).with( event_pollitem )
 		end
 
 
-		it "sets up its sockets with handlers and starts the ZMQ loop when started" do
-			expect( tree_sock ).to receive( :bind ).with( Arborist.tree_api_url )
-			expect( tree_sock ).to receive( :linger= ).with( 0 )
-
-			expect( event_sock ).to receive( :bind ).with( Arborist.event_api_url )
-			expect( event_sock ).to receive( :linger= ).with( 0 )
-
-			expect( ZMQ::Pollitem ).to receive( :new ).with( tree_sock, ZMQ::POLLIN|ZMQ::POLLOUT ).
-				and_return( tree_pollitem )
-			expect( ZMQ::Pollitem ).to receive( :new ).with( event_sock, ZMQ::POLLOUT ).
-				and_return( event_pollitem )
-
-			expect( tree_pollitem ).to receive( :handler= ).
-				with( an_instance_of(Arborist::Manager::TreeAPI) )
-			expect( zmq_loop ).to receive( :register ).with( tree_pollitem )
-			expect( event_pollitem ).to receive( :handler= ).
-				with( an_instance_of(Arborist::Manager::EventPublisher) )
-			expect( zmq_loop ).to receive( :register ).with( event_pollitem )
-
+		it "starts handling signals and events when started" do
 			expect( ZMQ::Timer ).to receive( :new ).
 				with( described_class::SIGNAL_INTERVAL, 0, manager.method(:process_signal_queue) ).
 				and_return( signal_timer )
 			expect( zmq_loop ).to receive( :register_timer ).with( signal_timer )
+			expect( zmq_loop ).to receive( :register_timer ).with( manager.heartbeat_timer )
 			expect( zmq_loop ).to receive( :start )
 
 			expect( zmq_loop ).to receive( :remove ).with( tree_pollitem )
 			expect( zmq_loop ).to receive( :remove ).with( event_pollitem )
 
 			manager.run
+
+			expect( manager.event_publisher.event_queue.length ).to eq( 1 )
+
+			event = manager.event_publisher.event_queue.first
+			expect( event.first ).to eq( 'sys.startup' )
+
+			payload = unpack_message( event.last )
+			expect( payload ).to include(
+				'start_time' => an_instance_of(String),
+				'version' => an_instance_of(String)
+			)
 		end
+
 	end
-
-
 end
 

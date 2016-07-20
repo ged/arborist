@@ -12,15 +12,15 @@ describe Arborist::Client do
 	describe "synchronous API", :testing_manager do
 
 		before( :each ) do
-			@manager = make_testing_manager()
 			@manager_thread = Thread.new do
+				@manager = make_testing_manager()
 				Thread.current.abort_on_exception = true
 				@manager.run
 				Loggability[ Arborist ].info "Stopped the test manager"
 			end
 
 			count = 0
-			until @manager.running? || count > 30
+			until (@manager && @manager.running?) || count > 30
 				sleep 0.1
 				count += 1
 			end
@@ -28,7 +28,7 @@ describe Arborist::Client do
 		end
 
 		after( :each ) do
-			@manager.stop
+			@manager.simulate_signal( :TERM )
 			@manager_thread.join
 
 			count = 0

@@ -6,23 +6,24 @@ require_relative '../../spec_helper'
 describe Arborist::Manager::TreeAPI, :testing_manager do
 
 	before( :each ) do
-		@manager = make_testing_manager()
+		@manager = nil
 		@manager_thread = Thread.new do
+			@manager = make_testing_manager()
 			Thread.current.abort_on_exception = true
-			manager.run
+			@manager.run
 			Loggability[ Arborist ].info "Stopped the test manager"
 		end
 
 		count = 0
-		until manager.running? || count > 30
+		until (@manager && @manager.running?) || count > 30
 			sleep 0.1
 			count += 1
 		end
-		raise "Manager didn't start up" unless manager.running?
+		raise "Manager didn't start up" unless @manager.running?
 	end
 
 	after( :each ) do
-		@manager.stop
+		@manager.simulate_signal( :TERM )
 		unless @manager_thread.join( 5 )
 			$stderr.puts "Manager thread didn't exit on its own; killing it."
 			@manager_thread.kill
