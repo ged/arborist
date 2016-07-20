@@ -19,20 +19,16 @@ class Arborist::Node::Resource < Arborist::Node
 
 		@host = host
 
+		attributes[ :category ] ||= identifier
 		super( qualified_identifier, host, attributes, &block )
 	end
 
 
-	### Returns +true+ if the node matches the specified +key+ and +val+ criteria.
-	def match_criteria?( key, val )
-		self.log.debug "Matching %p: %p against %p" % [ key, val, self ]
-		return case key
-			when 'address'
-				search_addr = IPAddr.new( val )
-				self.addresses.any? {|a| search_addr.include?(a) }
-			else
+	### Set service +attributes+.
+	def modify( attributes )
+		attributes = stringify_keys( attributes )
 				super
-			end
+		self.category( attributes['category'] )
 	end
 
 
@@ -42,6 +38,13 @@ class Arborist::Node::Resource < Arborist::Node
 		return super.merge(
 			addresses: self.addresses.map( &:to_s )
 		)
+	end
+
+
+	### Get/set the resource category.
+	def category( new_category=nil )
+		return @category unless new_category
+		@category = new_category
 	end
 
 
@@ -59,15 +62,26 @@ class Arborist::Node::Resource < Arborist::Node
 	end
 
 
-	#
-	# Serialization
-	#
-
-	### Return a Hash of the host node's state.
+	### Serialize the resource node.  Return a Hash of the host node's state.
 	def to_h
 		return super.merge(
 			addresses: self.addresses.map( &:to_s )
 		)
+	end
+
+
+	### Returns +true+ if the node matches the specified +key+ and +val+ criteria.
+	def match_criteria?( key, val )
+		self.log.debug "Matching %p: %p against %p" % [ key, val, self ]
+		return case key
+			when 'address'
+				search_addr = IPAddr.new( val )
+				self.addresses.any? {|a| search_addr.include?(a) }
+			when 'category'
+				self.category == val
+			else
+				super
+			end
 	end
 
 end # class Arborist::Node::Resource

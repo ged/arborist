@@ -19,6 +19,10 @@ describe Arborist::Node::Resource do
 		expect( result.identifier ).to eq( "testhost-disk" )
 	end
 
+	it "defaults the category to the identifier" do
+		result = described_class.new( 'load', host )
+		expect( result.category ).to eq( 'load' )
+	end
 
 	it "raises a sensible error when created without a host" do
 		expect {
@@ -50,6 +54,11 @@ describe Arborist::Node::Resource do
 			expect( node ).to match_criteria( address: '10.0.0.0/8' )
 			expect( node ).to_not match_criteria( address: '192.168.66.64/27' )
 			expect( node ).to_not match_criteria( address: '127.0.0.0/8' )
+		end
+
+		it "can be matched with a category" do
+			expect( node ).to match_criteria( category: 'disk' )
+			expect( node ).to_not match_criteria( category: 'processes' )
 		end
 	end
 end
