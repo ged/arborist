@@ -116,26 +116,23 @@ module Arborist::Monitor::Socket
 			end
 
 			# Now wait for connections to complete
-			until connections.empty? || timeout_at.past?
+			wait_seconds = timeout_at - Time.now
+			until connections.empty? || wait_seconds <= 0
 				self.log.debug "Waiting on %d connections for %0.3ds..." %
-					[ connections.values.length, timeout_at - Time.now ]
+					[ connections.values.length, wait_seconds ]
 
 				# :FIXME: Race condition: errors if timeout_at - Time.now is 0
-				_, ready, _ = IO.select( nil, connections.keys, nil, timeout_at - Time.now )
+				_, ready, _ = IO.select( nil, connections.keys, nil, wait_seconds )
 
-				self.log.debug "  select returned: %p" % [ ready ]
+				now = Time.now
 				ready.each do |sock|
-					self.log.debug "  %p is ready" % [ sock ]
 					identifier, sockaddr = *connections.delete( sock )
-					self.log.debug "%p became writable: testing connection state" % [ sock ]
 
 					begin
-						self.log.debug "  trying another connection to %p" % [ sockaddr ]
 						sock.connect_nonblock( sockaddr )
 					rescue Errno::EISCONN
-						self.log.debug "  connection successful"
 						results[ identifier ] = {
-							tcp_socket_connect: { time: Time.now.to_s, duration: Time.now - start }
+							tcp_socket_connect: { time: now.to_s, duration: now - start }
 						}
 					rescue SocketError, SystemCallError => err
 						self.log.debug "%p during connection: %s" % [ err.class, err.message ]
@@ -143,8 +140,10 @@ module Arborist::Monitor::Socket
 					ensure
 						sock.close
 					end
+
 				end if ready
 
+				wait_seconds = timeout_at - Time.now
 			end
 
 			# Anything left is a timeout
