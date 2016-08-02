@@ -122,9 +122,24 @@ describe Arborist::Node::Service do
 		end
 
 
-		it "can be matched with one of its host's addresses" do
+		it "inherits its host's addresses" do
 			expect( node ).to match_criteria( address: '192.168.66.12' )
 			expect( node ).to_not match_criteria( address: '127.0.0.1' )
+		end
+
+
+		it "can be limited to a subset of its host's addresses" do
+			node.address( host.addresses.first )
+			expect( node ).to match_criteria( address: '192.168.66.12' )
+			expect( node ).to_not match_criteria( address: '10.1.33.8' )
+			expect( node ).to_not match_criteria( address: '127.0.0.1' )
+		end
+
+
+		it "errors if it specifies an address other than one of its host's addresses" do
+			expect {
+				node.address( '127.0.0.1' )
+			}.to raise_error( Arborist::ConfigError, /127.0.0.1 is not one of testhost's addresses/i )
 		end
 
 

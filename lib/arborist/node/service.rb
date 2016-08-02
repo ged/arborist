@@ -7,11 +7,13 @@ require 'socket'
 
 require 'arborist/node'
 require 'arborist/mixins'
+require 'arborist/exceptions'
 
 
 # A node type for Arborist trees that represent services running on hosts.
 class Arborist::Node::Service < Arborist::Node
-	include Arborist::HashUtilities
+	include Arborist::HashUtilities,
+	        Arborist::NetworkUtilities
 
 
 	# The default transport layer protocol to use for services that don't specify
@@ -29,6 +31,7 @@ class Arborist::Node::Service < Arborist::Node
 		qualified_identifier = "%s-%s" % [ host.identifier, identifier ]
 
 		@host         = host
+		@addresses    = nil
 		@app_protocol = nil
 		@protocol     = nil
 		@port         = nil
@@ -84,9 +87,25 @@ class Arborist::Node::Service < Arborist::Node
 	end
 
 
+	### Set an IP address of the service. This must be one of the addresses of its
+	### containing host.
+	def address( new_address )
+		self.log.debug "Adding address %p to %p" % [ new_address, self ]
+		normalized_addresses = normalize_address( new_address )
+
+		unless normalized_addresses.all? {|addr| @host.addresses.include?(addr) }
+			raise Arborist::ConfigError, "%s is not one of %s's addresses" %
+				[ new_address, @host.identifier ]
+		end
+
+		@addresses ||= []
+		@addresses += normalized_addresses
+	end
+
+
 	### Delegate the service's address to its host.
 	def addresses
-		return @host.addresses
+		return @addresses || @host.addresses
 	end
 
 

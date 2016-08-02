@@ -214,6 +214,18 @@ class Arborist::Monitor
 	attr_accessor :source
 
 
+	### Return a string representation of the object suitable for debugging.
+	def inspect
+		return "#<%p:%#x %s (every %ds ±%ds)>" % [
+			self.class,
+			self.object_id * 2,
+			self.description || "(no description)",
+			@interval,
+			@splay,
+		]
+	end
+
+
 	### Run the monitor
 	def run( nodes )
 		if self.exec_block

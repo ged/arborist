@@ -9,14 +9,11 @@
 
 ### Observers
 
-* Add `except` to observers DSL
+* Add `exclude` to observers DSL
+  * modify tree api to accept negative criteria to subscribe
+	* pass to manager's create_subscription()
+	* alter subscription to no-op if event matches negative stuff
 
-
-### Nodes
-
-* Allow a service node to not inherit all of its host's addresses (i.e., be bound to one address only or whatever)
-
-        service 'ssh', address: '54.18.22.18'
 
 ### Monitor
 

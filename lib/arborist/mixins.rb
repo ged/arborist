@@ -1,6 +1,8 @@
 # -*- ruby -*-
 #encoding: utf-8
 
+require 'ipaddr'
+
 # A collection of generically-useful mixins
 module Arborist
 
@@ -280,7 +282,7 @@ module Arborist
 	end # module TimeRefinements
 
 
-	### A collection of utilities for working with Hashes.
+	# A collection of utilities for working with Hashes.
 	module HashUtilities
 
 		###############
@@ -376,5 +378,38 @@ module Arborist
 		end
 
 	end # HashUtilities
+
+
+	# A collection of utilities for working with network addresses, names, etc.
+	module NetworkUtilities
+
+		# A union of IPv4 and IPv6 regular expressions.
+		IPADDR_RE = Regexp.union(
+			IPAddr::RE_IPV4ADDRLIKE,
+			IPAddr::RE_IPV6ADDRLIKE_COMPRESSED,
+			IPAddr::RE_IPV6ADDRLIKE_FULL
+		)
+
+
+		### Return the specified +address+ as one or more IPAddr objects.
+		def normalize_address( address )
+			addresses = []
+			case address
+			when IPAddr
+				addresses << address
+			when IPADDR_RE
+				addresses << IPAddr.new( address )
+			when String
+				ip_addr = TCPSocket.gethostbyname( address )
+				addresses = ip_addr[3..-1].map{|ip| IPAddr.new(ip) }
+			else
+				raise "I don't know how to parse a %p host address (%p)" %
+					[ address.class, address ]
+			end
+
+			return addresses
+		end
+
+	end # module NetworkUtilities
 
 end # module Arborist

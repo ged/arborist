@@ -48,7 +48,7 @@ describe Arborist::Subscription do
 	it "publishes events which are of any type if the specified type is `nil`" do
 		subscription = described_class.new( &published_events.method(:push) )
 		event1 = Arborist::Event.create( 'node_delta', host_node, status: ['up', 'down'] )
-		event2 = Arborist::Event.create( 'sys_reloaded' )
+		event2 = Arborist::Event.create( 'node_update', host_node )
 
 		subscription.on_events( event1, event2 )
 

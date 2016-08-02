@@ -2,9 +2,9 @@
 #encoding: utf-8
 
 require 'etc'
-require 'ipaddr'
 
 require 'arborist/node'
+require 'arborist/mixins'
 
 
 # A node type for Arborist trees that represent network-connected hosts.
@@ -14,7 +14,7 @@ require 'arborist/node'
 #        address '93.184.216.34'
 #
 #        tags :public, :dmz
-#        
+#
 #        resource 'disk'
 #        resource 'memory' do
 #            config hwm: '3.4G'
@@ -23,7 +23,7 @@ require 'arborist/node'
 #        resource 'processes' do
 #            config expect: { nginx: 2 }
 #        end
-#        
+#
 #        service 'ssh'
 #        service 'www'
 #
@@ -31,14 +31,7 @@ require 'arborist/node'
 #
 #
 class Arborist::Node::Host < Arborist::Node
-
-	# A union of IPv4 and IPv6 regular expressions.
-	IPADDR_RE = Regexp.union(
-		IPAddr::RE_IPV4ADDRLIKE,
-		IPAddr::RE_IPV6ADDRLIKE_COMPRESSED,
-		IPAddr::RE_IPV6ADDRLIKE_FULL
-	)
-
+	include Arborist::NetworkUtilities
 
 	### Create a new Host node.
 	def initialize( identifier, attributes={}, &block )
@@ -82,19 +75,7 @@ class Arborist::Node::Host < Arborist::Node
 	### Set an IP address of the host.
 	def address( new_address )
 		self.log.debug "Adding address %p to %p" % [ new_address, self ]
-		case new_address
-		when IPAddr
-			@addresses << new_address
-		when IPADDR_RE
-			@addresses << IPAddr.new( new_address )
-		when String
-			ip_addr = TCPSocket.gethostbyname( new_address )
-			@addresses << IPAddr.new( ip_addr[3] )
-			@addresses << IPAddr.new( ip_addr[4] ) if ip_addr[4]
-		else
-			raise "I don't know how to parse a %p host address (%p)" %
-				[ new_address.class, new_address ]
-		end
+		@addresses += normalize_address( new_address )
 	end
 
 

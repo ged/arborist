@@ -469,26 +469,25 @@ describe Arborist::Node do
 			end
 
 
-			it "an ACKed node goes back to ACKed when re-added to the tree" do
-
-				node.update( error: "there's a fire" )
-				node.update( ack: {
-					message: 'We know about the fire. It rages on.',
-					sender: '1986 Labyrinth David Bowie'
-				})
-				cloned_node = concrete_class.from_hash( node.to_h )
-				node_added_event = Arborist::Event.create( :sys_node_added, cloned_node )
-				cloned_node.handle_event( node_added_event )
-
-				expect( cloned_node ).to be_acked
-			end
-
-
 			it "can be marshalled" do
 				data = Marshal.dump( node )
 				cloned_node = Marshal.load( data )
 
 				expect( cloned_node ).to eq( node )
+			end
+
+
+			it "an ACKed node stays ACKed when serialized and restored" do
+				node.update( error: "there's a fire" )
+				node.update( ack: {
+					message: 'We know about the fire. It rages on.',
+					sender: '1986 Labyrinth David Bowie'
+				})
+				expect( node ).to be_acked
+
+				restored_node = Marshal.load( Marshal.dump(node) )
+
+				expect( restored_node ).to be_acked
 			end
 
 

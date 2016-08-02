@@ -194,7 +194,7 @@ class Arborist::MonitorRunner
 	### Create a repeating ZMQ::Timer that will run the specified monitor on its interval.
 	def interval_timer_for( monitor )
 		interval = monitor.interval
-		self.log.info "Creating timer for %s monitor to run every %ds" % [ monitor, interval ]
+		self.log.info "Creating timer for %p" % [ monitor ]
 
 		return ZMQ::Timer.new( interval, 0 ) do
 			self.handler.run_monitor( monitor )
@@ -206,7 +206,7 @@ class Arborist::MonitorRunner
 	### +monitor+ after a random number of seconds no greater than its splay.
 	def splay_timer_for( monitor )
 		delay = rand( monitor.splay )
-		self.log.info "Splaying registration of %s monitor for %ds" % [ monitor, delay ]
+		self.log.debug "Splaying registration of %p for %ds" % [ monitor, delay ]
 
 		return ZMQ::Timer.new( delay, 1 ) do
 			interval_timer = self.interval_timer_for( monitor )

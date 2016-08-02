@@ -872,6 +872,7 @@ class Arborist::Node
 	### Marshal API -- set up the object's state using the +hash+ from a
 	### previously-marshalled node.
 	def marshal_load( hash )
+		self.log.debug "Restoring from serialized hash: %p" % [ hash ]
 		@identifier      = hash[:identifier]
 		@properties      = hash[:properties]
 
@@ -881,8 +882,9 @@ class Arborist::Node
 		@config          = hash[:config]
 		@children        = {}
 
-		@status          = 'unknown'
+		@status          = hash[:status]
 		@status_changed  = Time.parse( hash[:status_changed] )
+		@ack             = Arborist::Node::Ack.from_hash( hash[:ack] ) if hash[:ack]
 
 		@error           = hash[:error]
 		@properties      = hash[:properties] || {}
@@ -898,7 +900,6 @@ class Arborist::Node
 		@pending_update_events = []
 		@subscriptions         = {}
 
-		self.ack = hash[:ack]
 	end
 
 
