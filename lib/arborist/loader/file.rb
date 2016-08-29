@@ -27,7 +27,7 @@ class Arborist::Loader::File < Arborist::Loader
 	def paths
 		path = Pathname( self.directory )
 		if path.directory?
-			return Pathname.glob( directory + FILE_PATTERN ).each
+			return Pathname.glob( path + FILE_PATTERN ).each
 		else
 			return [ path ].each
 		end
