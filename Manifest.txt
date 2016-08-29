@@ -82,9 +82,9 @@ spec/data/monitors/pings.rb
 spec/data/monitors/port_checks.rb
 spec/data/monitors/system_resources.rb
 spec/data/monitors/web_services.rb
-spec/data/nodes/duir.rb
 spec/data/nodes/localhost.rb
 spec/data/nodes/sidonie.rb
+spec/data/nodes/sub/duir.rb
 spec/data/nodes/yevaud.rb
 spec/data/observers/auditor.rb
 spec/data/observers/webservices.rb
