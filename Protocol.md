@@ -127,6 +127,9 @@ Fetch the `address`, `description`, and `status` of all nodes.
             include_down: true,
             return: [address, description, status]
         },
+
+Response
+
         {
             'theon' => {
                 address: '10.2.10.4',

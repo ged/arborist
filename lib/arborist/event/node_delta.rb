@@ -27,15 +27,22 @@ class Arborist::Event::NodeDelta < Arborist::Event::Node
 
 	### Returns +true+ if the specified +object+ matches this event.
 	def match( object )
-		return super &&
-			object.respond_to?( :criteria ) && self.delta_matches?( object.criteria )
+		rval = super &&
+			self.delta_matches?( object.criteria ) &&
+			!self.delta_matches?( object.negative_criteria, if_empty: false )
+		self.log.debug "Delta event #match: %p" % [ rval ]
+		return rval
 	end
 
 
 	### Returns +true+ if the 'delta' value of the specified +criteria+ (which
-	### must respond to .all?) matches the delta this event represents.
-	def delta_matches?( criteria )
-		delta_criteria = criteria['delta'] || {}
+	### must respond to .all?) matches the delta this event represents. If the specified
+	### criteria doesn't contain any `delta` criteria, the +default+ value is used instead.
+	def delta_matches?( criteria, if_empty: true )
+		self.log.debug "Delta matching %p (%p if empty)" % [ criteria, if_empty ]
+		delta_criteria = criteria['delta']
+		return if_empty if !delta_criteria || delta_criteria.empty?
+
 		self.log.debug "Matching event against delta criteria: %p" % [ delta_criteria ]
 
 		return delta_criteria.all? do |key, val|

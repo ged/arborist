@@ -47,8 +47,10 @@ class Arborist::Event
 
 	### Match operator -- returns +true+ if the other object matches this event.
 	def match( object )
-		return object.respond_to?( :event_type ) &&
+		rval = object.respond_to?( :event_type ) &&
 		   ( object.event_type.nil? || object.event_type == self.type )
+		self.log.debug "Base node #match: %p" % [ rval ]
+		return rval
 	end
 	alias_method :=~, :match
 

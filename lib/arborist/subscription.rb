@@ -20,11 +20,14 @@ class Arborist::Subscription
 
 	### Instantiate a new Subscription object given an +event+ pattern
 	### and event +criteria+.
-	def initialize( event_type=nil, criteria={}, &callback )
+	def initialize( event_type=nil, criteria={}, negative_criteria={}, &callback )
 		raise LocalJumpError, "requires a callback block" unless callback
+
 		@callback   = callback
 		@event_type = event_type
 		@criteria   = stringify_keys( criteria )
+		@negative_criteria = stringify_keys( negative_criteria )
+
 		@id         = self.generate_id
 	end
 
@@ -42,8 +45,18 @@ class Arborist::Subscription
 	# The Arborist event pattern that this subscription handles.
 	attr_reader :event_type
 
-	# Node selection attributes to match
+	# Node selection attributes to require
 	attr_reader :criteria
+
+	# Node selection attributes to exclude
+	attr_reader :negative_criteria
+
+
+	### Add the given +criteria+ hash to the #negative_criteria.
+	def exclude( criteria )
+		criteria = stringify_keys( criteria )
+		self.negative_criteria.merge!( criteria )
+	end
 
 
 	### Create an identifier for this subscription object.
@@ -65,21 +78,24 @@ class Arborist::Subscription
 
 	### Returns +true+ if the receiver is interested in publishing the specified +event+.
 	def interested_in?( event )
-		self.log.debug "Testing %p against type = %p and criteria = %p" %
-			[ event, self.event_type, self.criteria ]
-		return event.match( self )
+		self.log.debug "Testing %p against type = %p and criteria = %p but not %p" %
+			[ event, self.event_type, self.criteria, self.negative_criteria ]
+		rval = event.match( self )
+		self.log.debug "  event %s match." % [ rval ? "did" : "did NOT" ]
+		return rval
 	end
 	alias_method :is_interested_in?, :interested_in?
 
 
 	### Return a String representation of the object suitable for debugging.
 	def inspect
-		return "#<%p:%#x [%s] for %s events matching: %p -> %p>" % [
+		return "#<%p:%#x [%s] for %s events matching: %p %s-> %p>" % [
 			self.class,
 			self.object_id * 2,
 			self.id,
 			self.event_type,
 			self.criteria,
+			self.negative_criteria.empty? ? '' : "(but not #{self.negative_criteria.inspect}",
 			self.callback,
 		]
 	end

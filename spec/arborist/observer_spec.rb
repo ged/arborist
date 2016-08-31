@@ -43,6 +43,39 @@ describe Arborist::Observer do
 	end
 
 
+	it "can specify criteria for events" do
+		observer = described_class.new( "testing observer" ) do
+			subscribe to: 'node.up', where: { type: 'host' }
+		end
+
+		expect( observer.subscriptions ).to be_an( Array )
+		expect( observer.subscriptions ).to include( a_hash_including(criteria: {type: 'host'}) )
+		expect( observer.subscriptions.length ).to eq( 1 )
+	end
+
+
+	it "can specify negative criteria for events" do
+		observer = described_class.new( "testing observer" ) do
+			subscribe to: 'node.up', exclude: { type: 'host' }
+		end
+
+		expect( observer.subscriptions ).to be_an( Array )
+		expect( observer.subscriptions ).to include( a_hash_including(exclude: {type: 'host'}) )
+		expect( observer.subscriptions.length ).to eq( 1 )
+	end
+
+
+	it "can specify a subscription node other than the root" do
+		observer = described_class.new( "testing observer" ) do
+			subscribe to: 'node.down', on: 'dmz-gateway'
+		end
+
+		expect( observer.subscriptions ).to be_an( Array )
+		expect( observer.subscriptions ).to include( a_hash_including(identifier: 'dmz-gateway') )
+		expect( observer.subscriptions.length ).to eq( 1 )
+	end
+
+
 	it "can specify an action to run when a subscribed event is received" do
 		observer = described_class.new( "testing observer" ) do
 			action do |event|

@@ -149,14 +149,14 @@ class Arborist::Client
 
 
 	### Make a subscription request for the specified +criteria+, +identifier+, and +event_type+.
-	def make_subscribe_request( criteria: {}, identifier: nil, event_type: nil )
+	def make_subscribe_request( criteria: {}, identifier: nil, event_type: nil, exclude: {} )
 		self.log.debug "Making subscription request for identifier: %p, event_type: %p, criteria: %p" %
 			[ identifier, event_type, criteria ]
 		header = {}
 		header[ :identifier ] = identifier if identifier
 		header[ :event_type ] = event_type
 
-		return self.pack_message( :subscribe, header, criteria )
+		return self.pack_message( :subscribe, header, [ criteria, exclude ] )
 	end
 
 

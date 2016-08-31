@@ -158,7 +158,13 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 		self.log.debug "SUBSCRIBE: %p" % [ header ]
 		event_type      = header[ 'event_type' ]
 		node_identifier = header[ 'identifier' ]
-		subscription    = @manager.create_subscription( node_identifier, event_type, body )
+
+		body = [ body ] unless body.is_a?( Array )
+		positive = body.shift
+		negative = body.shift || {}
+
+		subscription = @manager.
+			create_subscription( node_identifier, event_type, positive, negative )
 
 		return successful_response([ subscription.id ])
 	end

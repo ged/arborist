@@ -59,6 +59,14 @@ describe Arborist::Event::NodeDelta do
 		end
 
 
+		it "doesn't match a subscription with matching negative criteria" do
+			sub = Arborist::Subscription.new( 'node.delta', 'type' => node.type ) {}
+			sub.exclude( 'delta' => {status: ['up', 'down']} )
+			event = described_class.new( node, 'status' => ['up', 'down'] )
+
+			expect( event ).to_not match( sub )
+		end
+
 	end
 
 

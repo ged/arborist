@@ -25,6 +25,8 @@
 
 * Write a gem for `fping` monitor 
 
+* Redo the select loop of the UDP socket monitor to wait for them in parallel instead of in series.
+
 
 ## Second Release (0.2)
 

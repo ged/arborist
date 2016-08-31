@@ -408,11 +408,7 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 	describe "subscribe" do
 
 		it "adds a subscription for all event types to the root node by default" do
-			criteria = {
-				type: 'host'
-			}
-
-			msg = pack_message( :subscribe, criteria )
+			msg = pack_message( :subscribe, [{}, {}] )
 
 			resmsg = nil
 			expect {
@@ -431,11 +427,7 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 
 
 		it "adds a subscription to the specified node if an identifier is specified" do
-			criteria = {
-				type: 'host'
-			}
-
-			msg = pack_message( :subscribe, {identifier: 'sidonie'}, criteria )
+			msg = pack_message( :subscribe, {identifier: 'sidonie'}, [{}, {}] )
 
 			resmsg = nil
 			expect {
@@ -453,12 +445,8 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 		end
 
 
-		it "adds a subscription for node types matching a pattern if one is specified" do
-			criteria = {
-				type: 'host'
-			}
-
-			msg = pack_message( :subscribe, {event_type: 'node.ack'}, criteria )
+		it "adds a subscription for particular event types if one is specified" do
+			msg = pack_message( :subscribe, {event_type: 'node.acked'}, [{}, {}] )
 
 			resmsg = nil
 			expect {
@@ -471,7 +459,49 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 			node = manager.subscriptions[ body.first ]
 			sub = node.subscriptions[ body.first ]
 
-			expect( sub.event_type ).to eq( 'node.ack' )
+			expect( sub.event_type ).to eq( 'node.acked' )
+		end
+
+
+		it "adds a subscription for events which match a pattern if one is specified" do
+			criteria = { type: 'host' }
+
+			msg = pack_message( :subscribe, [criteria, {}] )
+
+			resmsg = nil
+			expect {
+				sock.send( msg )
+				resmsg = sock.recv
+			}.to change { manager.subscriptions.length }.by( 1 ).and(
+				change { manager.root.subscriptions.length }.by( 1 )
+			)
+			hdr, body = unpack_message( resmsg )
+			node = manager.subscriptions[ body.first ]
+			sub = node.subscriptions[ body.first ]
+
+			expect( sub.event_type ).to be_nil
+			expect( sub.criteria ).to eq({ 'type' => 'host' })
+		end
+
+
+		it "adds a subscription for events which don't match a pattern if an exclusion pattern is given" do
+			criteria = { type: 'host' }
+
+			msg = pack_message( :subscribe, [{}, criteria] )
+
+			resmsg = nil
+			expect {
+				sock.send( msg )
+				resmsg = sock.recv
+			}.to change { manager.subscriptions.length }.by( 1 ).and(
+				change { manager.root.subscriptions.length }.by( 1 )
+			)
+			hdr, body = unpack_message( resmsg )
+			node = manager.subscriptions[ body.first ]
+			sub = node.subscriptions[ body.first ]
+
+			expect( sub.event_type ).to be_nil
+			expect( sub.negative_criteria ).to eq({ 'type' => 'host' })
 		end
 
 	end

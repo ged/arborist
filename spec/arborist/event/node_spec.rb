@@ -45,7 +45,6 @@ describe Arborist::Event::Node do
 
 
 	it "matches subscriptions which have non-matching negative criteria" do
-		pending "Adding negative criteria to subscriptions"
 		negative_criteria = {
 			tag: 'nope'
 		}

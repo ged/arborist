@@ -556,7 +556,15 @@ class Arborist::Node
 
 
 	### Returns +true+ if the specified search +criteria+ all match this node.
-	def matches?( criteria )
+	def matches?( criteria, if_empty: true )
+
+		# Omit 'delta' criteria from matches; delta matching is done separately.
+		criteria = criteria.dup
+		criteria.delete( 'delta' )
+
+		self.log.debug "Node matching %p (%p if empty)" % [ criteria, if_empty ]
+		return if_empty if criteria.empty?
+
 		self.log.debug "Matching %p against criteria: %p" % [ self, criteria ]
 		return criteria.all? do |key, val|
 			self.match_criteria?( key, val )
@@ -567,8 +575,6 @@ class Arborist::Node
 	### Returns +true+ if the node matches the specified +key+ and +val+ criteria.
 	def match_criteria?( key, val )
 		return case key
-			when 'delta'
-				true
 			when 'status'
 				self.status == val
 			when 'type'

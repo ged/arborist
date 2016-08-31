@@ -301,14 +301,14 @@ class Arborist::Monitor
 	### Specify that the monitor should include the specified +criteria+ when searching
 	### for nodes it will run against.
 	def match( criteria )
-		@positive_criteria.merge!( criteria )
+		self.positive_criteria.merge!( criteria )
 	end
 
 
 	### Specify that the monitor should exclude nodes which match the specified
 	### +criteria+ when searching for nodes it will run against.
 	def exclude( criteria )
-		@negative_criteria.merge!( criteria )
+		self.negative_criteria.merge!( criteria )
 	end
 
 

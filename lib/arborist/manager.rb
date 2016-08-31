@@ -731,8 +731,8 @@ class Arborist::Manager
 	### Create a subscription that publishes to the Manager's event publisher for
 	### the node with the specified +identifier+ and +event_pattern+, using the
 	### given +criteria+ when considering an event.
-	def create_subscription( identifier, event_pattern, criteria )
-		sub = Arborist::Subscription.new( event_pattern, criteria ) do |*args|
+	def create_subscription( identifier, event_pattern, criteria, negative_criteria={} )
+		sub = Arborist::Subscription.new( event_pattern, criteria, negative_criteria ) do |*args|
 			self.event_publisher.publish( *args )
 		end
 		self.subscribe( identifier, sub )

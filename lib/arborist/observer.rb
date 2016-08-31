@@ -107,8 +107,8 @@ class Arborist::Observer
 	### on::
 	###   the identifier of the node to subscribe on, defaults to the root node
 	##    which receives all node events.
-	def subscribe( to: nil, where: {}, on: nil )
-		@subscriptions << { criteria: where, identifier: on, event_type: to }
+	def subscribe( to: nil, where: {}, exclude: {}, on: nil )
+		@subscriptions << { criteria: where, exclude: exclude, identifier: on, event_type: to }
 	end
 
 
