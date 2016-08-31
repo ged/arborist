@@ -37,6 +37,47 @@ class Arborist::Client
 	attr_accessor :event_api_url
 
 
+	#
+	# High-level methods
+	#
+
+	### Mark a node as 'acknowledged' if it's down, or 'disabled' if
+	### it's up.  (A pre-emptive acknowledgement.)  Requires the node
+	### +identifier+, an acknowledgement +message+, and +sender+.  You
+	### can optionally include a +via+ (source), and override the default
+	### +time+ of now.
+	def acknowledge( node, message, sender, via=nil, time=Time.now )
+		data = {
+			node => {
+				ack: {
+					message: message,
+					sender:  sender,
+					via:     via,
+					time:    time.to_s
+				}
+			}
+		}
+
+		return self.update( data )
+	end
+	alias_method :ack, :acknowledge
+
+
+	### Clear an acknowledged/disabled +node+.
+	def clear_acknowledgement( node )
+		data = { node => { ack: nil } }
+		request = self.make_update_request( data )
+		self.send_tree_api_request( request )
+		return true
+	end
+	alias_method :clear_ack, :clear_acknowledgement
+
+
+
+	#
+	# Protocol methods
+	#
+
 	### Return the manager's current status as a hash.
 	def status
 		request = self.make_status_request
@@ -83,40 +124,6 @@ class Arborist::Client
 
 		return self.pack_message( :fetch, header, [ criteria, exclude ] )
 	end
-
-
-	### Mark a node as 'acknowledged' if it's down, or 'disabled' if
-	### it's up.  (A pre-emptive acknowledgement.)  Requires the node
-	### +identifier+, an acknowledgement +message+, and +sender+.  You
-	### can optionally include a +via+ (source), and override the default
-	### +time+ of now.
-	def acknowledge( node, message, sender, via=nil, time=Time.now )
-		data = {
-			node => {
-				ack: {
-					message: message,
-					sender:  sender,
-					via:     via,
-					time:    time.to_s
-				}
-			}
-		}
-
-		request = self.make_update_request( data )
-		self.send_tree_api_request( request )
-		return true
-	end
-	alias_method :ack, :acknowledge
-
-
-	### Clear an acknowledged/disabled +node+.
-	def clear_acknowledgement( node )
-		data = { node => { ack: nil } }
-		request = self.make_update_request( data )
-		self.send_tree_api_request( request )
-		return true
-	end
-	alias_method :clear_ack, :clear_acknowledgement
 
 
 	### Update the identified nodes in the manager with the specified data.
@@ -244,6 +251,9 @@ class Arborist::Client
 	end
 
 
+	#
+	# Utility methods
+	#
 
 	### Format ruby +data+ for communicating with the Arborist manager.
 	def pack_message( verb, *data )
