@@ -33,6 +33,21 @@ class Arborist::Node
 	# Regex to match a valid identifier
 	VALID_IDENTIFIER = /^\w[\w\-]*$/
 
+	# The attributes of a node which are used in the operation of the system
+	OPERATIONAL_ATTRIBUTES = %i[
+		type
+		status
+		tags
+		parent
+		description
+		dependencies
+		status_changed
+		last_contacted
+		ack
+		error
+		quieted_reasons
+		config
+	]
 
 	autoload :Root, 'arborist/node/root'
 	autoload :Ack, 'arborist/node/ack'
@@ -574,6 +589,7 @@ class Arborist::Node
 	def fetch_values( value_spec=nil )
 		state = self.properties.merge( self.operational_values )
 		state = stringify_keys( state )
+		state = make_serializable( state )
 
 		if value_spec
 			self.log.debug "Eliminating all values except: %p (from keys: %p)" %
@@ -588,12 +604,9 @@ class Arborist::Node
 	### Return a Hash of the operational values that are included with the node's
 	### monitor state.
 	def operational_values
-		values = {
-			type: self.type,
-			status: self.status,
-			tags: self.tags
-		}
-		values[:ack] = self.ack.to_h if self.ack
+		values = OPERATIONAL_ATTRIBUTES.each_with_object( {} ) do |key, hash|
+			hash[ key ] = self.send( key )
+		end
 
 		return values
 	end
@@ -1055,5 +1068,27 @@ class Arborist::Node
 		return dependencies
 	end
 
+
+	### Turn any non-msgpack-able objects in the values of a copy of +hash+ to
+	### values that can be serialized and return the copy.
+	def make_serializable( hash )
+		new_hash = hash.dup
+		new_hash.keys.each do |key|
+			val = new_hash[ key ]
+			case val
+			when Hash
+				new_hash[ key ] = make_serializable( val )
+
+			when Arborist::Dependency,
+			     Arborist::Node::Ack
+				 new_hash[ key ] = val.to_h
+
+			when Time
+				new_hash[ key ] = val.iso8601
+			end
+		end
+
+		return new_hash
+	end
 
 end # class Arborist::Node

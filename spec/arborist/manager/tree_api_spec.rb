@@ -393,6 +393,15 @@ describe Arborist::Manager::TreeAPI, :testing_manager do
 			expect( hdr ).to include( 'success' => true )
 		end
 
+		it "fails with a client error if the body is invalid" do
+			msg = pack_message( :update, nil )
+			sock.send( msg )
+			resmsg = sock.recv
+
+			hdr, body = unpack_message( resmsg )
+			expect( hdr ).to include( 'success' => false )
+			expect( hdr['reason'] ).to match( /respond to #each/ )
+		end
 	end
 
 

@@ -1,6 +1,7 @@
 # -*- ruby -*-
 #encoding: utf-8
 
+require 'time'
 require 'loggability'
 require 'timeout'
 require 'socket'
@@ -132,7 +133,7 @@ module Arborist::Monitor::Socket
 						sock.connect_nonblock( sockaddr )
 					rescue Errno::EISCONN
 						results[ identifier ] = {
-							tcp_socket_connect: { time: now.to_s, duration: now - start }
+							tcp_socket_connect: { time: now.iso8601, duration: now - start }
 						}
 					rescue SocketError, SystemCallError => err
 						self.log.debug "%p during connection: %s" % [ err.class, err.message ]
@@ -257,7 +258,7 @@ module Arborist::Monitor::Socket
 					if ready.nil?
 						now = Time.now
 						results[ identifier ] = {
-							udp_socket_connect: { time: now.to_s, duration: now - start }
+							udp_socket_connect: { time: now.iso8601, duration: now - start }
 						}
 						self.log.debug "  connection successful"
 					else

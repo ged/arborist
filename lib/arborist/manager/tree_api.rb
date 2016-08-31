@@ -225,6 +225,10 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 	def handle_update_request( header, body )
 		self.log.debug "UPDATE: %p" % [ header ]
 
+		unless body.respond_to?( :each )
+			return error_response( 'client', 'Malformed update: body does not respond to #each' )
+		end
+
 		body.each do |identifier, properties|
 			@manager.update_node( identifier, properties )
 		end
