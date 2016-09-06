@@ -119,7 +119,7 @@ module Arborist::Monitor::Socket
 			# Now wait for connections to complete
 			wait_seconds = timeout_at - Time.now
 			until connections.empty? || wait_seconds <= 0
-				self.log.debug "Waiting on %d connections for %0.3ds..." %
+				self.log.debug "Waiting on %d connections for %0.3fs..." %
 					[ connections.values.length, wait_seconds ]
 
 				_, ready, _ = IO.select( nil, connections.keys, nil, wait_seconds )
@@ -129,7 +129,8 @@ module Arborist::Monitor::Socket
 					identifier, sockaddr = *connections.delete( sock )
 
 					begin
-						sock.getpeername
+						res = sock.getpeername
+						self.log.debug "connected to %s" % [ identifier ]
 						results[ identifier ] = {
 							tcp_socket_connect: { time: now.iso8601, duration: now - start }
 						}
@@ -137,8 +138,7 @@ module Arborist::Monitor::Socket
 						begin
 							sock.read( 1 )
 						rescue => err
-							self.log.debug "%p reading after getpeername failed: %s" %
-								[ err.class, err.message ]
+							self.log.debug "read: %p: %s" % [ err.class, err.message ]
 							results[ identifier ] = { error: err.message }
 						end
 					ensure

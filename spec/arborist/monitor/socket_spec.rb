@@ -48,12 +48,11 @@ describe Arborist::Monitor::Socket do
 		def make_successful_mock_socket( node )
 			address = Addrinfo.tcp( node.addresses.first.to_s, node.port )
 			socket = instance_double( Socket, "#{node.identifier} socket", remote_address: address )
-			errors = [ IO::EINPROGRESSWaitWritable, Errno::EISCONN ]
 
-			expect( socket ).to receive( :connect_nonblock ) do |addr|
-				expect( addr ).to eq( sockaddr_for(node) )
-				raise errors.shift
-			end.at_least( :once )
+			expect( socket ).to receive( :connect_nonblock ).with( sockaddr_for(node) ).
+				and_raise( IO::EINPROGRESSWaitWritable )
+			allow( socket ).to receive( :getpeername ).
+				and_return( address.to_sockaddr )
 
 			return socket
 		end
@@ -74,12 +73,13 @@ describe Arborist::Monitor::Socket do
 		def make_wait_error_mock_socket( node, error_class, message )
 			address = Addrinfo.tcp( node.addresses.first.to_s, node.port )
 			socket = instance_double( Socket, "#{node.identifier} socket", remote_address: address )
-			errors = [ IO::EINPROGRESSWaitWritable, error_class.new(message) ]
 
-			expect( socket ).to receive( :connect_nonblock ) do |addr|
-				expect( addr ).to eq( sockaddr_for(node) )
-				raise errors.shift
-			end.at_least( :once )
+			expect( socket ).to receive( :connect_nonblock ).with( sockaddr_for(node) ).
+				and_raise( IO::EINPROGRESSWaitWritable )
+			expect( socket ).to receive( :getpeername ).
+				and_raise( Errno::EINVAL.new("Invalid argument - getpeername(2)") )
+			expect( socket ).to receive( :read ).with( 1 ).
+				and_raise( Errno::ECONNREFUSED.new )
 
 			return socket
 		end
@@ -164,22 +164,6 @@ describe Arborist::Monitor::Socket do
 			expect( result ).to be_a( Hash )
 			expect( result ).to include( 'test-www' )
 			expect( result['test-www'] ).to include( error: 'No route to host - the message' )
-		end
-
-
-		it "updates nodes with an error on a 'getpeername' error" do
-			socket = make_wait_error_mock_socket( www_service_node, Errno::EINVAL, "getpeername(2)" )
-			allow( Socket ).to receive( :new ).and_return( socket )
-			allow( IO ).to receive( :select ).
-				with( nil, [socket], nil, kind_of(Numeric) ).
-				and_return( [nil, [socket], nil] )
-			allow( socket ).to receive( :close )
-
-			result = described_class.run( 'test-www' => www_service_node.fetch_values )
-
-			expect( result ).to be_a( Hash )
-			expect( result ).to include( 'test-www' )
-			expect( result['test-www'] ).to include( error: 'Invalid argument - getpeername(2)' )
 		end
 
 
