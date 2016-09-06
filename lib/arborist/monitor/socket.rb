@@ -129,14 +129,18 @@ module Arborist::Monitor::Socket
 					identifier, sockaddr = *connections.delete( sock )
 
 					begin
-						sock.connect_nonblock( sockaddr )
-					rescue Errno::EISCONN
+						sock.getpeername
 						results[ identifier ] = {
 							tcp_socket_connect: { time: now.iso8601, duration: now - start }
 						}
 					rescue SocketError, SystemCallError => err
-						self.log.debug "%p during connection: %s" % [ err.class, err.message ]
-						results[ identifier ] = { error: err.message }
+						begin
+							sock.read( 1 )
+						rescue => err
+							self.log.debug "%p reading after getpeername failed: %s" %
+								[ err.class, err.message ]
+							results[ identifier ] = { error: err.message }
+						end
 					ensure
 						sock.close
 					end
