@@ -231,15 +231,15 @@ class Arborist::Dependency
 		when :all
 			msg = ids.first.dup
 			if ids.size == 1
-				msg << " is down"
+				msg << " is unavailable"
 			else
-				msg << " (and %d other%s) are down" % [ ids.size - 1, ids.size == 2 ? '' : 's' ]
+				msg << " (and %d other%s) are unavailable" % [ ids.size - 1, ids.size == 2 ? '' : 's' ]
 			end
 
 			msg << " as of %s" % [ self.earliest_down_time ]
 
 		when :any
-			msg = "%s are all down" % [ ids.to_a.join(', ') ]
+			msg = "%s are all unavailable" % [ ids.to_a.join(', ') ]
 			msg << " as of %s" % [ self.latest_down_time ]
 
 		else

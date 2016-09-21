@@ -321,7 +321,7 @@ describe Arborist::Dependency do
 
 		it "can describe the reason it's down" do
 			dep.mark_down( 'node2' )
-			expect( dep.down_reason ).to match( /node2 is down as of/i )
+			expect( dep.down_reason ).to match( /node2 is unavailable as of/i )
 		end
 
 
@@ -329,7 +329,7 @@ describe Arborist::Dependency do
 			dep.mark_down( 'node1' )
 			dep.mark_down( 'node2' )
 			# :FIXME: Does order matter in the 'all' case? This assumes no.
-			expect( dep.down_reason ).to match( /node(1|2) \(and 1 other\) are down as of/i )
+			expect( dep.down_reason ).to match( /node(1|2) \(and 1 other\) are unavailable as of/i )
 		end
 
 	end
@@ -364,7 +364,8 @@ describe Arborist::Dependency do
 			dep.mark_down( 'node2' )
 			dep.mark_down( 'node1' )
 
-			expect( dep.down_reason ).to match( /are all down as of/i ).and( include('node1', 'node2') )
+			expect( dep.down_reason ).to match( /are all unavailable as of/i ).
+				and( include('node1', 'node2') )
 		end
 
 	end
