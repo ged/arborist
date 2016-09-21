@@ -663,9 +663,12 @@ class Arborist::Node
 	def handle_event( event )
 		self.log.debug "Handling %p" % [ event ]
 		handler_name = "handle_%s_event" % [ event.type.gsub('.', '_') ]
+
 		if self.respond_to?( handler_name )
 			self.log.debug "Handling a %s event." % [ event.type ]
 			self.method( handler_name ).call( event )
+		else
+			self.log.debug "No handler for a %s event!" % [ event.type ]
 		end
 		super # to state-machine
 	end
@@ -703,6 +706,21 @@ class Arborist::Node
 
 		if event.node.identifier == self.parent
 			self.quieted_reasons[ :primary ] = "Parent down: %s" % [ self.parent ] # :TODO: backtrace?
+		end
+	end
+
+
+	def handle_node_disabled_event( event )
+		self.log.debug "Got a node.disabled event: %p" % [ event ]
+		self.dependencies.mark_down( event.node.identifier )
+
+		if self.dependencies_down?
+			self.quieted_reasons[ :secondary ] = "Secondary dependencies not met: %s" %
+				[ self.dependencies.down_reason ]
+		end
+
+		if event.node.identifier == self.parent
+			self.quieted_reasons[ :primary ] = "Parent disabled: %s" % [ self.parent ]
 		end
 	end
 
