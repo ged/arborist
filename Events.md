@@ -18,3 +18,18 @@
     sys.hearbeat
 
 
+## Event Movement
+
+Propagation
+
+	events being sent up the tree to the root node
+
+Broadcast
+
+	events being sent down to node children
+
+Publishing
+
+	events being sent to subscriptions, including dependent nodes
+	triggered via propagation and broadcasting
+
