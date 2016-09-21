@@ -19,7 +19,6 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 	### Create the TreeAPI handler that will read requests from the specified +pollable+
 	### and call into the +manager+ to respond to them.
 	def initialize( pollable, manager )
-		self.log.debug "Setting up a %p" % [ self.class ]
 		@pollitem = pollable
 		@enabled  = true
 		@manager  = manager
@@ -41,8 +40,6 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 
 	### Handle the specified +raw_request+ and return a response.
 	def handle_request( raw_request )
-		self.log.debug "Handling request: %p" % [ raw_request ]
-
 		raise "Manager is shutting down" unless self.enabled?
 
 		header, body = self.parse_request( raw_request )
@@ -68,13 +65,11 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 	### Attempt to dispatch a request given its +header+ and +body+, and return the
 	### serialized response.
 	def dispatch_request( header, body )
-		self.log.debug "Dispatching request %p -> %p" % [ header, body ]
 		handler = self.lookup_request_action( header ) or
 			raise Arborist::RequestError, "No such action '%s'" % [ header['action'] ]
 
 		response = handler.call( header, body )
 
-		self.log.debug "Returning response: %p" % [ response ]
 		return response
 	end
 
@@ -96,7 +91,6 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 		msg = [
 			{ category: category, reason: reason, success: false, version: 1 }
 		]
-		self.log.debug "Returning error response: %p" % [ msg ]
 		return MessagePack.pack( msg )
 	end
 
@@ -107,7 +101,6 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 			{ success: true, version: 1 },
 			body
 		]
-		self.log.debug "Returning successful response: %p" % [ msg ]
 		return MessagePack.pack( msg )
 	end
 
@@ -119,8 +112,6 @@ class Arborist::Manager::TreeAPI < ZMQ::Handler
 		rescue => err
 			raise Arborist::RequestError, err.message
 		end
-
-		self.log.debug "Parsed request: %p" % [ tuple ]
 
 		raise Arborist::RequestError, 'not a tuple' unless tuple.is_a?( Array )
 		raise Arborist::RequestError, 'incorrect length' if tuple.length.zero? || tuple.length > 2
