@@ -804,12 +804,24 @@ describe Arborist::Node do
 		end
 
 
-		it "can be declared for unrelated identifiers"
-		it "can be declared for related identifiers"
+		it "can be declared for all of a group of identifiers" do
+			node.depends_on( 'iscsi', 'memcached', 'ldap', on: 'dmz' )
+			expect( node ).to have_dependencies
+			expect( node.dependencies.behavior ).to eq( :all )
+			expect( node.dependencies.identifiers ).to include( 'dmz-iscsi', 'dmz-memcached', 'dmz-ldap' )
+		end
 
 
-		it "can be declared for all of a group of identifiers"
-		it "can be declared for any of a group of identifiers"
+		it "can be declared for any of a group of identifiers" do
+			node.depends_on( node.any_of('memcached', on: %w[blade1 blade2 blade3]) )
+			expect( node ).to have_dependencies
+			expect( node.dependencies.behavior ).to eq( :all )
+			expect( node.dependencies.subdeps.size ).to eq( 1 )
+			subdep = node.dependencies.subdeps.first
+			expect( subdep.behavior ).to eq( :any )
+			expect( subdep.identifiers ).
+				to include( 'blade1-memcached', 'blade2-memcached', 'blade3-memcached' )
+		end
 
 
 		it "cause the node to be quieted when the dependent node goes down" do

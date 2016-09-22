@@ -6,13 +6,7 @@
 
 * Performance/profiling examination
 
-
-### Observers
-
-* Add `exclude` to observers DSL
-  * modify tree api to accept negative criteria to subscribe
-	* pass to manager's create_subscription()
-	* alter subscription to no-op if event matches negative stuff
+Ordering of transitions:  'ack' on an 'unknown' node should transition to disabled, not up
 
 
 ### Monitor

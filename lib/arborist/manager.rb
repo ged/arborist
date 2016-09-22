@@ -755,6 +755,11 @@ class Arborist::Manager
 		node.publish_events( *events )
 
 		if node.parent
+			self.log.debug "Propagating %d events from %s -> %s" % [
+				events.length,
+				node.identifier,
+				node.parent
+			]
 			parent = self.nodes[ node.parent ] or raise "couldn't find parent %p of node %p!" %
 				[ node.parent, node.identifier ]
 			self.propagate_events( parent, *events )

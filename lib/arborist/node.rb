@@ -670,7 +670,12 @@ class Arborist::Node
 		else
 			self.log.debug "No handler for a %s event!" % [ event.type ]
 		end
+
 		super # to state-machine
+
+		self.publish_events( event, *self.pending_update_events )
+	ensure
+		self.pending_update_events.clear
 	end
 
 
