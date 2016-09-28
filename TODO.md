@@ -3,10 +3,7 @@
 ## First Release (0.1)
 
 * README, Tutorial, Setup docs
-
 * Performance/profiling examination
-
-Ordering of transitions:  'ack' on an 'unknown' node should transition to disabled, not up
 
 
 ### Monitor

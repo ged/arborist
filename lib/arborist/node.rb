@@ -113,10 +113,10 @@ class Arborist::Node
 			:quieted
 
 		event :update do
+			transition [:up, :unknown] => :disabled, if: :ack_set?
 			transition [:down, :unknown, :acked] => :up, if: :last_contact_successful?
 			transition [:up, :unknown] => :down, unless: :last_contact_successful?
 			transition :down => :acked, if: :ack_set?
-			transition [:unknown, :up] => :disabled, if: :ack_set?
 			transition :disabled => :unknown, unless: :ack_set?
 		end
 

@@ -205,6 +205,13 @@ describe Arborist::Node do
 				expect( node ).to be_disabled
 			end
 
+			it "transitions to `disabled` from `unknown` status if it's updated with an `ack` property" do
+				node.status = 'unknown'
+				node.update( ack: {message: "Maintenance", sender: 'mahlon'} )
+
+				expect( node ).to be_disabled
+			end
+
 			it "stays `disabled` if it gets an error" do
 				node.status = 'up'
 				node.update( ack: {message: "Maintenance", sender: 'mahlon'} )
