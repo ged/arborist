@@ -164,7 +164,7 @@ describe Arborist::Manager do
 
 
 		it "checkpoints the state file periodically if an interval is configured" do
-			described_class.configure( manager: {checkpoint_frequency: 20_000, state_file: 'arb.tree'} )
+			described_class.configure( checkpoint_frequency: 20_000, state_file: 'arb.tree' )
 
 			zloop = instance_double( ZMQ::Loop, register: nil, :verbose= => nil )
 			timer = instance_double( ZMQ::Timer, "checkpoint timer" )
@@ -203,12 +203,12 @@ describe Arborist::Manager do
 
 		it "errors if configured with a heartbeat of 0" do
 			expect {
-				described_class.configure( manager: {heartbeat_frequency: 0} )
+				described_class.configure( heartbeat_frequency: 0 )
 			}.to raise_error( Arborist::ConfigError, /positive non-zero/i )
 		end
 
 
-		it "is sent at the configured "
+		it "is sent at the configured interval"
 
 	end
 

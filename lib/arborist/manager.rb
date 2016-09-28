@@ -64,9 +64,7 @@ class Arborist::Manager
 
 	### Configurability API -- configure the manager
 	def self::configure( config=nil )
-		config ||= {}
-		config = self.defaults.merge( config[:manager] || {} )
-
+		config = self.defaults.merge( config || {} )
 		self.log.debug "Config is: %p" % [ config ]
 
 		self.state_file = config[:state_file] && Pathname( config[:state_file] )
