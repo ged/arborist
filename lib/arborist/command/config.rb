@@ -12,6 +12,7 @@ module Arborist::CLI::Config
 	command :config do |cmd|
 
 		cmd.action do |globals, options, args|
+			require 'arborist/manager'
 			$stdout.puts Configurability.default_config.dump
 		end
 	end
