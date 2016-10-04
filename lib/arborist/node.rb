@@ -121,7 +121,6 @@ class Arborist::Node
 		end
 
 		event :handle_event do
-			transition :unknown => :acked, if: :ack_and_error_set?
 			transition any - [:disabled, :quieted, :acked] => :quieted, if: :has_quieted_reason?
 			transition :quieted => :unknown, unless: :has_quieted_reason?
 		end
@@ -986,12 +985,6 @@ class Arborist::Node
 		self.log.debug "Checking to see if last contact was successful (it %s)" %
 			[ self.error ? "wasn't" : "was" ]
 		return !self.error
-	end
-
-
-	### Returns +true+ if the node has been acked and also has an error set.
-	def ack_and_error_set?
-		return self.error && self.ack_set?
 	end
 
 
