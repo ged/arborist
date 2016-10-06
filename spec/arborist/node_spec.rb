@@ -156,7 +156,6 @@ describe Arborist::Node do
 			expect( node ).to_not have_children
 		end
 
-
 		describe "status" do
 
 			it "starts out in `unknown` status" do
@@ -245,6 +244,17 @@ describe Arborist::Node do
 				expect( node.ack ).to be_nil
 			end
 
+			it "knows if it's status deems it 'reachable'" do
+				node.update( error: nil )
+				expect( node ).to be_reachable
+				expect( node ).to_not be_unreachable
+			end
+
+			it "knows if it's status deems it 'unreachable'" do
+				node.update( error: 'ded' )
+				expect( node ).to be_unreachable
+				expect( node ).to_not be_reachable
+			end
 		end
 
 

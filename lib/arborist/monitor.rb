@@ -252,10 +252,10 @@ class Arborist::Monitor
 		parent_err_reader, child_stderr = IO.pipe
 
 		self.log.debug "Spawning command: %s" % [ Shellwords.join(command) ]
-        pid = Process.spawn( *command, out: child_stdout, in: child_stdin, err: child_stderr )
+		pid = Process.spawn( *command, out: child_stdout, in: child_stdin, err: child_stderr )
 
-        child_stdout.close
-        child_stdin.close
+		child_stdout.close
+		child_stdin.close
 		child_stderr.close
 
 		context.exec_input( nodes, parent_writer )
@@ -302,6 +302,8 @@ class Arborist::Monitor
 	### for nodes it will run against.
 	def match( criteria )
 		self.positive_criteria.merge!( criteria )
+		@include_down = !self.include_down &&
+			Arborist::Node::UNREACHABLE_STATES.include?( self.positive_criteria[:status] )
 	end
 
 

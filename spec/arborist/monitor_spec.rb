@@ -91,6 +91,15 @@ describe Arborist::Monitor do
 	end
 
 
+	it "automatically includes 'down' nodes if the matcher specifies an unreachable state" do
+		mon = described_class.new( "testing monitor" ) do
+			match status: 'down'
+		end
+
+		expect( mon.include_down? ).to be_truthy
+	end
+
+
 	it "can specify that it will include hosts marked as 'down'" do
 		mon = described_class.new( "testing monitor" ) do
 			include_down true

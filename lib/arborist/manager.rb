@@ -639,9 +639,7 @@ class Arborist::Manager
 	### Yield each node that is not down to the specified +block+, or return
 	### an Enumerator if no block is given.
 	def reachable_nodes( &block )
-		iter = self.enumerator_for( self.root ) do |node|
-			!(node.down? || node.disabled? || node.quieted?)
-		end
+		iter = self.enumerator_for( self.root ) {|node| node.reachable? }
 		return iter.each( &block ) if block
 		return iter
 	end

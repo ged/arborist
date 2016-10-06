@@ -49,6 +49,14 @@ class Arborist::Node
 		config
 	]
 
+	# Node states that are unreachable by default.
+	UNREACHABLE_STATES = %w[
+		down
+		disabled
+		quieted
+	]
+
+
 	autoload :Root, 'arborist/node/root'
 	autoload :Ack, 'arborist/node/ack'
 
@@ -790,6 +798,20 @@ class Arborist::Node
 	### Returns +true+ if the node is considered operational.
 	def operational?
 		return self.identifier.start_with?( '_' )
+	end
+
+
+	### Returns +true+ if the node's status indicates it shouldn't be
+	### included by default when traversing nodes.
+	def unreachable?
+		return UNREACHABLE_STATES.include?( self.status )
+	end
+
+
+	### Returns +true+ if the node's status indicates it is included by
+	### default when traversing nodes.
+	def reachable?
+		return !self.unreachable?
 	end
 
 
