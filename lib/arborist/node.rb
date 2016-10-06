@@ -680,7 +680,8 @@ class Arborist::Node
 
 		super # to state-machine
 
-		return self.collect_events
+		self.publish_events( event, *self.pending_update_events )
+		self.collect_events
 	end
 
 
