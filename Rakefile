@@ -47,7 +47,7 @@ hoespec = Hoe.spec 'arborist' do |spec|
 	spec.dependency 'simplecov', '~> 0.9', :developer
 	spec.dependency 'timecop', '~> 0.7', :developer
 
-	spec.require_ruby_version( '>=2.2.0' )
+	spec.require_ruby_version( '>=2.3.1' )
 	spec.hg_sign_tags = true if spec.respond_to?( :hg_sign_tags= )
 
 	spec.rdoc_locations << "deveiate:/usr/local/www/public/code/#{remote_rdoc_dir}"
