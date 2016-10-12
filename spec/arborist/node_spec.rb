@@ -699,7 +699,8 @@ describe Arborist::Node do
 			expect( node ).to_not match_criteria( type: 'service' )
 		end
 
-		fit "can be matched with its parent" do
+
+		it "can be matched with its parent" do
 			expect( node ).to match_criteria( parent: 'bar' )
 			expect( node ).to_not match_criteria( parent: 'hooowat' )
 		end
