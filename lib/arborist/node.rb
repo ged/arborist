@@ -595,6 +595,8 @@ class Arborist::Node
 			when 'type'
 				self.log.debug "Checking node type %p against %p" % [ self.type, val ]
 				self.type == val
+			when 'parent'
+				self.parent == val
 			when 'tag' then @tags.include?( val.to_s )
 			when 'tags' then Array(val).all? {|tag| @tags.include?(tag) }
 			when 'identifier' then @identifier == val
