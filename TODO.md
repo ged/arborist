@@ -5,6 +5,7 @@
 * README, Tutorial, Setup docs
 * Performance/profiling examination
 
+* Make the error set by monitors keyed by the monitor identifier so monitors only clear their own errors.
 
 ### Monitor
 
