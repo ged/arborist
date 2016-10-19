@@ -92,8 +92,8 @@ class Arborist::Client
 
 
 	### Return the manager's current node tree.
-	def list( *args )
-		request = self.make_list_request( *args )
+	def list( **args )
+		request = self.make_list_request( **args )
 		return self.send_tree_api_request( request )
 	end
 
@@ -110,8 +110,8 @@ class Arborist::Client
 
 
 	### Return the manager's current node tree.
-	def fetch( criteria={}, *args )
-		request = self.make_fetch_request( criteria, *args )
+	def fetch( criteria={}, **args )
+		request = self.make_fetch_request( criteria, **args )
 		return self.send_tree_api_request( request )
 	end
 
@@ -141,8 +141,8 @@ class Arborist::Client
 
 
 	### Add a subscription
-	def subscribe( *args )
-		request = self.make_subscribe_request( *args )
+	def subscribe( **args )
+		request = self.make_subscribe_request( **args )
 		response = self.send_tree_api_request( request )
 		return response.first
 	end
