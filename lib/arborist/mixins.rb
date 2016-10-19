@@ -326,7 +326,7 @@ module Arborist
 		alias_method :internify_keys, :symbolify_keys
 
 
-		# Recursive hash-merge function
+		### Recursive hash-merge function
 		def merge_recursively( key, oldval, newval )
 			case oldval
 			when Hash
@@ -351,7 +351,7 @@ module Arborist
 		end
 
 
-		# Recursively remove hash pairs in place whose value is nil.
+		### Recursively remove hash pairs in place whose value is nil.
 		def compact_hash( hash )
 			hash.each_key do |k|
 				hash.delete( k ) if hash[ k ].nil?
