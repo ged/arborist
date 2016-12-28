@@ -74,7 +74,7 @@ describe Arborist::Event::NodeDown do
 			event = described_class.new( node )
 
 			expect( event.payload ).to be_a( Hash )
-			expect( event.payload ).to include( :status, :error, :properties, :type )
+			expect( event.payload ).to include( :status, :errors, :properties, :type )
 		end
 
 	end

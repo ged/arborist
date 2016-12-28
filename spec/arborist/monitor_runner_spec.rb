@@ -19,9 +19,9 @@ describe Arborist::MonitorRunner do
 
 	let( :monitor_class ) { Class.new(Arborist::Monitor) }
 
-	let( :mon1 ) { monitor_class.new("testing monitor1") }
-	let( :mon2 ) { monitor_class.new("testing monitor2") { splay 10 } }
-	let( :mon3 ) { monitor_class.new("testing monitor3") }
+	let( :mon1 ) { monitor_class.new("testing monitor1", :testing) }
+	let( :mon2 ) { monitor_class.new("testing monitor2", :testing) { splay 10 } }
+	let( :mon3 ) { monitor_class.new("testing monitor3", :testing) }
 	let( :monitors ) {[ mon1, mon2, mon3 ]}
 
 

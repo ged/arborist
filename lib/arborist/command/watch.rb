@@ -96,12 +96,12 @@ module Arborist::CLI::Watch
 
 		case event_type
 		when 'node.update'
-			type, status, error = event['data'].values_at( *%w'type status error' )
+			type, status, errors = event['data'].values_at( *%w'type status errors' )
 			return "%s updated: %s is %s%s" % [
 				hl( id ).color( :cyan ),
 				type,
 				hl( status ).color( status.to_sym ),
-				error ? " (#{error})" : ''
+				errors ? " (#{errors})" : ''
 			]
 		when 'node.delta'
 			pairs = diff_pairs( event['data'] )

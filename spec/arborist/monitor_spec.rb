@@ -32,10 +32,11 @@ describe Arborist::Monitor do
 	}}
 
 
-	it "can be created with just a description" do
-		mon = described_class.new( "the description" )
+	it "can be created with just a description and key" do
+		mon = described_class.new( "the description", :key )
 		expect( mon ).to be_a( described_class )
 		expect( mon.description ).to eq( "the description" )
+		expect( mon.key ).to eq( :key )
 		expect( mon.include_down? ).to be_falsey
 		expect( mon.interval ).to eq( Arborist::Monitor::DEFAULT_INTERVAL )
 		expect( mon.splay ).to eq( 0 )
@@ -45,9 +46,60 @@ describe Arborist::Monitor do
 	end
 
 
+	it "can be created with just a description and key set in the block" do
+		mon = described_class.new do
+			description "the description"
+			key :key
+		end
+
+		expect( mon ).to be_a( described_class )
+		expect( mon.description ).to eq( "the description" )
+		expect( mon.key ).to eq( :key )
+		expect( mon.include_down? ).to be_falsey
+		expect( mon.interval ).to eq( Arborist::Monitor::DEFAULT_INTERVAL )
+		expect( mon.splay ).to eq( 0 )
+		expect( mon.positive_criteria ).to be_empty
+		expect( mon.negative_criteria ).to be_empty
+		expect( mon.node_properties ).to be_empty
+	end
+
+
+	it "can be created with description set in the constructor and key in the block" do
+		mon = described_class.new( "the description" ) do
+			key :key
+		end
+
+		expect( mon ).to be_a( described_class )
+		expect( mon.description ).to eq( "the description" )
+		expect( mon.key ).to eq( :key )
+		expect( mon.include_down? ).to be_falsey
+		expect( mon.interval ).to eq( Arborist::Monitor::DEFAULT_INTERVAL )
+		expect( mon.splay ).to eq( 0 )
+		expect( mon.positive_criteria ).to be_empty
+		expect( mon.negative_criteria ).to be_empty
+		expect( mon.node_properties ).to be_empty
+	end
+
+
+	it "raises a ConfigError if constructed without a description" do
+		expect {
+			described_class.new do
+				key :key
+			end
+		}.to raise_error( Arborist::ConfigError, /no description/i )
+	end
+
+
+	it "raises a ConfigError if constructed without a key" do
+		expect {
+			described_class.new( "the description" )
+		}.to raise_error( Arborist::ConfigError, /no key/i )
+	end
+
+
 	it "yields itself to the provided block for the DSL" do
 		block_self = nil
-		mon = described_class.new( "testing monitor" ) do
+		mon = described_class.new( "testing monitor", :testing ) do
 			block_self = self
 		end
 
@@ -56,7 +108,7 @@ describe Arborist::Monitor do
 
 
 	it "can specify an interval" do
-		mon = described_class.new( "testing monitor" ) do
+		mon = described_class.new( "testing monitor", :testing ) do
 			every 30
 		end
 
@@ -65,7 +117,7 @@ describe Arborist::Monitor do
 
 
 	it "can specify a splay" do
-		mon = described_class.new( "testing monitor" ) do
+		mon = described_class.new( "testing monitor", :testing ) do
 			splay 15
 		end
 
@@ -74,7 +126,7 @@ describe Arborist::Monitor do
 
 
 	it "can specify criteria for matching nodes to monitor" do
-		mon = described_class.new( "testing monitor" ) do
+		mon = described_class.new( "testing monitor", :testing ) do
 			match type: 'host'
 		end
 
@@ -83,7 +135,7 @@ describe Arborist::Monitor do
 
 
 	it "can specify criteria for matching nodes not to monitor" do
-		mon = described_class.new( "testing monitor" ) do
+		mon = described_class.new( "testing monitor", :testing ) do
 			exclude tag: 'laptop'
 		end
 
@@ -92,7 +144,7 @@ describe Arborist::Monitor do
 
 
 	it "automatically includes 'down' nodes if the matcher specifies an unreachable state" do
-		mon = described_class.new( "testing monitor" ) do
+		mon = described_class.new( "testing monitor", :testing ) do
 			match status: 'down'
 		end
 
@@ -101,7 +153,7 @@ describe Arborist::Monitor do
 
 
 	it "can specify that it will include hosts marked as 'down'" do
-		mon = described_class.new( "testing monitor" ) do
+		mon = described_class.new( "testing monitor", :testing ) do
 			include_down true
 		end
 
@@ -110,7 +162,7 @@ describe Arborist::Monitor do
 
 
 	it "can specify one or more properties to include in the input to the monitor" do
-		mon = described_class.new( "testing monitor" ) do
+		mon = described_class.new( "testing monitor", :testing ) do
 			use :address, :tags
 		end
 
@@ -119,7 +171,7 @@ describe Arborist::Monitor do
 
 
 	it "can specify a command to exec to do the monitor's work" do
-		mon = described_class.new( "the description" ) do
+		mon = described_class.new( "the description", :testing ) do
 			exec 'cat'
 		end
 
@@ -132,7 +184,7 @@ describe Arborist::Monitor do
 	it "can specify a block to call to do the monitor's work" do
 		block_was_run = false
 
-		mon = described_class.new( "the description" )
+		mon = described_class.new( "the description", :testing )
 		mon.exec do |nodes|
 			block_was_run = true
 		end
@@ -154,7 +206,7 @@ describe Arborist::Monitor do
 		end
 
 
-		mon = described_class.new( "the description" )
+		mon = described_class.new( "the description", :testing )
 		mon.exec( mod )
 
 		mon.run( testing_nodes )
@@ -164,7 +216,7 @@ describe Arborist::Monitor do
 
 
 	it "can provide a function for building arguments for its command" do
-		mon = described_class.new( "the description" ) do
+		mon = described_class.new( "the description", :testing ) do
 
 			exec 'the_command'
 
@@ -191,7 +243,7 @@ describe Arborist::Monitor do
 
 
 	it "handles system call errors while running the monitor command" do
-		mon = described_class.new( "the description" ) do
+		mon = described_class.new( "the description", :testing ) do
 
 			exec 'the_command'
 
@@ -214,7 +266,7 @@ describe Arborist::Monitor do
 
 
 	it "can provide a function for providing input to its command" do
-		mon = described_class.new( "the description" ) do
+		mon = described_class.new( "the description", :testing ) do
 
 			exec 'cat'
 
@@ -233,7 +285,7 @@ describe Arborist::Monitor do
 
 
 	it "can provide a function for parsing its command's output" do
-		mon = described_class.new( "the description" ) do
+		mon = described_class.new( "the description", :testing ) do
 
 			exec 'cat'
 
@@ -268,7 +320,7 @@ describe Arborist::Monitor do
 
 		end
 
-		mon = described_class.new( "the description" ) do
+		mon = described_class.new( "the description", :testing ) do
 			exec 'cat'
 			exec_callbacks( the_module )
 		end

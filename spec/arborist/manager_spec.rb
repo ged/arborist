@@ -133,7 +133,7 @@ describe Arborist::Manager do
 			saved_router_node.instance_variable_set( :@status, 'up' )
 			saved_host_node = Marshal.load( Marshal.dump(host_node) )
 			saved_host_node.instance_variable_set( :@status, 'down' )
-			saved_host_node.error = 'Stuff happened and it was not good.'
+			saved_host_node.errors = { '_' => 'Stuff happened and it was not good.' }
 
 			expect( statefile ).to receive( :readable? ).and_return( true )
 			expect( statefile ).to receive( :open ).with( 'r:binary' ).
@@ -145,7 +145,7 @@ describe Arborist::Manager do
 
 			expect( manager.nodes['router'].status ).to eq( 'up' )
 			expect( manager.nodes['host-a'].status ).to eq( 'down' )
-			expect( manager.nodes['host-a'].error ).to eq( 'Stuff happened and it was not good.' )
+			expect( manager.nodes['host-a'].errors ).to eq({ '_' => 'Stuff happened and it was not good.' })
 
 		end
 

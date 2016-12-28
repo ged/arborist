@@ -176,7 +176,7 @@ describe Arborist::Node do
 
 			it "transitions from `down` to `acked` status if it's updated with an `ack` property" do
 				node.status = 'down'
-				node.error = 'Something is wrong | he falls | betraying the trust | "\
+				node.errors = 'Something is wrong | he falls | betraying the trust | "\
 					"there is a disaster in his life.'
 				node.update( ack: {message: "Leitmotiv", sender: 'ged'}  )
 				expect( node ).to be_acked
@@ -184,8 +184,8 @@ describe Arborist::Node do
 
 			it "transitions from `acked` to `up` status if its error is cleared" do
 				node.status = 'down'
-				node.error = 'Something is wrong | he falls | betraying the trust | "\
-					"there is a disaster in his life.'
+				node.errors = { '_' => 'Something is wrong | he falls | betraying the trust | "\
+					"there is a disaster in his life.' }
 				node.update( ack: {message: "Leitmotiv", sender: 'ged'}  )
 				node.update( error: nil )
 
@@ -194,7 +194,7 @@ describe Arborist::Node do
 
 			it "stays `up` if its error is cleared and stays cleared" do
 				node.status = 'down'
-				node.error = 'stay up damn you!'
+				node.errors = { '_' => 'stay up damn you!' }
 				node.update( ack: {message: "Leitmotiv", sender: 'ged'}  )
 				node.update( error: nil )
 				node.update( error: nil )
@@ -254,6 +254,29 @@ describe Arborist::Node do
 				node.update( error: 'ded' )
 				expect( node ).to be_unreachable
 				expect( node ).to_not be_reachable
+			end
+
+			it "groups errors from separate monitor by their key" do
+				expect( node ).to be_unknown
+
+				node.update( key: 'MonitorTron2000', error: 'ded' )
+				node.update( key: 'MonitorTron5000', error: 'moar ded' )
+				expect( node ).to be_down
+
+				expect( node.errors.length ).to eq( 2 )
+				node.update( key: 'MonitorTron5000' )
+
+				expect( node ).to be_down
+				expect( node.errors.length ).to eq( 1 )
+
+				node.update( key: 'MonitorTron2000' )
+				expect( node ).to be_up
+			end
+
+			it "sets a default monitor key" do
+				node.update( error: 'ded' )
+				expect( node ).to be_down
+				expect( node.errors ).to eq({ '_' => 'ded' })
 			end
 		end
 
@@ -390,7 +413,7 @@ describe Arborist::Node do
 
 				old_node.status = 'down'
 				old_node.status_changed = Time.now - 400
-				old_node.error = "Host unreachable"
+				old_node.errors = "Host unreachable"
 				old_node.update(
 					ack: {
 						'time' => Time.now - 200,
@@ -410,7 +433,7 @@ describe Arborist::Node do
 
 				expect( node.status ).to eq( old_node.status )
 				expect( node.status_changed ).to eq( old_node.status_changed )
-				expect( node.error ).to eq( old_node.error )
+				expect( node.errors ).to eq( old_node.errors )
 				expect( node.ack ).to eq( old_node.ack )
 				expect( node.properties ).to include( old_node.properties )
 				expect( node.last_contacted ).to eq( old_node.last_contacted )
@@ -465,7 +488,7 @@ describe Arborist::Node do
 				expect( result ).to include(
 					:identifier,
 					:parent, :description, :tags, :properties, :ack, :status,
-					:last_contacted, :status_changed, :error, :quieted_reasons,
+					:last_contacted, :status_changed, :errors, :quieted_reasons,
 					:dependencies
 				)
 				expect( result[:identifier] ).to eq( 'foo' )
@@ -477,7 +500,8 @@ describe Arborist::Node do
 				expect( result[:ack] ).to be_nil
 				expect( result[:last_contacted] ).to eq( node.last_contacted.iso8601 )
 				expect( result[:status_changed] ).to eq( node.status_changed.iso8601 )
-				expect( result[:error] ).to be_nil
+				expect( result[:errors] ).to be_a( Hash )
+				expect( result[:errors] ).to be_empty
 				expect( result[:dependencies] ).to be_a( Hash )
 				expect( result[:quieted_reasons] ).to be_a( Hash )
 			end

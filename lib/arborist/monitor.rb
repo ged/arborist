@@ -143,7 +143,8 @@ class Arborist::Monitor
 	### Create a new Monitor with the specified +description+. If the +block+ is
 	### given, it will be evaluated in the context of the new Monitor before it's
 	### returned.
-	def initialize( description, &block )
+	def initialize( description=nil, key=nil, &block )
+		@key = key
 		@description = description
 		@interval = DEFAULT_INTERVAL
 		@splay = DEFAULT_SPLAY
@@ -160,6 +161,8 @@ class Arborist::Monitor
 		@source = nil
 
 		self.instance_exec( &block ) if block
+
+		self.check_config
 	end
 
 
@@ -168,8 +171,13 @@ class Arborist::Monitor
 	######
 
 	##
-	# The object's description
-	attr_accessor :description
+	# The monitor's key. This key should be shared between monitors that check the
+	# same resources.
+	attr_writer :key
+
+	##
+	# The monitor's (human) description.
+	attr_writer :description
 
 	##
 	# The interval between runs in seconds, as set by `every`.
@@ -225,6 +233,26 @@ class Arborist::Monitor
 		]
 	end
 
+
+	### Check the monitor for sanity, raising an Arborist::ConfigError if it isn't.
+	def check_config
+		raise Arborist::ConfigError, "No description set" unless self.description
+		raise Arborist::ConfigError, "No key set" unless self.key
+	end
+
+
+	### Get/set the description of the monitor.
+	def description( new_value=nil )
+		self.description = new_value if new_value
+		return @description
+	end
+
+
+	### Get/set the key used by the monitor.
+	def key( new_value=nil )
+		self.key = new_value if new_value
+		return @key
+	end
 
 	### Run the monitor
 	def run( nodes )

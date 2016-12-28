@@ -44,7 +44,7 @@ class Arborist::Node
 		status_changed
 		last_contacted
 		ack
-		error
+		errors
 		quieted_reasons
 		config
 	]
@@ -122,8 +122,8 @@ class Arborist::Node
 
 		event :update do
 			transition [:up, :unknown] => :disabled, if: :ack_set?
-			transition [:down, :unknown, :acked] => :up, if: :last_contact_successful?
-			transition [:up, :unknown, :acked] => :down, unless: :last_contact_successful?
+			transition [:down, :unknown, :acked] => :up, unless: :has_errors?
+			transition [:up, :unknown, :acked] => :down, if: :has_errors?
 			transition :down => :acked, if: :ack_set?
 			transition :disabled => :unknown, unless: :ack_set?
 		end
@@ -282,7 +282,7 @@ class Arborist::Node
 		@status_changed  = Time.at( 0 )
 
 		# Attributes that govern state
-		@error           = nil
+		@errors          = {}
 		@ack             = nil
 		@last_contacted  = Time.at( 0 )
 		@quieted_reasons = {}
@@ -329,8 +329,9 @@ class Arborist::Node
 	attr_accessor :status_changed
 
 	##
-	# The last error encountered by a monitor attempting to update this node.
-	attr_accessor :error
+	# The Hash of last errors encountered by a monitor attempting to update this
+	# node, keyed by the monitor's `key`.
+	attr_accessor :errors
 
 	##
 	# The acknowledgement currently in effect. Should be an instance of Arborist::Node::ACK
@@ -486,13 +487,17 @@ class Arborist::Node
 	### Update specified +properties+ for the node.
 	def update( new_properties )
 		new_properties = stringify_keys( new_properties )
-		self.log.debug "Updated: %p" % [ new_properties ]
+		monitor_key = new_properties[ 'key' ] || '_'
 
+		self.log.debug "Updated via a %s monitor: %p" % [ monitor_key, new_properties ]
 		self.last_contacted = Time.now
+
 		if new_properties.key?( 'ack' )
 			self.ack = new_properties.delete( 'ack' )
+		elsif new_properties['error']
+			self.errors[ monitor_key ] = new_properties.delete( 'error' )
 		else
-			self.error = new_properties.delete( 'error' )
+			self.errors.delete( monitor_key )
 		end
 
 		self.properties.merge!( new_properties, &self.method(:merge_and_record_delta) )
@@ -905,7 +910,7 @@ class Arborist::Node
 		@ack             = old_node.ack.dup if old_node.ack
 		@last_contacted  = old_node.last_contacted
 		@status_changed  = old_node.status_changed
-		@error           = old_node.error
+		@errors          = old_node.errors
 		@quieted_reasons = old_node.quieted_reasons
 
 		# Only merge in downed dependencies.
@@ -929,7 +934,7 @@ class Arborist::Node
 			ack: self.ack ? self.ack.to_h : nil,
 			last_contacted: self.last_contacted ? self.last_contacted.iso8601 : nil,
 			status_changed: self.status_changed ? self.status_changed.iso8601 : nil,
-			error: self.error,
+			errors: self.errors,
 			dependencies: self.dependencies.to_h,
 			quieted_reasons: self.quieted_reasons,
 		}
@@ -959,7 +964,7 @@ class Arborist::Node
 		@status_changed  = Time.parse( hash[:status_changed] )
 		@ack             = Arborist::Node::Ack.from_hash( hash[:ack] ) if hash[:ack]
 
-		@error           = hash[:error]
+		@errors          = hash[:errors]
 		@properties      = hash[:properties] || {}
 		@last_contacted  = Time.parse( hash[:last_contacted] )
 		@quieted_reasons = hash[:quieted_reasons] || {}
@@ -1013,12 +1018,22 @@ class Arborist::Node
 
 	### State machine guard predicate -- Returns +true+ if the last time the node
 	### was monitored resulted in an update.
-	def last_contact_successful?
-		self.log.debug "Checking to see if last contact was successful (it %s)" %
-			[ self.error ? "wasn't" : "was" ]
-		return !self.error
+	def has_errors?
+		has_errors = ! self.errors.empty?
+		self.log.debug "Checking to see if last contact cleared remaining errors (it %s)" %
+			[ has_errors ? "did not" : "did" ]
+		self.log.debug "Errors are: %p" % [ self.errors ]
+		return has_errors
 	end
 
+
+	### Return a string describing the errors that are set on the node.
+	def errors_description
+		return "No errors" if self.errors.empty?
+		return self.errors.map do |key, msg|
+			"%s: %s" % [ key, msg ]
+		end.join( '; ' )
+	end
 
 	#
 	# :section: State Callbacks
@@ -1060,7 +1075,7 @@ class Arborist::Node
 
 	### Callback for when a node goes from down to up
 	def on_node_up( transition )
-		self.error = nil
+		self.errors.clear
 		self.log.warn "%s is %s" % [ self.identifier, self.status_description ]
 	end
 
@@ -1068,7 +1083,7 @@ class Arborist::Node
 	### Callback for when a node goes from up to down
 	def on_node_down( transition )
 		self.log.error "%s is %s" % [ self.identifier, self.status_description ]
-		self.update_delta[ 'error' ] = [ nil, self.error ]
+		self.update_delta[ 'errors' ] = [ nil, self.errors_description ]
 	end
 
 
