@@ -259,17 +259,17 @@ describe Arborist::Node do
 			it "groups errors from separate monitor by their key" do
 				expect( node ).to be_unknown
 
-				node.update( key: 'MonitorTron2000', error: 'ded' )
-				node.update( key: 'MonitorTron5000', error: 'moar ded' )
+				node.update( _monitor_key: 'MonitorTron2000', error: 'ded' )
+				node.update( _monitor_key: 'MonitorTron5000', error: 'moar ded' )
 				expect( node ).to be_down
 
 				expect( node.errors.length ).to eq( 2 )
-				node.update( key: 'MonitorTron5000' )
+				node.update( _monitor_key: 'MonitorTron5000' )
 
 				expect( node ).to be_down
 				expect( node.errors.length ).to eq( 1 )
 
-				node.update( key: 'MonitorTron2000' )
+				node.update( _monitor_key: 'MonitorTron2000' )
 				expect( node ).to be_up
 			end
 

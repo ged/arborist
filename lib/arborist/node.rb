@@ -487,7 +487,7 @@ class Arborist::Node
 	### Update specified +properties+ for the node.
 	def update( new_properties )
 		new_properties = stringify_keys( new_properties )
-		monitor_key = new_properties[ 'key' ] || '_'
+		monitor_key = new_properties[ '_monitor_key' ] || '_'
 
 		self.log.debug "Updated via a %s monitor: %p" % [ monitor_key, new_properties ]
 		self.last_contacted = Time.now

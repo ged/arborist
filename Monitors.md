@@ -7,7 +7,7 @@ of an Arborist::MonitorRunner object. The `Arborist::Monitor.each_in` method, gi
 
 ## Declaration DSL
 
-To facilitate describing monitors to run, Arborist::Monitor also provides a DSL-like syntax for constructing them. 
+To facilitate describing monitors to run, Arborist::Monitor also provides a DSL-like syntax for constructing them.
 
 For example, this would declare two monitors, one which pings every 'host' node except those tagged as laptops in the network every 20 seconds, and the other which pings 'host' nodes tagged as laptops every 5 minutes.
 
@@ -15,23 +15,37 @@ For example, this would declare two monitors, one which pings every 'host' node 
     require 'arborist/monitor'
 
     Arborist::Monitor 'ping check' do
-    	every 20.seconds
-    	match type: 'host'
-    	exclude tag: :laptop
-    	use :address
-    	exec 'fping'
+        key :pingcheck
+        every 20.seconds
+        match type: 'host'
+        exclude tag: :laptop
+        use :address
+        exec 'fping'
     end
 
     Arborist::Monitor 'transient host pings' do
-    	every 5.minutes
-    	match type: 'host', tag: 'laptop'
+        key :pingcheck
+        every 5.minutes
+        match type: 'host', tag: 'laptop'
         use :address
-    	exec 'fping'
+        exec 'fping'
     end
 
 Each monitor is given a human-readable description for use in user interfaces, and one or more attributes that describe which nodes should be monitored, how they should be monitored, and how often the monitor should be run.
 
 ### Monitor Attributes
+
+#### key
+
+Declare a namespace for the monitor. The error status for a node is keyed by this value, so that monitors with different keys don't clear each other's errors.
+
+This attribute is mandatory.
+
+#### description
+
+Set a human-readable description for the monitor, for use in interfaces or logs.
+
+This attribute is mandatory.
 
 #### every( seconds )
 
@@ -45,7 +59,7 @@ Manually set the amount of splay (random offset from the interval) the monitor s
 #### exec {|node_attributes| ... }
 #### exec( module )
 
-Specify what should be run to do the actual monitoring. The first form simply `spawn`s the specified command with its STDIN opened to a stream of serialized node data. 
+Specify what should be run to do the actual monitoring. The first form simply `spawn`s the specified command with its STDIN opened to a stream of serialized node data.
 
 By default, the format of the serialized nodes is one node per line, and each line looks like this:
 
