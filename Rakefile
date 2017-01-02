@@ -16,7 +16,7 @@ Hoe.plugin :signing
 Hoe.plugin :deveiate
 
 Hoe.plugins.delete :rubyforge
-Hoe.plugins.delete :gemcutter
+
 
 hoespec = Hoe.spec 'arborist' do |spec|
 	spec.readme_file = 'README.md'
