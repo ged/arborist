@@ -69,7 +69,11 @@ class Arborist::MonitorRunner
 
 			self.fetch( positive, include_down, props, negative ) do |nodes|
 				results = monitor.run( nodes )
-				results['_monitor_key'] = monitor.key
+				monitor_key = monitor.key
+
+				results.each do |ident, properties|
+					properties['_monitor_key'] = monitor_key
+				end
 
 				self.update( results ) do
 					self.log.debug "Updated %d via the '%s' monitor" %

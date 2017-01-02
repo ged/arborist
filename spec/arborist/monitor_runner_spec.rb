@@ -146,6 +146,35 @@ describe Arborist::MonitorRunner do
 
 		end
 
+
+		it "manages the communication between the monitor and the manager" do
+			monitor = Arborist::Monitor.new do
+				description 'test monitor'
+				key :test
+				every 20
+				match type: 'host'
+				use :addresses
+				exec 'fping', '-e', '-t', '150'
+			end
+			nodes = { 'test1' => {}, 'test2' => {} }
+			monitor_results = { 'test1' => {ping: {rtt: 1}}, 'test2' => {ping: {rtt: 8}} }
+
+			expect( handler ).to receive( :fetch ).
+				with( {type: 'host'}, false, [:addresses], {} ).
+				and_yield( nodes )
+
+			expect( monitor ).to receive( :run ).with( nodes ).
+				and_return( monitor_results )
+
+			expect( handler ).to receive( :update ).
+				with({
+					"test1"=>{:ping=>{:rtt=>1}, "_monitor_key"=>:test},
+					"test2"=>{:ping=>{:rtt=>8}, "_monitor_key"=>:test}
+				})
+
+			handler.run_monitor( monitor )
+		end
+
 	end
 
 end

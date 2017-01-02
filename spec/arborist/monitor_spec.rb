@@ -81,6 +81,21 @@ describe Arborist::Monitor do
 	end
 
 
+	it "can be created with a DSL function" do
+		mon = Arborist::Monitor( "the description", :the_key )
+
+		expect( mon ).to be_a( described_class )
+		expect( mon.description ).to eq( "the description" )
+		expect( mon.key ).to eq( :the_key )
+		expect( mon.include_down? ).to be_falsey
+		expect( mon.interval ).to eq( Arborist::Monitor::DEFAULT_INTERVAL )
+		expect( mon.splay ).to eq( 0 )
+		expect( mon.positive_criteria ).to be_empty
+		expect( mon.negative_criteria ).to be_empty
+		expect( mon.node_properties ).to be_empty
+	end
+
+
 	it "raises a ConfigError if constructed without a description" do
 		expect {
 			described_class.new do

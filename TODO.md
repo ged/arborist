@@ -5,7 +5,6 @@
 * README, Tutorial, Setup docs
 * Performance/profiling examination
 
-* Make the error set by monitors keyed by the monitor identifier so monitors only clear their own errors.
 
 ### Monitor
 
@@ -14,8 +13,6 @@
   - imap
   - pop
   - smtp
-
-* Write a gem for `fping` monitor 
 
 * Redo the select loop of the UDP socket monitor to wait for them in parallel instead of in series.
 
