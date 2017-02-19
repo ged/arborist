@@ -38,7 +38,7 @@ hoespec = Hoe.spec 'arborist' do |spec|
 	spec.dependency 'configurability', '~> 3.0'
 	spec.dependency 'pluggability', '~> 0.4'
 	spec.dependency 'state_machines', '~> 0.2'
-	spec.dependency 'msgpack', '~> 0.6'
+	spec.dependency 'msgpack', '~> 1.0'
 	spec.dependency 'rbczmq', '~> 1.7'
 	spec.dependency 'gli', '~> 2.3'
 	spec.dependency 'highline', '~> 1.7'
