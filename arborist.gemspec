@@ -1,15 +1,15 @@
 # -*- encoding: utf-8 -*-
-# stub: arborist 0.0.1.pre20161228143930 ruby lib
+# stub: arborist 0.1.0.pre20170301112839 ruby lib
 
 Gem::Specification.new do |s|
   s.name = "arborist".freeze
-  s.version = "0.0.1.pre20161228143930"
+  s.version = "0.1.0.pre20170301112839"
 
   s.required_rubygems_version = Gem::Requirement.new("> 1.3.1".freeze) if s.respond_to? :required_rubygems_version=
   s.require_paths = ["lib".freeze]
   s.authors = ["Michael Granger".freeze, "Mahlon E. Smith".freeze]
   s.cert_chain = ["certs/ged.pem".freeze]
-  s.date = "2016-12-28"
+  s.date = "2017-03-01"
   s.description = "Arborist is a monitoring toolkit that follows the UNIX philosophy\nof small parts and loose coupling for stability, reliability, and\ncustomizability.\n\n[![Build Status](https://semaphoreci.com/api/v1/projects/13677b60-5f81-4e6e-a9c6-e21d30daa4ca/461532/badge.svg)](https://semaphoreci.com/ged/arborist)".freeze
   s.email = ["ged@FaerieMUD.org".freeze, "mahlon@martini.nu".freeze]
   s.executables = ["arborist".freeze]
@@ -31,7 +31,7 @@ Gem::Specification.new do |s|
       s.add_runtime_dependency(%q<configurability>.freeze, ["~> 3.0"])
       s.add_runtime_dependency(%q<pluggability>.freeze, ["~> 0.4"])
       s.add_runtime_dependency(%q<state_machines>.freeze, ["~> 0.2"])
-      s.add_runtime_dependency(%q<msgpack>.freeze, ["~> 0.6"])
+      s.add_runtime_dependency(%q<msgpack>.freeze, ["~> 1.0"])
       s.add_runtime_dependency(%q<rbczmq>.freeze, ["~> 1.7"])
       s.add_runtime_dependency(%q<gli>.freeze, ["~> 2.3"])
       s.add_runtime_dependency(%q<highline>.freeze, ["~> 1.7"])
@@ -49,7 +49,7 @@ Gem::Specification.new do |s|
       s.add_dependency(%q<configurability>.freeze, ["~> 3.0"])
       s.add_dependency(%q<pluggability>.freeze, ["~> 0.4"])
       s.add_dependency(%q<state_machines>.freeze, ["~> 0.2"])
-      s.add_dependency(%q<msgpack>.freeze, ["~> 0.6"])
+      s.add_dependency(%q<msgpack>.freeze, ["~> 1.0"])
       s.add_dependency(%q<rbczmq>.freeze, ["~> 1.7"])
       s.add_dependency(%q<gli>.freeze, ["~> 2.3"])
       s.add_dependency(%q<highline>.freeze, ["~> 1.7"])
@@ -68,7 +68,7 @@ Gem::Specification.new do |s|
     s.add_dependency(%q<configurability>.freeze, ["~> 3.0"])
     s.add_dependency(%q<pluggability>.freeze, ["~> 0.4"])
     s.add_dependency(%q<state_machines>.freeze, ["~> 0.2"])
-    s.add_dependency(%q<msgpack>.freeze, ["~> 0.6"])
+    s.add_dependency(%q<msgpack>.freeze, ["~> 1.0"])
     s.add_dependency(%q<rbczmq>.freeze, ["~> 1.7"])
     s.add_dependency(%q<gli>.freeze, ["~> 2.3"])
     s.add_dependency(%q<highline>.freeze, ["~> 1.7"])

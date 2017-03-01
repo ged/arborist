@@ -110,8 +110,8 @@ class Arborist::Client
 
 
 	### Return the manager's current node tree.
-	def fetch( criteria={}, **args )
-		request = self.make_fetch_request( criteria, **args )
+	def fetch( criteria={}, options={} )
+		request = self.make_fetch_request( criteria, **options )
 		return self.send_tree_api_request( request )
 	end
 

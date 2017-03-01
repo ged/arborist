@@ -23,6 +23,7 @@ module Arborist::CLI::Client
 			end
 
 			client = Arborist::Client.new
+			Pry.config.prompt_name = "arborist %s> " % [ Arborist.tree_api_url ]
 			Pry.pry( client )
 		end
 	end
