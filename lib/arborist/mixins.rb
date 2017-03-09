@@ -126,6 +126,15 @@ module Arborist
 
 	# Refinements to Numeric and Time to add convenience methods
 	module TimeRefinements
+
+		# Approximate Time Constants (in seconds)
+		MINUTES = 60
+		HOURS   = 60  * MINUTES
+		DAYS    = 24  * HOURS
+		WEEKS   = 7   * DAYS
+		MONTHS  = 30  * DAYS
+		YEARS   = 365.25 * DAYS
+
 		refine Numeric do
 
 			### Number of seconds (returns receiver unmodified)
@@ -207,15 +216,6 @@ module Arborist
 
 
 		refine Time do
-
-			# Approximate Time Constants (in seconds)
-			MINUTES = 60
-			HOURS   = 60  * MINUTES
-			DAYS    = 24  * HOURS
-			WEEKS   = 7   * DAYS
-			MONTHS  = 30  * DAYS
-			YEARS   = 365.25 * DAYS
-
 
 			### Returns +true+ if the receiver is a Time in the future.
 			def future?
