@@ -34,3 +34,8 @@
    don't trigger if the email service is offline.  Potential action
    "chains", ie:  If the email service is down, use a separate
    out-of-band action that sends SMS.
+
+### Monitors
+
+Add a one-shot runner command for development of monitors. Loads and runs a monitor one time, maybe with some output describing how often it'd run, what its skew is, etc. [will@laika]
+
