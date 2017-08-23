@@ -31,6 +31,19 @@ class Arborist::Manager
 		# :TODO: :QUIT, :WINCH, :USR2, :TTIN, :TTOU
 	] & Signal.list.keys.map( &:to_sym )
 
+	# Array of actions supported by the Tree API
+	VALID_TREEAPI_ACTIONS = %w[
+		fetch
+		graft
+		list
+		modify
+		prune
+		status
+		subscribe
+		unsubscribe
+		update
+	]
+
 
 	# Use the Arborist logger
 	log_to :arborist
@@ -569,7 +582,7 @@ class Arborist::Manager
 	def on_tree_socket_event( event )
 		if event.readable?
 			request = event.socket.receive
-			msg = self.handle_tree_request( request )
+			msg = self.dispatch_request( request )
 			event.socket << msg
 		else
 			raise "Unsupported event %p on tree API socket!" % [ event ]
@@ -578,7 +591,7 @@ class Arborist::Manager
 
 
 	### Handle the specified +raw_request+ and return a response.
-	def handle_tree_request( raw_request )
+	def dispatch_request( raw_request )
 		raise "Manager is shutting down" unless self.running?
 
 		header, body = Arborist::TreeAPI.decode( raw_request )
@@ -611,7 +624,10 @@ class Arborist::Manager
 		raise Arborist::MessageError, "unsupported version %d" % [ header['version'] ] unless
 			header['version'] == 1
 
-		handler_name = "handle_%s_request" % [ header['action'] ]
+		action = header['action'] or return nil
+		return nil unless VALID_TREEAPI_ACTIONS.include?( action )
+
+		handler_name = "handle_%s_request" % [ action ]
 		return nil unless self.respond_to?( handler_name )
 
 		return self.method( handler_name )

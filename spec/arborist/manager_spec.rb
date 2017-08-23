@@ -1153,6 +1153,21 @@ describe Arborist::Manager do
 				)
 				expect( body ).to be_nil
 			end
+
+
+			it "send an error response for the `tree` action" do
+				badmsg = Arborist::TreeAPI.request( :tree )
+				badmsg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include(
+					'success'  => false,
+					'reason'   => /invalid message.*no such action 'tree'/i,
+					'category' => 'client'
+				)
+				expect( body ).to be_nil
+			end
 		end
 	end
 
