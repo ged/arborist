@@ -61,9 +61,9 @@ Response:
     }
 
 
-### list
+### fetch
 
-Retrieve an Array of Maps that describes all or part of the node tree. 
+Retrieve an Array of Maps that describes all or part of the node tree.
 
 #### Required 
  from the node with the specified `identifier`, or the root node if no `identifier` is specified.
@@ -73,7 +73,7 @@ Request:
 
     [
         {
-            action: list,
+            action: fetch,
             version: 1
             [from: «identifier»]
             [depth: «arg»]
@@ -116,13 +116,13 @@ failure example:
 
 
 
-### fetch
+### search
 
 Fetch the `address`, `description`, and `status` of all nodes.
 
     [
         {
-            action: fetch,
+            action: search,
             version: 1,
             include_down: true,
             return: [address, description, status]

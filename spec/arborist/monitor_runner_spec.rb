@@ -82,24 +82,24 @@ describe Arborist::MonitorRunner do
 				and_return( true )
 
 
-			fetch_request = instance_double( CZTop::Message )
-			fetch_response = Arborist::TreeAPI.successful_response( node_tree )
+			search_request = instance_double( CZTop::Message )
+			search_response = Arborist::TreeAPI.successful_response( node_tree )
 			update_request = instance_double( CZTop::Message )
 			update_response = Arborist::TreeAPI.successful_response( nil )
 
-			expect( CZTop::Message ).to receive( :new ).and_return( fetch_request, update_request )
-			expect( fetch_request ).to receive( :send_to ).with( runner.client.tree_api )
+			expect( CZTop::Message ).to receive( :new ).and_return( search_request, update_request )
+			expect( search_request ).to receive( :send_to ).with( runner.client.tree_api )
 			expect( update_request ).to receive( :send_to ).with( runner.client.tree_api )
 			expect( CZTop::Message ).to receive( :receive_from ).with( runner.client.tree_api ).
-				and_return( fetch_response, update_response )
+				and_return( search_response, update_response )
 			expect( reactor ).to receive( :disable_events ).with( runner.client.tree_api, :write )
 
 			runner.run_monitor( mon1 )
 
-			# trigger the fetch request
-			fetch_event = instance_double( CZTop::Reactor::Event,
+			# trigger the search request
+			search_event = instance_double( CZTop::Reactor::Event,
 				writable?: true, socket: runner.client.tree_api )
-			runner.handle_io_event( fetch_event )
+			runner.handle_io_event( search_event )
 
 			# trigger the update request
 			update_event = instance_double( CZTop::Reactor::Event,
@@ -120,7 +120,7 @@ describe Arborist::MonitorRunner do
 			nodes = { 'test1' => {}, 'test2' => {} }
 			monitor_results = { 'test1' => {ping: {rtt: 1}}, 'test2' => {ping: {rtt: 8}} }
 
-			expect( runner ).to receive( :fetch ).
+			expect( runner ).to receive( :search ).
 				with( {type: 'host'}, false, [:addresses], {} ).
 				and_yield( nodes )
 

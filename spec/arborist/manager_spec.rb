@@ -433,10 +433,10 @@ describe Arborist::Manager do
 		end
 
 
-		describe "fetch" do
+		describe "search" do
 
 			it "returns an array of full state maps for nodes matching specified criteria" do
-				msg = Arborist::TreeAPI.request( :fetch, type: 'service', port: 22 )
+				msg = Arborist::TreeAPI.request( :search, type: 'service', port: 22 )
 
 				msg.send_to( sock )
 				resmsg = sock.receive
@@ -453,7 +453,7 @@ describe Arborist::Manager do
 
 
 			it "returns an array of full state maps for nodes not matching specified negative criteria" do
-				msg = Arborist::TreeAPI.request( :fetch, [ {}, {type: 'service', port: 22} ] )
+				msg = Arborist::TreeAPI.request( :search, [ {}, {type: 'service', port: 22} ] )
 
 				msg.send_to( sock )
 				resmsg = sock.receive
@@ -470,7 +470,7 @@ describe Arborist::Manager do
 
 
 			it "returns an array of full state maps for nodes combining positive and negative criteria" do
-				msg = Arborist::TreeAPI.request( :fetch, [ {type: 'service'}, {port: 22} ] )
+				msg = Arborist::TreeAPI.request( :search, [ {type: 'service'}, {port: 22} ] )
 
 				msg.send_to( sock )
 				resmsg = sock.receive
@@ -488,7 +488,7 @@ describe Arborist::Manager do
 
 			it "doesn't return nodes beneath downed nodes by default" do
 				manager.nodes['sidonie'].update( error: 'sunspots' )
-				msg = Arborist::TreeAPI.request( :fetch, type: 'service', port: 22 )
+				msg = Arborist::TreeAPI.request( :search, type: 'service', port: 22 )
 
 				msg.send_to( sock )
 				resmsg = sock.receive
@@ -503,7 +503,7 @@ describe Arborist::Manager do
 
 			it "does return nodes beneath downed nodes if asked to" do
 				manager.nodes['sidonie'].update( error: 'plague of locusts' )
-				msg = Arborist::TreeAPI.request( :fetch, {include_down: true}, type: 'service', port: 22 )
+				msg = Arborist::TreeAPI.request( :search, {include_down: true}, type: 'service', port: 22 )
 
 				msg.send_to( sock )
 				resmsg = sock.receive
@@ -517,7 +517,7 @@ describe Arborist::Manager do
 
 
 			it "returns only identifiers if the `return` header is set to `nil`" do
-				msg = Arborist::TreeAPI.request( :fetch, {return: nil}, type: 'service', port: 22 )
+				msg = Arborist::TreeAPI.request( :search, {return: nil}, type: 'service', port: 22 )
 
 				msg.send_to( sock )
 				resmsg = sock.receive
@@ -532,7 +532,7 @@ describe Arborist::Manager do
 
 
 			it "returns only specified state if the `return` header is set to an Array of keys" do
-				msg = Arborist::TreeAPI.request( :fetch, {return: %w[status tags addresses]},
+				msg = Arborist::TreeAPI.request( :search, {return: %w[status tags addresses]},
 					type: 'service', port: 22 )
 
 				msg.send_to( sock )
@@ -549,10 +549,10 @@ describe Arborist::Manager do
 		end
 
 
-		describe "list" do
+		describe "fetch" do
 
 			it "returns an array of node state" do
-				msg = Arborist::TreeAPI.request( :list )
+				msg = Arborist::TreeAPI.request( :fetch )
 				msg.send_to( sock )
 				resmsg = sock.receive
 
@@ -569,7 +569,7 @@ describe Arborist::Manager do
 			end
 
 			it "can be limited by depth" do
-				msg = Arborist::TreeAPI.request( :list, {depth: 1}, nil )
+				msg = Arborist::TreeAPI.request( :fetch, {depth: 1}, nil )
 				msg.send_to( sock )
 				resmsg = sock.receive
 
@@ -1043,7 +1043,7 @@ describe Arborist::Manager do
 
 
 			it "send an error response if the request isn't a tuple" do
-				sock << MessagePack.pack({ version: 1, action: 'list' })
+				sock << MessagePack.pack({ version: 1, action: 'fetch' })
 				resmsg = sock.receive
 
 				hdr, body = Arborist::TreeAPI.decode( resmsg )
@@ -1099,7 +1099,7 @@ describe Arborist::Manager do
 
 
 			it "send an error response if the request's body is not Nil, a Map, or an Array of Maps" do
-				sock << MessagePack.pack( [{version: 1, action: 'list'}, 18] )
+				sock << MessagePack.pack( [{version: 1, action: 'fetch'}, 18] )
 				resmsg = sock.receive
 
 				hdr, body = Arborist::TreeAPI.decode( resmsg )
@@ -1113,7 +1113,7 @@ describe Arborist::Manager do
 
 
 			it "send an error response if missing a version" do
-				sock << MessagePack.pack( [{action: 'list'}] )
+				sock << MessagePack.pack( [{action: 'fetch'}] )
 				resmsg = sock.receive
 
 				hdr, body = Arborist::TreeAPI.decode( resmsg )
@@ -1351,8 +1351,8 @@ describe Arborist::Manager do
 		end
 
 
-		it "can fetch a Hash of node states" do
-			states = manager.fetch_matching_node_states( {}, [] )
+		it "can search a Hash of node states" do
+			states = manager.find_matching_node_states( {}, [] )
 			expect( states.size ).to eq( manager.nodes.size )
 			expect( states ).to include( 'host-b-nfs', 'host-c', 'router' )
 			expect( states['host-b-nfs'] ).to be_a( Hash )
@@ -1361,26 +1361,26 @@ describe Arborist::Manager do
 		end
 
 
-		it "can fetch a Hash of node states for nodes which match specified criteria" do
-			states = manager.fetch_matching_node_states( {'identifier' => 'host-c'}, [] )
+		it "can search a Hash of node states for nodes which match specified criteria" do
+			states = manager.find_matching_node_states( {'identifier' => 'host-c'}, [] )
 			expect( states.size ).to eq( 1 )
 			expect( states.keys.first ).to eq( 'host-c' )
 			expect( states['host-c'] ).to be_a( Hash )
 		end
 
 
-		it "can fetch a Hash of node states for nodes which don't match specified negative criteria" do
-			states = manager.fetch_matching_node_states( {}, [], false, {'identifier' => 'host-c'} )
+		it "can search a Hash of node states for nodes which don't match specified negative criteria" do
+			states = manager.find_matching_node_states( {}, [], false, {'identifier' => 'host-c'} )
 			expect( states.size ).to eq( manager.nodes.size - 1 )
 			expect( states ).to_not include( 'host-c' )
 		end
 
 
-		it "can fetch a Hash of node states for nodes combining positive and negative criteria" do
+		it "can search a Hash of node states for nodes combining positive and negative criteria" do
 			positive = {'tag' => 'home'}
 			negative = {'identifier' => 'host-a-www'}
 
-			states = manager.fetch_matching_node_states( positive, [], false, negative )
+			states = manager.find_matching_node_states( positive, [], false, negative )
 
 			expect( states.size ).to eq( 2 )
 			expect( states ).to_not include( 'host-a-www' )

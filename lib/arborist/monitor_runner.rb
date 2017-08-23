@@ -120,7 +120,7 @@ class Arborist::MonitorRunner
 		props        = monitor.node_properties
 
 		self.log.debug "Fetching node data for %p" % [ monitor ]
-		self.fetch( positive, include_down, props, negative ) do |nodes|
+		self.search( positive, include_down, props, negative ) do |nodes|
 			self.log.debug "  running the monitor for %d nodes" % [ nodes.length ]
 			results = monitor.run( nodes )
 			monitor_key = monitor.key
@@ -138,15 +138,15 @@ class Arborist::MonitorRunner
 	end
 
 
-	### Create a fetch request using the runner's client, then queue the request up
+	### Create a search request using the runner's client, then queue the request up
 	### with the specified +block+ as the callback.
-	def fetch( criteria, include_down, properties, negative={}, &block )
-		fetch = self.client.make_fetch_request( criteria,
+	def search( criteria, include_down, properties, negative={}, &block )
+		search = self.client.make_search_request( criteria,
 			include_down: include_down,
 			properties: properties,
 			exclude: negative
 		)
-		self.queue_request( fetch, &block )
+		self.queue_request( search, &block )
 	end
 
 

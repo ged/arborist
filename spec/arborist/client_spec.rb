@@ -78,52 +78,52 @@ describe Arborist::Client do
 			end
 
 
-			it "can list the nodes of the manager it's connected to" do
-				res = client.list
+			it "can fetch the nodes of the manager it's connected to" do
+				res = client.fetch
 				expect( res ).to be_an( Array )
 				expect( res.length ).to eq( manager.nodes.length )
 			end
 
 
-			it "can list a subtree of the nodes of the manager it's connected to" do
-				res = client.list( from: 'duir' )
+			it "can fetch a subtree of the nodes of the manager it's connected to" do
+				res = client.fetch( from: 'duir' )
 				expect( res ).to be_an( Array )
 				expect( res.length ).to be < manager.nodes.length
 			end
 
 
-			it "can list a depth-limited subtree of the node of the managed it's connected to" do
-				res = client.list( depth: 2 )
+			it "can fetch a depth-limited subtree of the node of the managed it's connected to" do
+				res = client.fetch( depth: 2 )
 				expect( res ).to be_an( Array )
 				expect( res.length ).to eq( 8 )
 			end
 
 
-			it "can list a depth-limited subtree of the nodes of the manager it's connected to" do
-				res = client.list( from: 'duir', depth: 1 )
+			it "can fetch a depth-limited subtree of the nodes of the manager it's connected to" do
+				res = client.fetch( from: 'duir', depth: 1 )
 				expect( res ).to be_an( Array )
 				expect( res.length ).to eq( 5 )
 			end
 
 
-			it "can fetch all node properties for all 'up' nodes" do
-				res = client.fetch
+			it "can search all node properties for all 'up' nodes" do
+				res = client.search
 				expect( res ).to be_a( Hash )
 				expect( res.length ).to be == manager.nodes.length
 				expect( res.values ).to all( be_a(Hash) )
 			end
 
 
-			it "can fetch identifiers for all 'up' nodes" do
-				res = client.fetch( {}, properties: nil )
+			it "can search identifiers for all 'up' nodes" do
+				res = client.search( {}, properties: nil )
 				expect( res ).to be_a( Hash )
 				expect( res.length ).to be == manager.nodes.length
 				expect( res.values ).to all( be_empty )
 			end
 
 
-			it "can fetch a subset of properties for all 'up' nodes" do
-				res = client.fetch( {}, properties: [:addresses, :status] )
+			it "can search a subset of properties for all 'up' nodes" do
+				res = client.search( {}, properties: [:addresses, :status] )
 				expect( res ).to be_a( Hash )
 				expect( res.length ).to be == manager.nodes.length
 				expect( res.values ).to all( be_a(Hash) )
@@ -131,16 +131,16 @@ describe Arborist::Client do
 			end
 
 
-			it "can fetch a subset of properties for all 'up' nodes matching specified criteria" do
-				res = client.fetch( {type: 'host'}, properties: [:addresses, :status] )
+			it "can search a subset of properties for all 'up' nodes matching specified criteria" do
+				res = client.search( {type: 'host'}, properties: [:addresses, :status] )
 				expect( res ).to be_a( Hash )
 				expect( res.length ).to be == manager.nodes.values.count {|n| n.type == 'host' }
 				expect( res.values ).to all( include('addresses', 'status') )
 			end
 
 
-			it "can fetch all node properties for 'up' nodes that don't match specified criteria" do
-				res = client.fetch( {}, properties: [:addresses, :status], exclude: {tag: 'testing'} )
+			it "can search all node properties for 'up' nodes that don't match specified criteria" do
+				res = client.search( {}, properties: [:addresses, :status], exclude: {tag: 'testing'} )
 
 				testing_nodes = manager.nodes.values.select {|n| n.tags.include?('testing') }
 
@@ -151,11 +151,11 @@ describe Arborist::Client do
 			end
 
 
-			it "can fetch all properties for all nodes regardless of their status" do
+			it "can search all properties for all nodes regardless of their status" do
 				# Down a node
 				manager.nodes['duir'].update( error: 'something happened' )
 
-				res = client.fetch( {type: 'host'}, include_down: true )
+				res = client.search( {type: 'host'}, include_down: true )
 
 				expect( res ).to be_a( Hash )
 				expect( res ).to include( 'duir' )
@@ -326,8 +326,8 @@ describe Arborist::Client do
 		end
 
 
-		it "can make a raw list request" do
-			req = client.make_list_request
+		it "can make a raw fetch request" do
+			req = client.make_fetch_request
 			expect( req ).to be_a( CZTop::Message )
 
 			header, body = Arborist::TreeAPI.decode( req )
@@ -336,12 +336,12 @@ describe Arborist::Client do
 			expect( header ).to include( 'version', 'action' )
 			expect( header ).to_not include( 'from' )
 			expect( header['version'] ).to eq( Arborist::Client::API_VERSION )
-			expect( header['action'] ).to eq( 'list' )
+			expect( header['action'] ).to eq( 'fetch' )
 		end
 
 
-		it "can make a raw fetch request" do
-			req = client.make_fetch_request( {} )
+		it "can make a raw search request" do
+			req = client.make_search_request( {} )
 			expect( req ).to be_a( CZTop::Message )
 
 			header, body = Arborist::TreeAPI.decode( req )
@@ -349,14 +349,14 @@ describe Arborist::Client do
 			expect( header ).to be_a( Hash )
 			expect( header ).to include( 'version', 'action' )
 			expect( header['version'] ).to eq( Arborist::Client::API_VERSION )
-			expect( header['action'] ).to eq( 'fetch' )
+			expect( header['action'] ).to eq( 'search' )
 
 			expect( body ).to eq([ {}, {} ])
 		end
 
 
-		it "can make a raw fetch request with criteria" do
-			req = client.make_fetch_request( {type: 'host'} )
+		it "can make a raw search request with criteria" do
+			req = client.make_search_request( {type: 'host'} )
 			expect( req ).to be_a( CZTop::Message )
 
 			header, body = Arborist::TreeAPI.decode( req )
@@ -364,7 +364,7 @@ describe Arborist::Client do
 			expect( header ).to be_a( Hash )
 			expect( header ).to include( 'version', 'action' )
 			expect( header['version'] ).to eq( Arborist::Client::API_VERSION )
-			expect( header['action'] ).to eq( 'fetch' )
+			expect( header['action'] ).to eq( 'search' )
 
 			body = body
 			expect( body.first ).to be_a( Hash )

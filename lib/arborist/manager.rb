@@ -35,9 +35,9 @@ class Arborist::Manager
 	VALID_TREEAPI_ACTIONS = %w[
 		fetch
 		graft
-		list
 		modify
 		prune
+		search
 		status
 		subscribe
 		unsubscribe
@@ -515,11 +515,11 @@ class Arborist::Manager
 	end
 
 
-	### Traverse the node tree and fetch the specified +return_values+ from any nodes which
+	### Traverse the node tree and return the specified +return_values+ from any nodes which
 	### match the given +filter+, skipping downed nodes and all their children
 	### unless +include_down+ is set. If +return_values+ is set to +nil+, then all
 	### values from the node will be returned.
-	def fetch_matching_node_states( filter, return_values, include_down=false, negative_filter={} )
+	def find_matching_node_states( filter, return_values, include_down=false, negative_filter={} )
 		nodes_iter = if include_down
 				self.all_nodes
 			else
@@ -680,9 +680,9 @@ class Arborist::Manager
 	end
 
 
-	### Return a repsonse to the `list` action.
-	def handle_list_request( header, body )
-		self.log.debug "LIST: %p" % [ header ]
+	### Return a repsonse to the `fetch` action.
+	def handle_fetch_request( header, body )
+		self.log.debug "FETCH: %p" % [ header ]
 		from  = header['from'] || '_'
 		depth = header['depth']
 
@@ -702,9 +702,9 @@ class Arborist::Manager
 	end
 
 
-	### Return a response to the 'fetch' action.
-	def handle_fetch_request( header, body )
-		self.log.debug "FETCH: %p" % [ header ]
+	### Return a response to the 'search' action.
+	def handle_search_request( header, body )
+		self.log.debug "SEARCH: %p" % [ header ]
 
 		include_down = header['include_down']
 		values = if header.key?( 'return' )
@@ -716,7 +716,7 @@ class Arborist::Manager
 		body = [ body ] unless body.is_a?( Array )
 		positive = body.shift
 		negative = body.shift || {}
-		states = self.fetch_matching_node_states( positive, values, include_down, negative )
+		states = self.find_matching_node_states( positive, values, include_down, negative )
 
 		return Arborist::TreeAPI.successful_response( states )
 	end

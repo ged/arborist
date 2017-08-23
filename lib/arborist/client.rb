@@ -94,37 +94,37 @@ class Arborist::Client
 
 
 	### Return the manager's current node tree.
-	def list( **args )
-		request = self.make_list_request( **args )
+	def fetch( **args )
+		request = self.make_fetch_request( **args )
 		return self.send_tree_api_request( request )
 	end
 
 
 	### Return the manager's current node tree.
-	def make_list_request( from: nil, depth: nil )
+	def make_fetch_request( from: nil, depth: nil )
 		header = {}
 		self.log.debug "From is: %p" % [ from ]
 		header[:from] = from if from
 		header[:depth] = depth if depth
 
-		return Arborist::TreeAPI.request( :list, header, nil )
+		return Arborist::TreeAPI.request( :fetch, header, nil )
 	end
 
 
 	### Return the manager's current node tree.
-	def fetch( criteria={}, options={} )
-		request = self.make_fetch_request( criteria, **options )
+	def search( criteria={}, options={} )
+		request = self.make_search_request( criteria, **options )
 		return self.send_tree_api_request( request )
 	end
 
 
 	### Return the manager's current node tree.
-	def make_fetch_request( criteria, include_down: false, properties: :all, exclude: {} )
+	def make_search_request( criteria, include_down: false, properties: :all, exclude: {} )
 		header = {}
 		header[ :include_down ] = true if include_down
 		header[ :return ] = properties if properties != :all
 
-		return Arborist::TreeAPI.request( :fetch, header, [ criteria, exclude ] )
+		return Arborist::TreeAPI.request( :search, header, [ criteria, exclude ] )
 	end
 
 
