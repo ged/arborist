@@ -42,3 +42,11 @@
 
 * Redo the select loop of the UDP socket monitor to wait for them in parallel instead of in series.
 
+
+## Third Release (0.3)
+
+### Manager
+
+* Add optional authentication support (ZAUTH)
+
+
