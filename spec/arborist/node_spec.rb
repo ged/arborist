@@ -11,10 +11,17 @@ describe Arborist::Node do
 	before( :all ) do
 		Arborist::Event.load_all
 	end
+	before( :each ) do
+		@real_derivatives = described_class.derivatives.dup
+	end
+	after( :each ) do
+		described_class.derivatives.replace( @real_derivatives )
+	end
 
 
-	let( :concrete_class ) { TestNode }
-	let( :subnode_class ) { TestSubNode }
+	let( :concrete_class ) do
+		Class.new( described_class )
+	end
 
 	let( :identifier ) { 'the_identifier' }
 	let( :identifier2 ) { 'the_other_identifier' }
@@ -81,15 +88,56 @@ describe Arborist::Node do
 	context "subnode classes" do
 
 		it "can declare the type of node they live under" do
-			expect( subnode_class.parent_types ).to include( described_class.get_subclass(:test) )
+			subnode_class = Class.new( described_class )
+			subnode_class.parent_type( concrete_class )
+
+			expect( subnode_class.parent_types ).to include( concrete_class )
 		end
 
 
 		it "can be constructed via a factory method on instances of their parent type" do
+			subnode_class = Class.new( described_class ) do
+				def self::name; "TestSubNode"; end
+				def self::plugin_name; "testsub"; end
+			end
+			described_class.derivatives['testsub'] = subnode_class
+
+			subnode_class.parent_type( concrete_class )
 			parent = concrete_class.new( 'branch' )
 			node = parent.testsub( 'leaf' )
+
+			expect( node ).to be_an_instance_of( subnode_class )
+			expect( node.identifier ).to eq( 'leaf' )
+			expect( node.parent ).to eq( 'branch' )
+		end
+
+
+		it "can pre-process the factory method arguments" do
+			subnode_class = Class.new( described_class ) do
+				def self::name; "TestSubNode"; end
+				def self::plugin_name; "testsub"; end
+				def args( new_args=nil )
+					@args = new_args if new_args
+					return @args
+				end
+				def modify( attributes )
+					attributes = stringify_keys( attributes )
+					super
+					self.args( attributes['args'] )
+				end
+			end
+			described_class.derivatives['testsub'] = subnode_class
+
+			subnode_class.parent_type( concrete_class ) do |arg1, id, *args|
+				[ id, {args: [arg1] + args} ]
+			end
+
+			parent = concrete_class.new( 'branch' )
+			node = parent.testsub( :arg1, 'leaf', :arg2, :arg3 )
+
 			expect( node ).to be_an_instance_of( subnode_class )
 			expect( node.parent ).to eq( parent.identifier )
+			expect( node.args ).to eq([ :arg1, :arg2, :arg3 ])
 		end
 
 	end
@@ -390,6 +438,8 @@ describe Arborist::Node do
 
 		describe "Serialization" do
 
+			# From spec_helper.rb
+			let( :concrete_class ) { TestNode }
 			let( :node ) do
 				concrete_class.new( 'foo' ) do
 					parent 'bar'
@@ -682,6 +732,13 @@ describe Arborist::Node do
 
 
 	describe "matching" do
+
+		let( :concrete_class ) do
+			cls = Class.new( described_class ) do
+				def self::name; "TestNode"; end
+			end
+		end
+
 
 		let( :node ) do
 			concrete_class.new( 'foo' ) do

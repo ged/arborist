@@ -27,7 +27,7 @@ class Arborist::Node::Resource < Arborist::Node
 	### Set service +attributes+.
 	def modify( attributes )
 		attributes = stringify_keys( attributes )
-				super
+		super
 		self.category( attributes['category'] )
 	end
 

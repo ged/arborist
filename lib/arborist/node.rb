@@ -180,7 +180,7 @@ class Arborist::Node
 	### them.
 	def self::add_loaded_instance( new_instance )
 		instances = Thread.current[ LOADED_INSTANCE_KEY ] or return
-		self.log.debug "Adding new instance %p to node tree" % [ new_instance ]
+		# self.log.debug "Adding new instance %p to node tree" % [ new_instance ]
 		instances << new_instance
 	end
 
@@ -195,14 +195,16 @@ class Arborist::Node
 
 
 	### Get/set the node type instances of the class live under. If no parent_type is set, it
-	### is a top-level node type.
-	def self::parent_types( *types )
+	### is a top-level node type. If a +block+ is given, it can be used to pre-process the
+	### arguments into the (identifier, attributes, block) arguments used to create
+	### the node instances.
+	def self::parent_types( *types, &block )
 		@parent_types ||= []
 
 		types.each do |new_type|
 			subclass = Arborist::Node.get_subclass( new_type )
 			@parent_types << subclass
-			subclass.add_subnode_factory_method( self )
+			subclass.add_subnode_factory_method( self, &block )
 		end
 
 		return @parent_types
@@ -218,11 +220,23 @@ class Arborist::Node
 
 	### Add a factory method that can be used to create subnodes of the specified +subnode_type+
 	### on instances of the receiving class.
-	def self::add_subnode_factory_method( subnode_type )
+	def self::add_subnode_factory_method( subnode_type, &dsl_block )
 		if subnode_type.name
 			name = subnode_type.plugin_name
-			body = lambda do |identifier, attributes={}, &block|
-				return Arborist::Node.create( name, identifier, self, attributes, &block )
+			# self.log.debug "Adding factory constructor for %s nodes to %p" % [ name, self ]
+			body = lambda do |*args, &constructor_block|
+				if dsl_block
+					# self.log.debug "Using DSL block to split args: %p" % [ dsl_block ]
+					identifier, attributes = dsl_block.call( *args )
+				else
+					# self.log.debug "Splitting args the default way: %p" % [ args ]
+					identifier, attributes = *args
+				end
+				attributes ||= {}
+				# self.log.debug "Identifier: %p, attributes: %p, self: %p" %
+				# 	[ identifier, attributes, self ]
+
+				return Arborist::Node.create( name, identifier, self, attributes, &constructor_block )
 			end
 
 			define_method( name, &body )
@@ -293,7 +307,6 @@ class Arborist::Node
 		@pending_update_events = []
 		@subscriptions  = {}
 
-		self.log.debug "Setting node attributes to: %p" % [ attributes ]
 		self.modify( attributes )
 		self.instance_eval( &block ) if block
 	end
