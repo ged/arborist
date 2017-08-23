@@ -66,7 +66,7 @@ class Arborist::Observer::Summarize
 
 
 	### Handle a timing event by calling the block with any events in the history.
-	def on_timer
+	def on_timer( * )
 		self.log.debug "Timer event: %d pending event/s" % [ self.event_history.size ]
 		self.call_block unless self.event_history.empty?
 	end

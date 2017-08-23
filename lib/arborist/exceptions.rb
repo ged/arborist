@@ -7,10 +7,10 @@ module Arborist
 
 	class ClientError < RuntimeError; end
 
-	class RequestError < ClientError
+	class MessageError < ClientError
 
 		def initialize( reason )
-			super( "Invalid request (#{reason})" )
+			super( "Invalid message (#{reason})" )
 		end
 
 	end

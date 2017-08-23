@@ -6,11 +6,15 @@ require 'pathname'
 require 'tempfile'
 require 'configurability'
 require 'loggability'
-require 'rbczmq'
+require 'cztop'
+require 'cztop/reactor'
+require 'cztop/reactor/signal_handling'
 
 require 'arborist' unless defined?( Arborist )
 require 'arborist/node'
 require 'arborist/mixins'
+require 'arborist/tree_api'
+require 'arborist/event_api'
 
 
 # The main Arborist process -- responsible for coordinating all other activity.
@@ -18,71 +22,55 @@ class Arborist::Manager
 	extend Configurability,
 		   Loggability,
 	       Arborist::MethodUtilities
+	include CZTop::Reactor::SignalHandling
+
 
 	# Signals the manager responds to
 	QUEUE_SIGS = [
 		:INT, :TERM, :HUP, :USR1,
 		# :TODO: :QUIT, :WINCH, :USR2, :TTIN, :TTOU
-	]
-
-	# The number of seconds to wait between checks for incoming signals
-	SIGNAL_INTERVAL = 0.5
-
-	# Configurability API -- set config defaults
-	CONFIG_DEFAULTS = {
-		state_file: nil,
-		checkpoint_frequency: 30000,
-		heartbeat_frequency: 1000,
-		linger: 5000
-	}
+	] & Signal.list.keys.map( &:to_sym )
 
 
 	# Use the Arborist logger
 	log_to :arborist
 
 	# Configurability API -- use the 'arborist' section
-	config_key :arborist
+	configurability( 'arborist.manager' ) do
 
-
-	##
-	# The Pathname of the file the manager's node tree state is saved to
-	singleton_attr_accessor :state_file
-
-	##
-	# The number of milliseconds between automatic state checkpoints
-	singleton_attr_accessor :checkpoint_frequency
-
-	##
-	# The number of milliseconds between heartbeat events
-	singleton_attr_accessor :heartbeat_frequency
-
-	##
-	# The maximum amount of time to wait for pending events to be delivered during
-	# shutdown, in milliseconds.
-	singleton_attr_accessor :linger
-
-
-	### Configurability API -- configure the manager
-	def self::configure( config=nil )
-		config = self.defaults.merge( config || {} )
-		self.log.debug "Config is: %p" % [ config ]
-
-		self.state_file = config[:state_file] && Pathname( config[:state_file] )
-		self.linger = config[:linger].to_i
-		self.log.info "Linger configured to %p" % [ self.linger ]
-
-		self.heartbeat_frequency = config[:heartbeat_frequency].to_i ||
-			CONFIG_DEFAULTS[:heartbeat_frequency]
-		raise Arborist::ConfigError, "heartbeat frequency must be a positive non-zero integer" if
-			self.heartbeat_frequency <= 0
-
-		interval = config[:checkpoint_frequency].to_i
-		if interval && interval.nonzero?
-			self.checkpoint_frequency = interval
-		else
-			self.checkpoint_frequency = nil
+		##
+		# The Pathname of the file the manager's node tree state is saved to
+		setting :state_file, default: nil do |value|
+			value && Pathname( value )
 		end
+
+		##
+		# The number of seconds between automatic state checkpoints
+		setting :checkpoint_frequency, default: 30.0 do |value|
+			if value
+				value = value.to_f
+				value = nil unless value > 0
+			end
+			value
+		end
+
+		##
+		# The number of seconds between heartbeat events
+		setting :heartbeat_frequency, default: 1.0 do |value|
+			raise Arborist::ConfigError, "heartbeat must be positive and non-zero" if
+				!value || value <= 0
+			Float( value )
+		end
+
+		##
+		# The maximum amount of time to wait for pending events to be delivered during
+		# shutdown, in seconds.
+		setting :linger, default: 5.0 do |value|
+			value && value.to_f
+		end
+
 	end
+
 
 
 	#
@@ -98,31 +86,19 @@ class Arborist::Manager
 		@subscriptions = {}
 		@tree_built = false
 
-		@tree_sock = @event_sock = nil
-		@signal_timer = nil
 		@start_time   = nil
 
 		@checkpoint_timer = nil
-		@linger = self.class.linger || Arborist::Manager::CONFIG_DEFAULTS[ :linger ]
+		@linger = self.class.linger
 		self.log.info "Linger set to %p" % [ @linger ]
 
-		@zmq_loop = ZMQ::Loop.new
-		# @zmq_loop.verbose = true
-		@tree_sock = self.setup_tree_socket
-		@event_sock = self.setup_event_socket
+		@reactor = CZTop::Reactor.new
+		@tree_socket = nil
+		@event_socket = nil
+		@event_queue = []
 
-		@api_handler = Arborist::Manager::TreeAPI.new( @tree_sock, self )
-		@tree_sock.handler = @api_handler
-		@zmq_loop.register( @tree_sock )
-
-		@event_publisher = Arborist::Manager::EventPublisher.new( @event_sock, self, @zmq_loop )
-		@event_sock.handler = @event_publisher
-		@zmq_loop.register( @event_sock )
-
-		@heartbeat_timer = self.make_heartbeat_timer
-		@checkpoint_timer = self.make_checkpoint_timer
-
-		Thread.main[:signal_queue] = []
+		@heartbeat_timer = nil
+		@checkpoint_timer = nil
 	end
 
 
@@ -151,16 +127,20 @@ class Arborist::Manager
 	attr_accessor :start_time
 
 	##
-	# The ZMQ::Handler that manages the IO for the Tree API
-	attr_reader :api_handler
+	# The CZTop::Reactor that runs the event loop
+	attr_reader :reactor
 
 	##
-	# The ZMQ::Handler that manages the IO for the event-publication API.
-	attr_reader :event_publisher
+	# The ZeroMQ socket REP socket that handles Tree API requests
+	attr_accessor :tree_socket
 
 	##
-	# The ZMQ::Loop that will/is acting as the main loop.
-	attr_reader :zmq_loop
+	# The ZeroMQ PUB socket that publishes events for the Event API
+	attr_accessor :event_socket
+
+	##
+	# The queue of pending Event API events
+	attr_reader :event_queue
 
 	##
 	# Flag for marking when the tree is built successfully the first time
@@ -172,15 +152,12 @@ class Arborist::Manager
 	attr_reader :linger
 
 	##
-	# The ZMQ::Timer that processes signals
-	attr_reader :signal_timer
-
-	##
-	# The ZMQ::Timer that periodically checkpoints the manager's state (if it's configured to do so)
+	# The Timers::Timer that periodically checkpoints the manager's state (if it's
+	# configured to do so)
 	attr_reader :checkpoint_timer
 
 	##
-	# The ZMQ::Timer that periodically publishes a heartbeat event
+	# The Timers::Timer that periodically publishes a heartbeat event
 	attr_reader :heartbeat_timer
 
 
@@ -191,40 +168,52 @@ class Arborist::Manager
 	### Setup sockets and start the event loop.
 	def run
 		self.log.info "Getting ready to start the manager."
+		self.setup_sockets
 		self.publish_system_event( 'startup', start_time: Time.now.to_s, version: Arborist::VERSION )
 		self.register_timers
-		self.set_signal_handlers
-		self.start_accepting_requests
-
-		return self # For chaining
-	ensure
-		self.restore_signal_handlers
-		if self.zmq_loop
-			self.log.debug "Unregistering sockets."
-			self.zmq_loop.remove( @tree_sock )
-			@tree_sock.pollable.close
-			self.zmq_loop.remove( @event_sock )
-			@event_sock.pollable.close
-			self.zmq_loop.cancel_timer( @checkpoint_timer ) if @checkpoint_timer
+		self.with_signal_handler( reactor, *QUEUE_SIGS ) do
+			self.start_accepting_requests
 		end
-
+	ensure
+		self.shutdown_sockets
 		self.save_node_states
+	end
 
-		self.log.debug "Resetting ZMQ context"
-		Arborist.reset_zmq_context
+
+	### Create the sockets used by the manager and bind them to the appropriate
+	### endpoints.
+	def setup_sockets
+		self.setup_tree_socket
+		self.setup_event_socket
+	end
+
+
+	### Shut down the sockets used by the manager.
+	def shutdown_sockets
+		self.shutdown_tree_socket
+		self.shutdown_event_socket
 	end
 
 
 	### Returns true if the Manager is running.
 	def running?
-		return self.zmq_loop && self.zmq_loop.running?
+		return self.reactor &&
+			self.event_socket &&
+			self.reactor.registered?( self.event_socket )
 	end
 
 
 	### Register the Manager's timers.
 	def register_timers
-		self.zmq_loop.register_timer( self.heartbeat_timer )
-		self.zmq_loop.register_timer( self.checkpoint_timer ) if self.checkpoint_timer
+		self.register_checkpoint_timer
+		self.register_heartbeat_timer
+	end
+
+
+	### Register the Manager's timers.
+	def cancel_timers
+		self.cancel_heartbeat_timer
+		self.cancel_checkpoint_timer
 	end
 
 
@@ -232,33 +221,13 @@ class Arborist::Manager
 	def start_accepting_requests
 		self.log.debug "Starting the main loop"
 
-		self.setup_signal_timer
 		self.start_time = Time.now
 
+		self.reactor.register( self.tree_socket, :read, &self.method(:on_tree_socket_event) )
+		self.reactor.register( self.event_socket, :write, &self.method(:on_event_socket_event) )
+
 		self.log.debug "Manager running."
-		return self.zmq_loop.start
-	end
-
-
-	### Set up the ZMQ REP socket for the Tree API.
-	def setup_tree_socket
-		sock = Arborist.zmq_context.socket( :REP )
-		self.log.debug "  binding the tree API socket (%#0x) to %p" %
-			[ sock.object_id * 2, Arborist.tree_api_url ]
-		sock.linger = 0
-		sock.bind( Arborist.tree_api_url )
-		return ZMQ::Pollitem.new( sock, ZMQ::POLLIN|ZMQ::POLLOUT )
-	end
-
-
-	### Set up the ZMQ PUB socket for published events.
-	def setup_event_socket
-		sock = Arborist.zmq_context.socket( :PUB )
-		self.log.debug "  binding the event socket (%#0x) to %p" %
-			[ sock.object_id * 2, Arborist.event_api_url ]
-		sock.linger = self.linger
-		sock.bind( Arborist.event_api_url )
-		return ZMQ::Pollitem.new( sock, ZMQ::POLLOUT )
+		return self.reactor.start_polling( ignore_interrupts: true )
 	end
 
 
@@ -271,13 +240,7 @@ class Arborist::Manager
 	### Stop the manager.
 	def stop
 		self.log.info "Stopping the manager."
-		self.ignore_signals
-		self.cancel_signal_timer
-
-		@api_handler.shutdown
-		@event_publisher.shutdown
-
-		self.zmq_loop.stop
+		self.reactor.stop_polling
 	end
 
 
@@ -333,90 +296,60 @@ class Arborist::Manager
 	end
 
 
-	### Make a ZMQ::Timer that will publish a heartbeat event at a configurable interval.
-	def make_heartbeat_timer
-		interval = self.class.heartbeat_frequency || CONFIG_DEFAULTS[ :heartbeat_frequency ]
+	### Register a periodic timer that will publish a heartbeat event at a
+	### configurable interval.
+	def register_heartbeat_timer
+		interval = self.class.heartbeat_frequency
 
-		self.log.info "Setting up to heartbeat every %dms" % [ interval ]
-		heartbeat_timer = ZMQ::Timer.new( (interval/1000.0), 0 ) do
+		self.log.info "Setting up to heartbeat every %ds" % [ interval ]
+		@heartbeat_timer = self.reactor.add_periodic_timer( interval ) do
 			self.publish_heartbeat_event
 		end
-		return heartbeat_timer
 	end
 
 
-	### Make a ZMQ::Timer that will save a snapshot of the node tree's state to the state
-	### file on a configured interval if it's configured.
-	def make_checkpoint_timer
+	### Cancel the timer that publishes heartbeat events.
+	def cancel_heartbeat_timer
+		self.reactor.remove_timer( self.heartbeat_timer )
+	end
+
+
+	### Resume the timer that publishes heartbeat events.
+	def resume_heartbeat_timer
+		self.reactor.resume_timer( self.heartbeat_timer )
+	end
+
+
+	### Register a periodic timer that will save a snapshot of the node tree's state to the state
+	### file on a configured interval if one is configured.
+	def register_checkpoint_timer
 		return nil unless self.class.state_file
 		interval = self.class.checkpoint_frequency or return nil
 
-		self.log.info "Setting up node state checkpoint every %dms" % [ interval ]
-		checkpoint_timer = ZMQ::Timer.new( (interval/1000.0), 0 ) do
+		self.log.info "Setting up node state checkpoint every %0.3fs" % [ interval ]
+		@checkpoint_timer = self.reactor.add_periodic_timer( interval ) do
 			self.save_node_states
 		end
-		return checkpoint_timer
+	end
+
+
+	### Cancel the timer that saves tree snapshots.
+	def cancel_checkpoint_timer
+		self.reactor.remove_timer( self.checkpoint_timer )
+	end
+
+
+	### Resume the timer that saves tree snapshots.
+	def resume_checkpoint_timer
+		self.reactor.resume_timer( self.checkpoint_timer )
 	end
 
 
 	#
 	# :section: Signal Handling
 	# These methods set up some behavior for starting, restarting, and stopping
-	# your application when a signal is received. If you don't want signals to
-	# be handled, override #set_signal_handlers with an empty method.
+	# the manager when a signal is received.
 	#
-
-	### Set up a periodic ZMQ timer to check for queued signals and handle them.
-	def setup_signal_timer
-		@signal_timer = ZMQ::Timer.new( SIGNAL_INTERVAL, 0, self.method(:process_signal_queue) )
-		self.zmq_loop.register_timer( @signal_timer )
-	end
-
-
-	### Disable the timer that checks for incoming signals
-	def cancel_signal_timer
-		if self.signal_timer
-			self.signal_timer.cancel
-			self.zmq_loop.cancel_timer( self.signal_timer )
-		end
-	end
-
-
-	### Set up signal handlers for common signals that will shut down, restart, etc.
-	def set_signal_handlers
-		self.log.debug "Setting up deferred signal handlers."
-		QUEUE_SIGS.each do |sig|
-			Signal.trap( sig ) { Thread.main[:signal_queue] << sig }
-		end
-	end
-
-
-	### Set all signal handlers to ignore.
-	def ignore_signals
-		self.log.debug "Ignoring signals."
-		QUEUE_SIGS.each do |sig|
-			Signal.trap( sig, :IGNORE )
-		end
-	end
-
-
-	### Set the signal handlers back to their defaults.
-	def restore_signal_handlers
-		self.log.debug "Restoring default signal handlers."
-		QUEUE_SIGS.each do |sig|
-			Signal.trap( sig, :DEFAULT )
-		end
-	end
-
-
-	### Handle any queued signals.
-	def process_signal_queue
-		# Look for any signals that arrived and handle them
-		while sig = Thread.main[:signal_queue].shift
-			self.handle_signal( sig )
-		end
-	end
-
 
 	### Handle signals.
 	def handle_signal( sig )
@@ -460,12 +393,6 @@ class Arborist::Manager
 		self.save_node_states
 	end
 
-
-	### Simulate the receipt of the specified +signal+ (probably only useful
-	### in testing).
-	def simulate_signal( signal )
-		Thread.main[:signal_queue] << signal.to_sym
-	end
 
 
 	#
@@ -617,8 +544,241 @@ class Arborist::Manager
 
 
 	#
-	# Tree-traversal API
+	# Tree network API
 	#
+
+
+	### Set up the ZeroMQ REP socket for the Tree API.
+	def setup_tree_socket
+		@tree_socket = CZTop::Socket::REP.new
+		self.log.debug "  binding the tree API socket (%#0x) to %p" %
+			[ @tree_socket.object_id * 2, Arborist.tree_api_url ]
+		@tree_socket.options.linger = 0
+		@tree_socket.bind( Arborist.tree_api_url )
+	end
+
+
+	### Tear down the ZeroMQ REP socket.
+	def shutdown_tree_socket
+		@tree_socket.unbind( @tree_socket.last_endpoint )
+		@tree_socket = nil
+	end
+
+
+	### ZMQ::Handler API -- Read and handle an incoming request.
+	def on_tree_socket_event( event )
+		if event.readable?
+			request = event.socket.receive
+			msg = self.handle_tree_request( request )
+			event.socket << msg
+		else
+			raise "Unsupported event %p on tree API socket!" % [ event ]
+		end
+	end
+
+
+	### Handle the specified +raw_request+ and return a response.
+	def handle_tree_request( raw_request )
+		raise "Manager is shutting down" unless self.running?
+
+		header, body = Arborist::TreeAPI.decode( raw_request )
+		raise Arborist::MessageError, "missing required header 'action'" unless
+			header.key?( 'action' )
+		handler = self.lookup_tree_request_action( header ) or
+			raise Arborist::MessageError, "No such action '%s'" % [ header['action'] ]
+
+		return handler.call( header, body )
+
+	rescue => err
+		self.log.error "%p: %s" % [ err.class, err.message ]
+		err.backtrace.each {|frame| self.log.debug "  #{frame}" }
+
+		errtype = case err
+			when Arborist::MessageError,
+			     Arborist::ConfigError,
+			     Arborist::NodeError
+				'client'
+			else
+				'server'
+			end
+
+		return Arborist::TreeAPI.error_response( errtype, err.message )
+	end
+
+
+	### Given a request +header+, return a #call-able object that can handle the response.
+	def lookup_tree_request_action( header )
+		raise Arborist::MessageError, "unsupported version %d" % [ header['version'] ] unless
+			header['version'] == 1
+
+		handler_name = "handle_%s_request" % [ header['action'] ]
+		return nil unless self.respond_to?( handler_name )
+
+		return self.method( handler_name )
+	end
+
+
+	### Return a response to the `status` action.
+	def handle_status_request( header, body )
+		self.log.debug "STATUS: %p" % [ header ]
+		return Arborist::TreeAPI.successful_response(
+			server_version: Arborist::VERSION,
+			state: self.running? ? 'running' : 'not running',
+			uptime: self.uptime,
+			nodecount: self.nodecount
+		)
+	end
+
+
+	### Return a response to the `subscribe` action.
+	def handle_subscribe_request( header, body )
+		self.log.debug "SUBSCRIBE: %p" % [ header ]
+		event_type      = header[ 'event_type' ]
+		node_identifier = header[ 'identifier' ]
+
+		body = [ body ] unless body.is_a?( Array )
+		positive = body.shift
+		negative = body.shift || {}
+
+		subscription = self.create_subscription( node_identifier, event_type, positive, negative )
+		self.log.info "Subscription to %s events at or under %s: %p" %
+			[ event_type, node_identifier || 'the root node', subscription ]
+
+		return Arborist::TreeAPI.successful_response( id: subscription.id )
+	end
+
+
+	### Return a response to the `unsubscribe` action.
+	def handle_unsubscribe_request( header, body )
+		self.log.debug "UNSUBSCRIBE: %p" % [ header ]
+		subscription_id = header[ 'subscription_id' ] or
+			return Arborist::TreeAPI.error_response( 'client', 'No identifier specified for UNSUBSCRIBE.' )
+		subscription = self.remove_subscription( subscription_id ) or
+			return Arborist::TreeAPI.successful_response( nil )
+
+		self.log.info "Destroyed subscription: %p" % [ subscription ]
+		return Arborist::TreeAPI.successful_response(
+			event_type: subscription.event_type,
+			criteria: subscription.criteria
+		)
+	end
+
+
+	### Return a repsonse to the `list` action.
+	def handle_list_request( header, body )
+		self.log.debug "LIST: %p" % [ header ]
+		from  = header['from'] || '_'
+		depth = header['depth']
+
+		start_node = self.nodes[ from ]
+		self.log.debug "  Listing nodes under %p" % [ start_node ]
+		iter = if depth
+			self.log.debug "    depth limited to %d" % [ depth ]
+			self.depth_limited_enumerator_for( start_node, depth )
+		else
+			self.log.debug "    no depth limit"
+			self.enumerator_for( start_node )
+		end
+		data = iter.map( &:to_h )
+		self.log.debug "  got data for %d nodes" % [ data.length ]
+
+		return Arborist::TreeAPI.successful_response( data )
+	end
+
+
+	### Return a response to the 'fetch' action.
+	def handle_fetch_request( header, body )
+		self.log.debug "FETCH: %p" % [ header ]
+
+		include_down = header['include_down']
+		values = if header.key?( 'return' )
+				header['return'] || []
+			else
+				nil
+			end
+
+		body = [ body ] unless body.is_a?( Array )
+		positive = body.shift
+		negative = body.shift || {}
+		states = self.fetch_matching_node_states( positive, values, include_down, negative )
+
+		return Arborist::TreeAPI.successful_response( states )
+	end
+
+
+	### Update nodes using the data from the update request's +body+.
+	def handle_update_request( header, body )
+		self.log.debug "UPDATE: %p" % [ header ]
+
+		unless body.respond_to?( :each )
+			return Arborist::TreeAPI.error_response( 'client', 'Malformed update: body does not respond to #each' )
+		end
+
+		body.each do |identifier, properties|
+			self.update_node( identifier, properties )
+		end
+
+		return Arborist::TreeAPI.successful_response( nil )
+	end
+
+
+	### Remove a node and its children.
+	def handle_prune_request( header, body )
+		self.log.debug "PRUNE: %p" % [ header ]
+
+		identifier = header[ 'identifier' ] or
+			return Arborist::TreeAPI.error_response( 'client', 'No identifier specified for PRUNE.' )
+		node = self.remove_node( identifier )
+
+		return Arborist::TreeAPI.successful_response( node ? node.to_h : nil )
+	end
+
+
+	### Add a node
+	def handle_graft_request( header, body )
+		self.log.debug "GRAFT: %p" % [ header ]
+
+		identifier = header[ 'identifier' ] or
+			return Arborist::TreeAPI.error_response( 'client', 'No identifier specified for GRAFT.' )
+		type = header[ 'type' ] or
+			return Arborist::TreeAPI.error_response( 'client', 'No type specified for GRAFT.' )
+		parent = header[ 'parent' ] || '_'
+		parent_node = self.nodes[ parent ] or
+			return Arborist::TreeAPI.error_response( 'client', 'No parent node found for %s.' % [parent] )
+
+		self.log.debug "Grafting a new %s node under %p" % [ type, parent_node ]
+
+		# If the parent has a factory method for the node type, use it, otherwise
+		# use the Pluggability factory
+		node = if parent_node.respond_to?( type )
+				parent_node.method( type ).call( identifier, body )
+			else
+				body.merge!( parent: parent )
+				Arborist::Node.create( type, identifier, body )
+			end
+
+		self.add_node( node )
+
+		return Arborist::TreeAPI.successful_response( node ? {identifier: node.identifier} : nil )
+	end
+
+
+	### Modify a node's operational attributes
+	def handle_modify_request( header, body )
+		self.log.debug "MODIFY: %p" % [ header ]
+
+		identifier = header[ 'identifier' ] or
+			return Arborist::TreeAPI.error_response( 'client', 'No identifier specified for MODIFY.' )
+		return Arborist::TreeAPI.error_response( 'client', "Unable to MODIFY root node." ) if identifier == '_'
+		node = self.nodes[ identifier ] or
+			return Arborist::TreeAPI.error_response( 'client', "No such node %p" % [identifier] )
+
+		self.log.debug "Modifying operational attributes of the %s node: %p" % [ identifier, body ]
+
+		node.modify( body )
+
+		return Arborist::TreeAPI.successful_response( nil )
+	end
 
 
 	### Return the current root node.
@@ -696,16 +856,69 @@ class Arborist::Manager
 	# Event API
 	#
 
-	### Add the specified +subscription+ to the node corresponding with the given +identifier+.
-	def subscribe( identifier, subscription )
-		identifier ||= '_'
-		node = self.nodes[ identifier ] or raise ArgumentError, "no such node %p" % [ identifier ]
+	### Set up the ZMQ PUB socket for published events.
+	def setup_event_socket
+		@event_socket = CZTop::Socket::PUB.new
+		self.log.info "  binding the event socket (%#0x) to %p" %
+			[ @event_socket.object_id * 2, Arborist.event_api_url ]
+		@event_socket.options.linger = ( self.linger * 1000 ).ceil
+		@event_socket.bind( Arborist.event_api_url )
+	end
 
-		self.log.debug "Registering subscription %p" % [ subscription ]
-		node.add_subscription( subscription )
-		self.log.debug " adding '%s' to the subscriptions hash." % [ subscription.id ]
-		self.subscriptions[ subscription.id ] = node
-		self.log.debug "  subscriptions hash: %#0x" % [ self.subscriptions.object_id ]
+
+	### Stop accepting events to be published
+	def shutdown_event_socket
+		start   = Time.now
+		timeout = start + (self.linger.to_f / 2.0)
+
+		self.log.warn "Waiting to empty the event queue..."
+		until self.event_queue.empty?
+			sleep 0.1
+			break if Time.now > timeout
+		end
+		self.log.warn "  ... waited %0.1f seconds" % [ Time.now - start ]
+
+		@event_socket.options.linger = 0
+		@event_socket.unbind( @event_socket.last_endpoint )
+		@event_socket = nil
+	end
+
+
+	### Publish the specified +event+.
+	def publish( identifier, event )
+		self.event_queue << Arborist::EventAPI.encode( identifier, event.to_h )
+		self.register_event_socket if self.running?
+	end
+
+
+	### Register the publisher with the reactor if it's not already.
+	def register_event_socket
+		self.log.debug "Registering event socket for write events."
+		self.reactor.enable_events( self.event_socket, :write ) unless
+			self.reactor.event_enabled?( self.event_socket, :write )
+	end
+
+
+	### Unregister the event publisher socket from the reactor if it's registered.
+	def unregister_event_socket
+		self.log.debug "Unregistering event socket for write events."
+		self.reactor.disable_events( self.event_socket, :write ) if
+			self.reactor.event_enabled?( self.event_socket, :write )
+	end
+
+
+	### IO event handler for the event socket.
+	def on_event_socket_event( event )
+		if event.writable?
+			if (( msg = self.event_queue.shift ))
+				self.log.debug "Publishing event %p" % [ msg ]
+				event.socket << msg
+			end
+		else
+			raise "Unhandled event %p on the event socket" % [ event ]
+		end
+
+		self.unregister_event_socket if self.event_queue.empty?
 	end
 
 
@@ -720,7 +933,20 @@ class Arborist::Manager
 		eventname = eventname.to_s
 		eventname = 'sys.' + eventname unless eventname.start_with?( 'sys.' )
 		self.log.debug "Publishing %s event: %p." % [ eventname, data ]
-		self.event_publisher.publish( eventname, data )
+		self.publish( eventname, data )
+	end
+
+
+	### Add the specified +subscription+ to the node corresponding with the given +identifier+.
+	def subscribe( identifier, subscription )
+		identifier ||= '_'
+		node = self.nodes[ identifier ] or raise ArgumentError, "no such node %p" % [ identifier ]
+
+		self.log.debug "Registering subscription %p" % [ subscription ]
+		node.add_subscription( subscription )
+		self.log.debug " adding '%s' to the subscriptions hash." % [ subscription.id ]
+		self.subscriptions[ subscription.id ] = node
+		self.log.debug "  subscriptions hash: %#0x" % [ self.subscriptions.object_id ]
 	end
 
 
@@ -729,7 +955,7 @@ class Arborist::Manager
 	### given +criteria+ when considering an event.
 	def create_subscription( identifier, event_pattern, criteria, negative_criteria={} )
 		sub = Arborist::Subscription.new( event_pattern, criteria, negative_criteria ) do |*args|
-			self.event_publisher.publish( *args )
+			self.publish( *args )
 		end
 		self.subscribe( identifier, sub )
 
@@ -762,8 +988,5 @@ class Arborist::Manager
 		end
 	end
 
-
-	require 'arborist/manager/tree_api'
-	require 'arborist/manager/event_publisher'
 
 end # class Arborist::Manager

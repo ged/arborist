@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-require 'rbczmq'
+require 'cztop'
 
 ENDPOINT = 'tcp://127.0.0.1:8733'
 

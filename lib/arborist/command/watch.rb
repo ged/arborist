@@ -5,6 +5,7 @@ require 'msgpack'
 
 require 'arborist/cli' unless defined?( Arborist::CLI )
 require 'arborist/client'
+require 'arborist/event_api'
 
 # Command to watch events in an Arborist manager.
 module Arborist::CLI::Watch
@@ -30,12 +31,10 @@ module Arborist::CLI::Watch
 				last_runid = nil
 				prompt.say "Watching for events on manager at %s" % [ client.event_api_url ]
 				loop do
-					msgsubid = sock.recv
-					raise "Partial write?!" unless sock.rcvmore?
-					raw_event = sock.recv
-					event = MessagePack.unpack( raw_event )
+					msg = sock.receive
+					subid, event = Arborist::EventAPI.decode( msg )
 
-					case msgsubid
+					case subid
 					when 'sys.heartbeat'
 						this_runid = event['run_id']
 

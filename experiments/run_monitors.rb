@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-require 'rbczmq'
+require 'cztop'
 require 'loggability'
 
 require 'arborist'

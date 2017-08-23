@@ -1,23 +1,10 @@
 # To-Do
 
-## First Release (0.1)
+## Second Release (0.2)
 
 * README, Tutorial, Setup docs
 * Performance/profiling examination
 
-
-### Monitor
-
-* Add some default monitor types and utilities
-  - ftp
-  - imap
-  - pop
-  - smtp
-
-* Redo the select loop of the UDP socket monitor to wait for them in parallel instead of in series.
-
-
-## Second Release (0.2)
 
 ### Setup/Installation
 
@@ -28,14 +15,30 @@
 
 * Ask a node (via tree-api or otherwise) what nodes it affects (immediate children, secondary dependents)
 
+* Clarify the Tree API:
+	
+	- Rename `list` to `fetch`
+		- Return identified node `node.to_h`
+		- Return identified node and its children in a hierarchy `node.to_h(true)`
+		- Return identified node and its children as a flattened list
+	
+	- Rename `fetch` to `search`
+		- returns list of nodes which satisfy positive/negative criteria
+
+
 ### Observers
 
- * Action dependencies -- as an example, if an action sends an email,
-   don't trigger if the email service is offline.  Potential action
-   "chains", ie:  If the email service is down, use a separate
-   out-of-band action that sends SMS.
+ * Action dependencies -- as an example, if an action sends an email, don't trigger if the email service is offline. Potential action "chains", ie: If the email service is down, use a separate out-of-band action that sends SMS.
 
 ### Monitors
 
-Add a one-shot runner command for development of monitors. Loads and runs a monitor one time, maybe with some output describing how often it'd run, what its skew is, etc. [will@laika]
+* Add a one-shot runner command for development of monitors. Loads and runs a monitor one time, maybe with some output describing how often it'd run, what its skew is, etc. [will@laika]
+
+* Add some default monitor types and utilities
+  - ftp
+  - imap
+  - pop
+  - smtp
+
+* Redo the select loop of the UDP socket monitor to wait for them in parallel instead of in series.
 

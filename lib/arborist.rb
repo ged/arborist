@@ -1,7 +1,7 @@
 # -*- ruby -*-
 #encoding: utf-8
 
-require 'rbczmq'
+require 'cztop'
 
 require 'pathname'
 require 'configurability'
@@ -29,48 +29,32 @@ module Arborist
 	# The name of the config file that's loaded if none is specified.
 	DEFAULT_CONFIG_FILE = Pathname( 'arborist.yml' ).expand_path
 
-	# Configurability API -- default configuration values
-	CONFIG_DEFAULTS = {
-		tree_api_url:  'ipc:///tmp/arborist_tree.sock',
-		event_api_url: 'ipc:///tmp/arborist_events.sock',
-	}
-
 
 	##
 	# Set up a logger for the Arborist namespace
 	log_as :arborist
 
 	# Configurability API -- use the 'arborist'
-	config_key :arborist
+	configurability( :arborist ) do
+
+		##
+		# The ZMQ REP socket for the API for accessing the node tree.
+		setting :tree_api_url, default: 'ipc:///tmp/arborist_tree.sock'
+
+		##
+		# The ZMQ PUB socket for published events
+		setting :event_api_url, default: 'ipc:///tmp/arborist_events.sock'
+
+	end
 
 
 	require 'arborist/mixins'
 	extend Arborist::MethodUtilities
 
 
-	##
-	# The ZMQ REP socket for the API for accessing the node tree.
-	singleton_attr_accessor :tree_api_url
-	@tree_api_url = CONFIG_DEFAULTS[ :tree_api_url ]
-
-	##
-	# The ZMQ PUB socket for published events
-	singleton_attr_accessor :event_api_url
-	@event_api_url = CONFIG_DEFAULTS[ :event_api_url ]
-
-
 	#
 	# :section: Configuration API
 	#
-
-	### Configurability API.
-	def self::configure( config=nil )
-		config = self.defaults.merge( config || {} )
-
-		self.tree_api_url  = config[ :tree_api_url ]
-		self.event_api_url = config[ :event_api_url ]
-	end
-
 
 	### Get the loaded config (a Configurability::Config object)
 	def self::config
@@ -156,29 +140,6 @@ module Arborist
 	### Load all node and event types
 	def self::load_all
 		Arborist::Node.load_all
-	end
-
-
-	### Destroy any existing ZMQ state.
-	def self::reset_zmq_context
-		@zmq_context.destroy if @zmq_context.respond_to?( :destroy )
-		@zmq_context = nil
-	end
-
-
-	### Fetch the ZMQ context for Arborist.
-	def self::zmq_context
-		return @zmq_context ||= begin
-			self.log.info "Using ZeroMQ %s/CZMQ %s" %
-				[ ZMQ.version.join('.'), ZMQ.czmq_version.join('.') ]
-			ZMQ::Context.new
-		end
-	end
-
-
-	### Set the ZMQ context if it's already been created by something else.
-	def self::zmq_context=( existing_context )
-		@zmq_context = existing_context
 	end
 
 

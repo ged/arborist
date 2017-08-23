@@ -39,11 +39,13 @@ hoespec = Hoe.spec 'arborist' do |spec|
 	spec.dependency 'pluggability', '~> 0.4'
 	spec.dependency 'state_machines', '~> 0.2'
 	spec.dependency 'msgpack', '~> 1.0'
-	spec.dependency 'rbczmq', '~> 1.7'
+	spec.dependency 'cztop', '~> 0.11'
+	spec.dependency 'cztop-reactor', '~> 0.3'
 	spec.dependency 'gli', '~> 2.3'
 	spec.dependency 'highline', '~> 1.7'
 
 	spec.dependency 'rspec', '~> 3.2', :developer
+	spec.dependency 'rspec-wait', '~> 0.0', :developer
 	spec.dependency 'simplecov', '~> 0.9', :developer
 	spec.dependency 'timecop', '~> 0.7', :developer
 
@@ -84,13 +86,15 @@ if File.directory?( '.hg' )
 	end
 end
 
-task :gemspec => [ 'ChangeLog', GEMSPEC ]
+file 'Manifest.txt'
+
+task :gemspec => [ 'ChangeLog', __FILE__, 'Manifest.txt', GEMSPEC ]
 file GEMSPEC => __FILE__ do |task|
 	spec = $hoespec.spec
 	spec.files.delete( '.gemtest' )
 	spec.files.delete( 'LICENSE' )
 	spec.signing_key = nil
-	spec.version = "#{spec.version}.pre#{Time.now.strftime("%Y%m%d%H%M%S")}"
+	spec.version = "#{spec.version.bump}.0.pre#{Time.now.strftime("%Y%m%d%H%M%S")}"
 	spec.cert_chain = [ 'certs/ged.pem' ]
 	File.open( task.name, 'w' ) do |fh|
 		fh.write( spec.to_ruby )

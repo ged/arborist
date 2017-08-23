@@ -2,9 +2,15 @@
 
 require_relative '../spec_helper'
 
+require 'tmpdir'
 require 'timecop'
 require 'arborist/manager'
+require 'arborist/mixins'
 require 'arborist/node/host'
+require 'arborist/event/node_update'
+
+using Arborist::TimeRefinements
+
 
 describe Arborist::Manager do
 
@@ -125,8 +131,8 @@ describe Arborist::Manager do
 		it "restores the state of loaded nodes if the state file is configured" do
 			_ = manager
 
-			statefile = Pathname( './arborist.tree' )
-			Arborist::Manager.state_file = statefile
+			Arborist::Manager.state_file = './arborist.tree'
+			statefile = Arborist::Manager.state_file
 			state_file_io = instance_double( File )
 
 			saved_router_node = Marshal.load( Marshal.dump(router_node) )
@@ -153,27 +159,30 @@ describe Arborist::Manager do
 		it "doesn't error if the configured state file isn't readable" do
 			_ = manager
 
-			statefile = Pathname( './arborist.tree' )
-			Arborist::Manager.state_file = statefile
+			Arborist::Manager.state_file = './arborist.tree'
 
-			expect( statefile ).to receive( :readable? ).and_return( false )
-			expect( statefile ).to_not receive( :open )
+			expect( Arborist::Manager.state_file ).to receive( :readable? ).and_return( false )
+			expect( Arborist::Manager.state_file ).to_not receive( :open )
 
 			expect( manager.restore_node_states ).to be_falsey
 		end
 
 
 		it "checkpoints the state file periodically if an interval is configured" do
-			described_class.configure( checkpoint_frequency: 20_000, state_file: 'arb.tree' )
-
-			zloop = instance_double( ZMQ::Loop, register: nil, :verbose= => nil )
-			timer = instance_double( ZMQ::Timer, "checkpoint timer" )
-			expect( ZMQ::Loop ).to receive( :new ).and_return( zloop )
-			allow( ZMQ::Timer ).to receive( :new ).and_call_original
-			expect( ZMQ::Timer ).to receive( :new ).with( 20.0, 0 ).and_return( timer )
+			statefile = Pathname( Dir.tmpdir ) + Dir::Tmpname.make_tmpname( 'arb', 'tree' )
+			described_class.configure( checkpoint_frequency: 20_000, state_file: statefile )
 
 			manager = described_class.new
-			expect( manager.checkpoint_timer ).to eq( timer )
+			manager.register_checkpoint_timer
+			expect( manager.checkpoint_timer ).to be_a( Timers::Timer )
+			expect( statefile ).to_not exist
+
+			manager.checkpoint_timer.fire
+			expect( statefile ).to exist
+			states = Marshal.load( statefile.open('r:binary') )
+
+			expect( states ).to be_a( Hash )
+			expect( states.keys ).to eq( manager.nodes.keys )
 		end
 
 
@@ -204,7 +213,7 @@ describe Arborist::Manager do
 		it "errors if configured with a heartbeat of 0" do
 			expect {
 				described_class.configure( heartbeat_frequency: 0 )
-			}.to raise_error( Arborist::ConfigError, /positive non-zero/i )
+			}.to raise_error( Arborist::ConfigError, /positive and non-zero/i )
 		end
 
 
@@ -356,6 +365,857 @@ describe Arborist::Manager do
 			expect( manager.nodes['trunk'].children ).to_not include( 'branch' )
 			expect( manager.nodes ).to_not include( 'branch' )
 			expect( manager.nodes ).to_not include( 'leaf' )
+		end
+
+	end
+
+
+	describe "tree API", :testing_manager do
+
+		before( :each ) do
+			@manager = nil
+			@manager_thread = Thread.new do
+				@manager = make_testing_manager()
+				Thread.current.abort_on_exception = true
+				@manager.run
+				Loggability[ Arborist ].info "Stopped the test manager"
+			end
+
+			count = 0
+			until (@manager && @manager.running?) || count > 30
+				sleep 0.1
+				count += 1
+			end
+			raise "Manager didn't start up" unless @manager.running?
+		end
+
+		after( :each ) do
+			@manager.simulate_signal( :TERM )
+			unless @manager_thread.join( 5 )
+				$stderr.puts "Manager thread didn't exit on its own; killing it."
+				@manager_thread.kill
+			end
+
+			count = 0
+			while @manager.running? || count > 30
+				sleep 0.1
+				Loggability[ Arborist ].info "Manager still running"
+				count += 1
+			end
+			raise "Manager didn't stop" if @manager.running?
+		end
+
+
+		let( :manager ) { @manager }
+
+		let( :sock ) do
+			sock = CZTop::Socket::REQ.new
+			sock.options.linger = 0
+			sock.connect( TESTING_API_SOCK )
+			sock
+		end
+
+
+		describe "status" do
+
+			it "returns a Map describing the manager and its state" do
+				msg = Arborist::TreeAPI.request( :status )
+
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+				expect( body.length ).to eq( 4 )
+				expect( body ).to include( 'server_version', 'state', 'uptime', 'nodecount' )
+			end
+
+		end
+
+
+		describe "fetch" do
+
+			it "returns an array of full state maps for nodes matching specified criteria" do
+				msg = Arborist::TreeAPI.request( :fetch, type: 'service', port: 22 )
+
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+
+				expect( body ).to be_a( Hash )
+				expect( body.length ).to eq( 3 )
+
+				expect( body.values ).to all( be_a(Hash) )
+				expect( body.values ).to all( include('status', 'type') )
+			end
+
+
+			it "returns an array of full state maps for nodes not matching specified negative criteria" do
+				msg = Arborist::TreeAPI.request( :fetch, [ {}, {type: 'service', port: 22} ] )
+
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+
+				expect( body ).to be_a( Hash )
+				expect( body.length ).to eq( manager.nodes.length - 3 )
+
+				expect( body.values ).to all( be_a(Hash) )
+				expect( body.values ).to all( include('status', 'type') )
+			end
+
+
+			it "returns an array of full state maps for nodes combining positive and negative criteria" do
+				msg = Arborist::TreeAPI.request( :fetch, [ {type: 'service'}, {port: 22} ] )
+
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+
+				expect( body ).to be_a( Hash )
+				expect( body.length ).to eq( 16 )
+
+				expect( body.values ).to all( be_a(Hash) )
+				expect( body.values ).to all( include('status', 'type') )
+			end
+
+
+			it "doesn't return nodes beneath downed nodes by default" do
+				manager.nodes['sidonie'].update( error: 'sunspots' )
+				msg = Arborist::TreeAPI.request( :fetch, type: 'service', port: 22 )
+
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+				expect( body ).to be_a( Hash )
+				expect( body.length ).to eq( 2 )
+				expect( body ).to include( 'duir-ssh', 'yevaud-ssh' )
+			end
+
+
+			it "does return nodes beneath downed nodes if asked to" do
+				manager.nodes['sidonie'].update( error: 'plague of locusts' )
+				msg = Arborist::TreeAPI.request( :fetch, {include_down: true}, type: 'service', port: 22 )
+
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+				expect( body ).to be_a( Hash )
+				expect( body.length ).to eq( 3 )
+				expect( body ).to include( 'duir-ssh', 'yevaud-ssh', 'sidonie-ssh' )
+			end
+
+
+			it "returns only identifiers if the `return` header is set to `nil`" do
+				msg = Arborist::TreeAPI.request( :fetch, {return: nil}, type: 'service', port: 22 )
+
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+				expect( body ).to be_a( Hash )
+				expect( body.length ).to eq( 3 )
+				expect( body ).to include( 'duir-ssh', 'yevaud-ssh', 'sidonie-ssh' )
+				expect( body.values ).to all( be_empty )
+			end
+
+
+			it "returns only specified state if the `return` header is set to an Array of keys" do
+				msg = Arborist::TreeAPI.request( :fetch, {return: %w[status tags addresses]},
+					type: 'service', port: 22 )
+
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+				expect( body.length ).to eq( 3 )
+				expect( body ).to include( 'duir-ssh', 'yevaud-ssh', 'sidonie-ssh' )
+				expect( body.values.map(&:keys) ).to all( contain_exactly('status', 'tags', 'addresses') )
+			end
+
+
+		end
+
+
+		describe "list" do
+
+			it "returns an array of node state" do
+				msg = Arborist::TreeAPI.request( :list )
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+				expect( body.length ).to eq( manager.nodes.length )
+				expect( body ).to all( be_a(Hash) )
+				expect( body ).to include( hash_including('identifier' => '_') )
+				expect( body ).to include( hash_including('identifier' => 'duir') )
+				expect( body ).to include( hash_including('identifier' => 'sidonie') )
+				expect( body ).to include( hash_including('identifier' => 'sidonie-ssh') )
+				expect( body ).to include( hash_including('identifier' => 'sidonie-demon-http') )
+				expect( body ).to include( hash_including('identifier' => 'yevaud') )
+			end
+
+			it "can be limited by depth" do
+				msg = Arborist::TreeAPI.request( :list, {depth: 1}, nil )
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+				expect( body.length ).to eq( 3 )
+				expect( body ).to all( be_a(Hash) )
+				expect( body ).to include( hash_including('identifier' => '_') )
+				expect( body ).to include( hash_including('identifier' => 'duir') )
+				expect( body ).to_not include( hash_including('identifier' => 'duir-ssh') )
+			end
+		end
+
+
+		describe "update" do
+
+			it "merges the properties sent with those of the targeted nodes" do
+				update_data = {
+					duir: {
+						ping: {
+							rtt: 254
+						}
+					},
+					sidonie: {
+						ping: {
+							rtt: 1208
+						}
+					},
+					yevaud: {
+						ping: {
+							rtt: 843
+						}
+					}
+				}
+				msg = Arborist::TreeAPI.request( :update, update_data )
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+				expect( body ).to be_nil
+
+				expect( manager.nodes['duir'].properties['ping'] ).to include( 'rtt' => 254 )
+				expect( manager.nodes['sidonie'].properties['ping'] ).to include( 'rtt' => 1208 )
+				expect( manager.nodes['yevaud'].properties['ping'] ).to include( 'rtt' => 843 )
+			end
+
+
+			it "ignores unknown identifiers" do
+				msg = Arborist::TreeAPI.request( :update, charlie_humperton: {ping: { rtt: 8 }} )
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+			end
+
+			it "fails with a client error if the body is invalid" do
+				msg = Arborist::TreeAPI.request( :update, nil )
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => false )
+				expect( hdr['reason'] ).to match( /respond to #each/ )
+			end
+		end
+
+
+		describe "subscribe" do
+
+			it "adds a subscription for all event types to the root node by default" do
+				msg = Arborist::TreeAPI.request( :subscribe, [{}, {}] )
+
+				resmsg = nil
+				expect {
+					msg.send_to( sock )
+					resmsg = sock.receive
+				}.to change { manager.subscriptions.length }.by( 1 ).and(
+					change { manager.root.subscriptions.length }.by( 1 )
+				)
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+
+				sub_id = manager.subscriptions.keys.first
+
+				expect( hdr ).to include( 'success' => true )
+				expect( body ).to include( 'id' => sub_id )
+			end
+
+
+			it "adds a subscription to the specified node if an identifier is specified" do
+				msg = Arborist::TreeAPI.request( :subscribe, {identifier: 'sidonie'}, [{}, {}] )
+
+				resmsg = nil
+				expect {
+					msg.send_to( sock )
+					resmsg = sock.receive
+				}.to change { manager.subscriptions.length }.by( 1 ).and(
+					change { manager.nodes['sidonie'].subscriptions.length }.by( 1 )
+				)
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+
+				sub_id = manager.subscriptions.keys.first
+
+				expect( hdr ).to include( 'success' => true )
+				expect( body ).to eq( 'id' => sub_id )
+			end
+
+
+			it "adds a subscription for particular event types if one is specified" do
+				msg = Arborist::TreeAPI.request( :subscribe, {event_type: 'node.acked'}, [{}, {}] )
+
+				resmsg = nil
+				expect {
+					msg.send_to( sock )
+					resmsg = sock.receive
+				}.to change { manager.subscriptions.length }.by( 1 ).and(
+					change { manager.root.subscriptions.length }.by( 1 )
+				)
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				node = manager.subscriptions[ body['id'] ]
+				sub = node.subscriptions[ body['id'] ]
+
+				expect( sub.event_type ).to eq( 'node.acked' )
+			end
+
+
+			it "adds a subscription for events which match a pattern if one is specified" do
+				criteria = { type: 'host' }
+
+				msg = Arborist::TreeAPI.request( :subscribe, [criteria, {}] )
+
+				resmsg = nil
+				expect {
+					msg.send_to( sock )
+					resmsg = sock.receive
+				}.to change { manager.subscriptions.length }.by( 1 ).and(
+					change { manager.root.subscriptions.length }.by( 1 )
+				)
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( body ).to be_a( Hash ).and( include('id') )
+				node = manager.subscriptions[ body['id'] ]
+				sub = node.subscriptions[ body['id'] ]
+
+				expect( sub.event_type ).to be_nil
+				expect( sub.criteria ).to eq({ 'type' => 'host' })
+			end
+
+
+			it "adds a subscription for events which don't match a pattern if an exclusion pattern is given" do
+				criteria = { type: 'host' }
+
+				msg = Arborist::TreeAPI.request( :subscribe, [{}, criteria] )
+
+				resmsg = nil
+				expect {
+					msg.send_to( sock )
+					resmsg = sock.receive
+				}.to change { manager.subscriptions.length }.by( 1 ).and(
+					change { manager.root.subscriptions.length }.by( 1 )
+				)
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( body ).to be_a( Hash ).and( include('id') )
+				node = manager.subscriptions[ body['id'] ]
+				sub = node.subscriptions[ body['id'] ]
+
+				expect( sub.event_type ).to be_nil
+				expect( sub.negative_criteria ).to eq({ 'type' => 'host' })
+			end
+
+		end
+
+
+		describe "unsubscribe" do
+
+			let( :subscription ) do
+				manager.create_subscription( nil, 'node.delta', {type: 'host'} )
+			end
+
+
+			it "removes the subscription with the specified ID" do
+				msg = Arborist::TreeAPI.request( :unsubscribe, {subscription_id: subscription.id}, nil )
+
+				resmsg = nil
+				expect {
+					msg.send_to( sock )
+					resmsg = sock.receive
+				}.to change { manager.subscriptions.length }.by( -1 ).and(
+					change { manager.root.subscriptions.length }.by( -1 )
+				)
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+
+				expect( body ).to include( 'event_type' => 'node.delta', 'criteria' => {'type' => 'host'} )
+			end
+
+
+			it "ignores unsubscription of a non-existant ID" do
+				msg = Arborist::TreeAPI.request( :unsubscribe, {subscription_id: 'the bears!'}, nil )
+
+				resmsg = nil
+				expect {
+					msg.send_to( sock )
+					resmsg = sock.receive
+				}.to_not change { manager.subscriptions.length }
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+
+				expect( body ).to be_nil
+			end
+
+		end
+
+
+		describe "prune" do
+
+			it "removes a single node" do
+				msg = Arborist::TreeAPI.request( :prune, {identifier: 'duir-ssh'}, nil )
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+				expect( body ).to be_a( Hash )
+				expect( body ).to include( 'identifier' => 'duir-ssh' )
+				expect( manager.nodes ).to_not include( 'duir-ssh' )
+			end
+
+
+			it "returns Nil without error if the node to prune didn't exist" do
+				msg = Arborist::TreeAPI.request( :prune, {identifier: 'shemp-ssh'}, nil )
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+				expect( body ).to be_nil
+			end
+
+
+			it "removes children nodes along with the parent" do
+				msg = Arborist::TreeAPI.request( :prune, {identifier: 'duir'}, nil )
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+				expect( body ).to be_a( Hash )
+				expect( body ).to include( 'identifier' => 'duir' )
+				expect( manager.nodes ).to_not include( 'duir' )
+				expect( manager.nodes ).to_not include( 'duir-ssh' )
+			end
+
+
+			it "returns an error to the client when missing required attributes" do
+				msg = Arborist::TreeAPI.request( :prune )
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => false )
+				expect( hdr['reason'] ).to match( /no identifier/i )
+			end
+		end
+
+
+		describe "graft" do
+
+			it "can add a node with no explicit parent" do
+				header = {
+					identifier: 'guenter',
+			        type: 'host',
+				}
+				attributes = {
+					description: 'The evil penguin node of doom.',
+					addresses: ['10.2.66.8'],
+					tags: ['internal', 'football']
+				}
+				msg = Arborist::TreeAPI.request( :graft, header, attributes )
+
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+				expect( body ).to include( 'identifier' => 'guenter' )
+
+				new_node = manager.nodes[ 'guenter' ]
+				expect( new_node ).to be_a( Arborist::Node::Host )
+				expect( new_node.identifier ).to eq( header[:identifier] )
+				expect( new_node.description ).to eq( attributes[:description] )
+				expect( new_node.addresses ).to eq([ IPAddr.new(attributes[:addresses].first) ])
+				expect( new_node.tags ).to include( *attributes[:tags] )
+			end
+
+
+			it "can add a node with a parent specified" do
+				header = {
+					identifier: 'orgalorg',
+			        type: 'host',
+					parent: 'duir'
+				}
+				attributes = {
+					description: 'The true form of the evil penguin node of doom.',
+					addresses: ['192.168.22.8'],
+					tags: ['evil', 'space', 'entity']
+				}
+				msg = Arborist::TreeAPI.request( :graft, header, attributes )
+
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+				expect( body ).to include( 'identifier' => 'orgalorg' )
+
+				new_node = manager.nodes[ 'orgalorg' ]
+				expect( new_node ).to be_a( Arborist::Node::Host )
+				expect( new_node.identifier ).to eq( header[:identifier] )
+				expect( new_node.parent ).to eq( header[:parent] )
+				expect( new_node.description ).to eq( attributes[:description] )
+				expect( new_node.addresses ).to eq([ IPAddr.new(attributes[:addresses].first) ])
+				expect( new_node.tags ).to include( *attributes[:tags] )
+			end
+
+
+			it "can add a subordinate node" do
+				header = {
+					identifier: 'echo',
+			        type: 'service',
+					parent: 'duir'
+				}
+				attributes = {
+					description: 'Mmmmm AppleTalk.'
+				}
+				msg = Arborist::TreeAPI.request( :graft, header, attributes )
+
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+				expect( body ).to eq( 'identifier' => 'duir-echo' )
+
+				new_node = manager.nodes[ 'duir-echo' ]
+				expect( new_node ).to be_a( Arborist::Node::Service )
+				expect( new_node.identifier ).to eq( 'duir-echo' )
+				expect( new_node.parent ).to eq( header[:parent] )
+				expect( new_node.description ).to eq( attributes[:description] )
+				expect( new_node.port ).to eq( 7 )
+				expect( new_node.protocol ).to eq( 'tcp' )
+				expect( new_node.app_protocol ).to eq( 'echo' )
+			end
+
+
+			it "errors if adding a subordinate node with no parent" do
+				header = {
+					identifier: 'echo',
+			        type: 'service'
+				}
+				attributes = {
+					description: 'Mmmmm AppleTalk.'
+				}
+				msg = Arborist::TreeAPI.request( :graft, header, attributes )
+
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => false )
+				expect( hdr['reason'] ).to match( /no host given/i )
+			end
+
+		end
+
+
+		describe "modify" do
+
+			it "can change operational attributes of a node" do
+				header = {
+					identifier: 'sidonie',
+				}
+				attributes = {
+					parent: '_',
+					addresses: ['192.168.32.32', '10.2.2.28']
+				}
+				msg = Arborist::TreeAPI.request( :modify, header, attributes )
+
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+
+				node = manager.nodes[ 'sidonie' ]
+				expect(
+					node.addresses
+				).to eq( [IPAddr.new('192.168.32.32'), IPAddr.new('10.2.2.28')] )
+				expect( node.parent ).to eq( '_' )
+			end
+
+
+			it "ignores modifications to unsupported attributes" do
+				header = {
+					identifier: 'sidonie',
+				}
+				attributes = {
+					identifier: 'somethingelse'
+				}
+				msg = Arborist::TreeAPI.request( :modify, header, attributes )
+
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+
+				expect( manager.nodes['sidonie'] ).to be_an( Arborist::Node )
+				expect( manager.nodes['sidonie'].identifier ).to eq( 'sidonie' )
+			end
+
+
+			it "errors on modifications to the root node" do
+				header = {
+					identifier: '_',
+				}
+				attributes = {
+					identifier: 'somethingelse'
+				}
+				msg = Arborist::TreeAPI.request( :modify, header, attributes )
+
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => false )
+				expect( manager.nodes['_'].identifier ).to eq( '_' )
+			end
+
+
+			it "errors on modifications to nonexistent nodes" do
+				header = {
+					identifier: 'nopenopenope',
+				}
+				attributes = {
+					identifier: 'somethingelse'
+				}
+				msg = Arborist::TreeAPI.request( :modify, header, attributes )
+
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => false )
+			end
+		end
+
+
+		describe "malformed requests" do
+
+			it "send an error response if the request can't be deserialized" do
+				sock << "whatevs, dude!"
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include(
+					'success'  => false,
+					'reason'   => /invalid message/i,
+					'category' => 'client'
+				)
+				expect( body ).to be_nil
+			end
+
+
+			it "send an error response if the request isn't a tuple" do
+				sock << MessagePack.pack({ version: 1, action: 'list' })
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include(
+					'success'  => false,
+					'reason'   => /invalid message.*not an array/i,
+					'category' => 'client'
+				)
+				expect( body ).to be_nil
+			end
+
+
+			it "send an error response if the request is empty" do
+				sock << MessagePack.pack([])
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include(
+					'success'  => false,
+					'reason'   => /invalid message.*expected 1-2 parts, got 0/i,
+					'category' => 'client'
+				)
+				expect( body ).to be_nil
+			end
+
+
+			it "send an error response if the request is an incorrect length" do
+				sock << MessagePack.pack( [{}, {}, {}] )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include(
+					'success'  => false,
+					'reason'   => /expected 1-2 parts, got 3/i,
+					'category' => 'client'
+				)
+				expect( body ).to be_nil
+			end
+
+
+			it "send an error response if the request's header is not a Map" do
+				sock << MessagePack.pack( [nil, {}] )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include(
+					'success'  => false,
+					'reason'   => /no header/i,
+					'category' => 'client'
+				)
+				expect( body ).to be_nil
+			end
+
+
+			it "send an error response if the request's body is not Nil, a Map, or an Array of Maps" do
+				sock << MessagePack.pack( [{version: 1, action: 'list'}, 18] )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include(
+					'success'  => false,
+					'reason'   => /invalid message.*body must be nil, a map, or an array of maps/i,
+					'category' => 'client'
+				)
+				expect( body ).to be_nil
+			end
+
+
+			it "send an error response if missing a version" do
+				sock << MessagePack.pack( [{action: 'list'}] )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include(
+					'success'  => false,
+					'reason'   => /invalid message.*missing required header 'version'/i,
+					'category' => 'client'
+				)
+				expect( body ).to be_nil
+			end
+
+
+			it "send an error response if missing an action" do
+				sock << MessagePack.pack( [{version: 1}] )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include(
+					'success'  => false,
+					'reason'   => /invalid message.*missing required header 'action'/i,
+					'category' => 'client'
+				)
+				expect( body ).to be_nil
+			end
+
+
+			it "send an error response for unknown actions" do
+				badmsg = Arborist::TreeAPI.request( :slap )
+				badmsg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include(
+					'success'  => false,
+					'reason'   => /invalid message.*no such action 'slap'/i,
+					'category' => 'client'
+				)
+				expect( body ).to be_nil
+			end
+		end
+	end
+
+
+	describe "event API" do
+
+		before( :each ) do
+			@manager = nil
+			@manager_thread = Thread.new do
+				@manager = make_testing_manager()
+				Thread.current.abort_on_exception = true
+				@manager.run
+				Loggability[ Arborist ].info "Stopped the test manager"
+			end
+
+			count = 0
+			until (@manager && @manager.running?) || count > 30
+				sleep 0.1
+				count += 1
+			end
+			raise "Manager didn't start up" unless @manager.running?
+		end
+
+		after( :each ) do
+			@manager.simulate_signal( :TERM )
+			unless @manager_thread.join( 5 )
+				$stderr.puts "Manager thread didn't exit on its own; killing it."
+				@manager_thread.kill
+			end
+
+			count = 0
+			while @manager.running? || count > 30
+				sleep 0.1
+				Loggability[ Arborist ].info "Manager still running"
+				count += 1
+			end
+			raise "Manager didn't stop" if @manager.running?
+		end
+
+
+		let( :manager ) { @manager }
+
+		let!( :sock ) do
+			sock = CZTop::Socket::SUB.new
+			sock.options.linger = 0
+			sock.subscribe( '' )
+			event_uri = manager.event_socket.last_endpoint
+			sock.connect( event_uri )
+			Loggability[ Arborist ].info "Connected subscribed socket to %p" % [ event_uri ]
+			sock
+		end
+
+
+		it "publishes messages via the event socket" do
+			node = Arborist::Node.create( :root )
+			event = Arborist::Event.create( :node_update, node )
+			manager.publish( 'identifier-00aa', event )
+
+			msg = nil
+			wait( 1.second ).for { msg = sock.receive }.to be_a( CZTop::Message )
+
+			expect( msg.frames.first.to_s ).to eq( 'identifier-00aa' )
+			expect( msg.frames.last.to_s ).to be_a_messagepacked( Hash )
 		end
 
 	end
@@ -589,77 +1449,6 @@ describe Arborist::Manager do
 	end
 
 
-	describe "sockets" do
-
-		let( :zmq_context ) { Arborist.zmq_context }
-		let( :zmq_loop ) { instance_double(ZMQ::Loop) }
-		let( :tree_sock ) { instance_double(ZMQ::Socket::Rep, "tree API socket") }
-		let( :event_sock ) { instance_double(ZMQ::Socket::Pub, "event socket") }
-		let( :tree_pollitem ) { instance_double(ZMQ::Pollitem, "tree API pollitem") }
-		let( :event_pollitem ) { instance_double(ZMQ::Pollitem, "event API pollitem") }
-		let( :signal_timer ) { instance_double(ZMQ::Timer, "signal timer") }
-
-
-		before( :each ) do
-			allow( ZMQ::Loop ).to receive( :new ).and_return( zmq_loop )
-
-			allow( zmq_context ).to receive( :socket ).with( :REP ).and_return( tree_sock )
-			allow( zmq_context ).to receive( :socket ).with( :PUB ).and_return( event_sock )
-
-			allow( zmq_loop ).to receive( :verbose= )
-			allow( zmq_loop ).to receive( :remove ).with( tree_pollitem )
-			allow( zmq_loop ).to receive( :remove ).with( event_pollitem )
-
-			allow( tree_pollitem ).to receive( :pollable ).and_return( tree_sock )
-			allow( tree_sock ).to receive( :close )
-			allow( event_pollitem ).to receive( :pollable ).and_return( event_sock )
-			allow( event_sock ).to receive( :close )
-
-			allow( tree_sock ).to receive( :bind ).with( Arborist.tree_api_url )
-			allow( tree_sock ).to receive( :linger= )
-
-			allow( event_sock ).to receive( :bind ).with( Arborist.event_api_url )
-			allow( event_sock ).to receive( :linger= )
-
-			allow( ZMQ::Pollitem ).to receive( :new ).with( tree_sock, ZMQ::POLLIN|ZMQ::POLLOUT ).
-				and_return( tree_pollitem )
-			allow( ZMQ::Pollitem ).to receive( :new ).with( event_sock, ZMQ::POLLOUT ).
-				and_return( event_pollitem )
-
-			allow( tree_pollitem ).to receive( :handler= ).
-				with( an_instance_of(Arborist::Manager::TreeAPI) )
-			allow( zmq_loop ).to receive( :register ).with( tree_pollitem )
-			allow( event_pollitem ).to receive( :handler= ).
-				with( an_instance_of(Arborist::Manager::EventPublisher) )
-			allow( zmq_loop ).to receive( :register ).with( event_pollitem )
-		end
-
-
-		it "starts handling signals and events when started" do
-			expect( ZMQ::Timer ).to receive( :new ).
-				with( described_class::SIGNAL_INTERVAL, 0, manager.method(:process_signal_queue) ).
-				and_return( signal_timer )
-			expect( zmq_loop ).to receive( :register_timer ).with( signal_timer )
-			expect( zmq_loop ).to receive( :register_timer ).with( manager.heartbeat_timer )
-			expect( zmq_loop ).to receive( :start )
-
-			expect( zmq_loop ).to receive( :remove ).with( tree_pollitem )
-			expect( zmq_loop ).to receive( :remove ).with( event_pollitem )
-
-			manager.run
-
-			expect( manager.event_publisher.event_queue.length ).to eq( 1 )
-
-			event = manager.event_publisher.event_queue.first
-			expect( event.first ).to eq( 'sys.startup' )
-
-			payload = unpack_message( event.last )
-			expect( payload ).to include(
-				'start_time' => an_instance_of(String),
-				'version' => an_instance_of(String)
-			)
-		end
-
-	end
 end
+
 

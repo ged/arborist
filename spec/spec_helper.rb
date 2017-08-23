@@ -4,6 +4,7 @@
 require 'pathname'
 require 'simplecov' if ENV['COVERAGE']
 require 'rspec'
+require 'rspec/wait'
 require 'loggability/spechelpers'
 require 'msgpack'
 
@@ -27,6 +28,52 @@ RSpec::Matchers.define( :match_criteria ) do |criteria|
 		criteria = Arborist::HashUtilities.stringify_keys( criteria )
 		node.matches?( criteria )
 	end
+end
+
+
+class BeMessagepacked
+
+	def initialize( expected_type )
+		@expected_type = expected_type
+		@actual_value = nil
+		@decoded = nil
+		@exception = nil
+	end
+
+
+	def matches?( actual_value )
+		@actual_value = actual_value
+		@decoded = MessagePack.unpack( actual_value )
+		return @decoded.is_a?( @expected_type )
+	rescue => err
+		@exception = err
+		return false
+	end
+
+
+	def failure_reason
+		if @exception && @exception.is_a?( MessagePack::MalformedFormatError )
+			return "it was not formatted correctly: %s" % [ @exception.message ]
+		elsif @exception
+			return "there was a %p when trying to decode it: %s" %
+				[ @exception.class, @exception.message ]
+		elsif @decoded && !@decoded.is_a?( @expected_type )
+			return "it was a msgpacked %p" % [ @decoded.class ]
+		else
+			return 'there was an unknown problem'
+		end
+	end
+
+
+	def failure_message
+		"expected %p to be a msgpacked %p but %s" % [ @actual_value, @expected_type, self.failure_reason ]
+	end
+
+
+	def failure_message_when_negated
+		"expected %p not to be a msgpacked %p, but it was" % [ @actual_value, @actual_value ]
+	end
+
 end
 
 
@@ -73,19 +120,6 @@ module Arborist::TestHelpers
 	end
 
 
-	def pack_message( verb, *data )
-		body = data.pop
-		header = data.pop || {}
-		header.merge!( action: verb, version: 1 )
-
-		return MessagePack.pack([ header, body ])
-	end
-
-
-	def unpack_message( msg )
-		return MessagePack.unpack( msg )
-	end
-
 
 	#
 	# Fixture Functions
@@ -100,6 +134,17 @@ module Arborist::TestHelpers
 		node = node_subclass.new( identifier, &block )
 		node.parent( parent ) if parent
 		return node
+	end
+
+
+	#
+	# Expectations
+	#
+
+	### Set an expectation that the receiving value is an instance of the
+	### +expected_class+ that's been encoded with msgpack.
+	def be_a_messagepacked( expected_class )
+		return BeMessagepacked.new( expected_class )
 	end
 
 end

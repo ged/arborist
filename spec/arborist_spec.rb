@@ -164,10 +164,5 @@ describe Arborist do
 		expect( described_class.observer_runner_for(loader) ).to be_a( Arborist::ObserverRunner )
 	end
 
-
-	it "has a ZMQ context" do
-		expect( described_class.zmq_context ).to be_a( ZMQ::Context )
-	end
-
 end
 

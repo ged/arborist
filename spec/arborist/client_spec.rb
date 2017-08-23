@@ -14,6 +14,7 @@ describe Arborist::Client do
 		before( :each ) do
 			@manager_thread = Thread.new do
 				@manager = make_testing_manager()
+				Loggability[ Arborist ].info "Starting a testing manager: %p" % [ @manager ]
 				Thread.current.abort_on_exception = true
 				@manager.run
 				Loggability[ Arborist ].info "Stopped the test manager"
@@ -24,27 +25,29 @@ describe Arborist::Client do
 				sleep 0.1
 				count += 1
 			end
-			raise "Manager didn't start up" unless @manager.running?
+			raise "Manager didn't start up" unless @manager && @manager.running?
 		end
 
 		after( :each ) do
-			@manager.simulate_signal( :TERM )
-			@manager_thread.join
+			if @manager
+				@manager.simulate_signal( :TERM )
+				@manager_thread.join
 
-			count = 0
-			while @manager.zmq_loop.running? || count > 30
-				sleep 0.1
-				Loggability[ Arborist ].info "ZMQ loop still running"
-				count += 1
+				count = 0
+				while @manager.running? || count > 30
+					sleep 0.1
+					Loggability[ Arborist ].info "Manager still running"
+					count += 1
+				end
+				raise "Manager didn't stop" if @manager.running?
 			end
-			raise "ZMQ Loop didn't stop" if @manager.zmq_loop.running?
 		end
 
 
 		let( :manager ) { @manager }
 
 
-		describe "high-level API" do
+		describe "high-level methods" do
 
 			it "provides a convenience method for acknowledging" do
 				manager.nodes['sidonie'].update( error: "Clown apocalypse" )
@@ -260,7 +263,8 @@ describe Arborist::Client do
 			it "can prune nodes from the tree" do
 				res = client.prune( 'sidonie-ssh' )
 
-				expect( res ).to eq( true )
+				expect( res ).to be_a( Hash )
+				expect( res ).to include( 'identifier' => 'sidonie-ssh' )
 				expect( manager.nodes ).to_not include( 'sidonie-ssh' )
 			end
 
@@ -273,7 +277,7 @@ describe Arborist::Client do
 
 			it "can graft new nodes onto the tree" do
 				res = client.graft( 'breakfast-burrito', type: 'host' )
-				expect( res ).to eq( 'breakfast-burrito' )
+				expect( res ).to eq({ 'identifier' => 'breakfast-burrito' })
 				expect( manager.nodes ).to include( 'breakfast-burrito' )
 				expect( manager.nodes['breakfast-burrito'] ).to be_a( Arborist::Node::Host )
 				expect( manager.nodes['breakfast-burrito'].parent ).to eq( '_' )
@@ -287,7 +291,7 @@ describe Arborist::Client do
 					port: 9999,
 					tags: ['yusss']
 				)
-				expect( res ).to eq( 'duir-breakfast-burrito' )
+				expect( res ).to eq({ 'identifier' => 'duir-breakfast-burrito' })
 				expect( manager.nodes ).to include( 'duir-breakfast-burrito' )
 				expect( manager.nodes['duir-breakfast-burrito'] ).to be_a( Arborist::Node::Service )
 				expect( manager.nodes['duir-breakfast-burrito'].parent ).to eq( 'duir' )
@@ -311,62 +315,58 @@ describe Arborist::Client do
 
 		it "can make a raw status request" do
 			req = client.make_status_request
-			expect( req ).to be_a( String )
-			expect( req.encoding ).to eq( Encoding::ASCII_8BIT )
+			expect( req ).to be_a( CZTop::Message )
 
-			msg = unpack_message( req )
-			expect( msg ).to be_an( Array )
-			expect( msg.first ).to be_a( Hash )
-			expect( msg.first ).to include( 'version', 'action' )
-			expect( msg.first['version'] ).to eq( Arborist::Client::API_VERSION )
-			expect( msg.first['action'] ).to eq( 'status' )
+			header, body = Arborist::TreeAPI.decode( req )
+
+			expect( header ).to be_a( Hash )
+			expect( header ).to include( 'version', 'action' )
+			expect( header['version'] ).to eq( Arborist::Client::API_VERSION )
+			expect( header['action'] ).to eq( 'status' )
 		end
 
 
 		it "can make a raw list request" do
 			req = client.make_list_request
-			expect( req ).to be_a( String )
-			expect( req.encoding ).to eq( Encoding::ASCII_8BIT )
+			expect( req ).to be_a( CZTop::Message )
 
-			msg = unpack_message( req )
-			expect( msg ).to be_an( Array )
-			expect( msg.first ).to be_a( Hash )
-			expect( msg.first ).to include( 'version', 'action' )
-			expect( msg.first ).to_not include( 'from' )
-			expect( msg.first['version'] ).to eq( Arborist::Client::API_VERSION )
-			expect( msg.first['action'] ).to eq( 'list' )
+			header, body = Arborist::TreeAPI.decode( req )
+
+			expect( header ).to be_a( Hash )
+			expect( header ).to include( 'version', 'action' )
+			expect( header ).to_not include( 'from' )
+			expect( header['version'] ).to eq( Arborist::Client::API_VERSION )
+			expect( header['action'] ).to eq( 'list' )
 		end
 
 
 		it "can make a raw fetch request" do
 			req = client.make_fetch_request( {} )
-			expect( req ).to be_a( String )
-			expect( req.encoding ).to eq( Encoding::ASCII_8BIT )
+			expect( req ).to be_a( CZTop::Message )
 
-			msg = unpack_message( req )
-			expect( msg ).to be_an( Array )
-			expect( msg.first ).to be_a( Hash )
-			expect( msg.first ).to include( 'version', 'action' )
-			expect( msg.first['version'] ).to eq( Arborist::Client::API_VERSION )
-			expect( msg.first['action'] ).to eq( 'fetch' )
+			header, body = Arborist::TreeAPI.decode( req )
 
-			expect( msg.last ).to eq([ {}, {} ])
+			expect( header ).to be_a( Hash )
+			expect( header ).to include( 'version', 'action' )
+			expect( header['version'] ).to eq( Arborist::Client::API_VERSION )
+			expect( header['action'] ).to eq( 'fetch' )
+
+			expect( body ).to eq([ {}, {} ])
 		end
 
 
 		it "can make a raw fetch request with criteria" do
 			req = client.make_fetch_request( {type: 'host'} )
-			expect( req ).to be_a( String )
-			expect( req.encoding ).to eq( Encoding::ASCII_8BIT )
+			expect( req ).to be_a( CZTop::Message )
 
-			msg = unpack_message( req )
-			expect( msg ).to be_an( Array )
-			expect( msg.first ).to be_a( Hash )
-			expect( msg.first ).to include( 'version', 'action' )
-			expect( msg.first['version'] ).to eq( Arborist::Client::API_VERSION )
-			expect( msg.first['action'] ).to eq( 'fetch' )
+			header, body = Arborist::TreeAPI.decode( req )
 
-			body = msg.last
+			expect( header ).to be_a( Hash )
+			expect( header ).to include( 'version', 'action' )
+			expect( header['version'] ).to eq( Arborist::Client::API_VERSION )
+			expect( header['action'] ).to eq( 'fetch' )
+
+			body = body
 			expect( body.first ).to be_a( Hash )
 			expect( body.first ).to include( 'type' )
 			expect( body.first['type'] ).to eq( 'host' )
@@ -375,19 +375,18 @@ describe Arborist::Client do
 
 		it "can make a raw update request" do
 			req = client.make_update_request( duir: {error: "Something happened."} )
-			expect( req ).to be_a( String )
-			expect( req.encoding ).to eq( Encoding::ASCII_8BIT )
+			expect( req ).to be_a( CZTop::Message )
 
-			msg = unpack_message( req )
-			expect( msg ).to be_an( Array )
-			expect( msg.first ).to be_a( Hash )
-			expect( msg.first ).to include( 'version', 'action' )
-			expect( msg.first['version'] ).to eq( Arborist::Client::API_VERSION )
-			expect( msg.first['action'] ).to eq( 'update' )
+			header, body = Arborist::TreeAPI.decode( req )
 
-			expect( msg.last ).to be_a( Hash )
-			expect( msg.last ).to include( 'duir' )
-			expect( msg.last['duir'] ).to eq( 'error' => 'Something happened.' )
+			expect( header ).to be_a( Hash )
+			expect( header ).to include( 'version', 'action' )
+			expect( header['version'] ).to eq( Arborist::Client::API_VERSION )
+			expect( header['action'] ).to eq( 'update' )
+
+			expect( body ).to be_a( Hash )
+			expect( body ).to include( 'duir' )
+			expect( body['duir'] ).to eq( 'error' => 'Something happened.' )
 		end
 
 	end

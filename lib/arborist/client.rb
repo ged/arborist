@@ -1,8 +1,10 @@
 # -*- ruby -*-
 #encoding: utf-8
 
-require 'arborist' unless defined?( Arborist )
 require 'msgpack'
+
+require 'arborist' unless defined?( Arborist )
+require 'arborist/tree_api'
 
 
 # Unified Arborist Manager client for both the Tree and Event APIs
@@ -30,10 +32,10 @@ class Arborist::Client
 	public
 	######
 
-	# The ZMQ URI required to speak to the Arborist tree API.
+	# The ZeroMQ URI required to speak to the Arborist tree API.
 	attr_accessor :tree_api_url
 
-	# The ZMQ URI required to speak to the Arborist event API.
+	# The ZeroMQ URI required to speak to the Arborist event API.
 	attr_accessor :event_api_url
 
 
@@ -87,7 +89,7 @@ class Arborist::Client
 
 	### Return the manager's current status as a hash.
 	def make_status_request
-		return self.pack_message( :status )
+		return Arborist::TreeAPI.request( :status )
 	end
 
 
@@ -105,7 +107,7 @@ class Arborist::Client
 		header[:from] = from if from
 		header[:depth] = depth if depth
 
-		return self.pack_message( :list, header )
+		return Arborist::TreeAPI.request( :list, header, nil )
 	end
 
 
@@ -122,7 +124,7 @@ class Arborist::Client
 		header[ :include_down ] = true if include_down
 		header[ :return ] = properties if properties != :all
 
-		return self.pack_message( :fetch, header, [ criteria, exclude ] )
+		return Arborist::TreeAPI.request( :fetch, header, [ criteria, exclude ] )
 	end
 
 
@@ -136,7 +138,7 @@ class Arborist::Client
 
 	### Update the identified nodes in the manager with the specified data.
 	def make_update_request( data )
-		return self.pack_message( :update, nil, data )
+		return Arborist::TreeAPI.request( :update, nil, data )
 	end
 
 
@@ -144,7 +146,7 @@ class Arborist::Client
 	def subscribe( **args )
 		request = self.make_subscribe_request( **args )
 		response = self.send_tree_api_request( request )
-		return response.first
+		return response['id']
 	end
 
 
@@ -156,7 +158,7 @@ class Arborist::Client
 		header[ :identifier ] = identifier if identifier
 		header[ :event_type ] = event_type
 
-		return self.pack_message( :subscribe, header, [ criteria, exclude ] )
+		return Arborist::TreeAPI.request( :subscribe, header, [ criteria, exclude ] )
 	end
 
 
@@ -172,7 +174,7 @@ class Arborist::Client
 	def make_unsubscribe_request( subid )
 		self.log.debug "Making unsubscribe request for subid: %s" % [ subid ]
 
-		return self.pack_message( :unsubscribe, subscription_id: subid )
+		return Arborist::TreeAPI.request( :unsubscribe, {subscription_id: subid}, nil )
 	end
 
 
@@ -188,7 +190,7 @@ class Arborist::Client
 	def make_prune_request( identifier )
 		self.log.debug "Making prune request for identifier: %s" % [ identifier ]
 
-		return self.pack_message( :prune, identifier: identifier )
+		return Arborist::TreeAPI.request( :prune, {identifier: identifier}, nil )
 	end
 
 
@@ -213,7 +215,7 @@ class Arborist::Client
 			type:       type
 		}
 
-		return self.pack_message( :graft, header, attributes )
+		return Arborist::TreeAPI.request( :graft, header, attributes )
 	end
 
 
@@ -229,7 +231,7 @@ class Arborist::Client
 	def make_modify_request( identifier, attributes={} )
 		self.log.debug "Making modify request for identifer: %s" % [ identifier ]
 
-		return self.pack_message( :modify, {identifier: identifier}, attributes )
+		return Arborist::TreeAPI.request( :modify, {identifier: identifier}, attributes )
 	end
 
 
@@ -237,12 +239,12 @@ class Arborist::Client
 	### unsuccessful response, and return the response body.
 	def send_tree_api_request( request )
 		self.log.debug "Sending request: %p" % [ request ]
-		self.tree_api.send( request )
+		request.send_to( self.tree_api )
 
-		res = self.tree_api.recv
+		res = CZTop::Message.receive_from( self.tree_api )
 		self.log.debug "Received response: %p" % [ res ]
 
-		header, body = self.unpack_message( res )
+		header, body = Arborist::TreeAPI.decode( res )
 		unless header[ 'success' ]
 			raise "Arborist manager said: %s" % [ header['reason'] ]
 		end
@@ -255,26 +257,7 @@ class Arborist::Client
 	# Utility methods
 	#
 
-	### Format ruby +data+ for communicating with the Arborist manager.
-	def pack_message( verb, *data )
-		header = data.shift || {}
-		body   = data.shift
-
-		header.merge!( action: verb, version: API_VERSION )
-
-		self.log.debug "Packing message; header: %p, body: %p" % [ header, body ]
-
-		return MessagePack.pack([ header, body ])
-	end
-
-
-	### De-serialize an Arborist manager response.
-	def unpack_message( msg )
-		return MessagePack.unpack( msg )
-	end
-
-
-	### Return a ZMQ REQ socket connected to the manager's tree API, instantiating
+	### Return a ZeroMQ REQ socket connected to the manager's tree API, instantiating
 	### it if necessary.
 	def tree_api
 		return @tree_api ||= self.make_tree_api_socket
@@ -284,10 +267,7 @@ class Arborist::Client
 	### Create a new ZMQ REQ socket connected to the manager's tree API.
 	def make_tree_api_socket
 		self.log.info "Connecting to the tree socket %p" % [ self.tree_api_url ]
-		sock = Arborist.zmq_context.socket( :REQ )
-		sock.connect( self.tree_api_url )
-
-		return sock
+		return CZTop::Socket::REQ.new( self.tree_api_url )
 	end
 
 
@@ -301,10 +281,7 @@ class Arborist::Client
 	### Create a new ZMQ SUB socket connected to the manager's event API.
 	def make_event_api_socket
 		self.log.info "Connecting to the event socket %p" % [ self.event_api_url ]
-		sock = Arborist.zmq_context.socket( :SUB )
-		sock.connect( self.event_api_url )
-
-		return sock
+		return CZTop::Socket::SUB.new( self.event_api_url )
 	end
 
 end # class Arborist::Client

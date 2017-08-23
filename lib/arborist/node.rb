@@ -920,8 +920,8 @@ class Arborist::Node
 
 
 	### Return a Hash of the node's state.
-	def to_h
-		return {
+	def to_h( deep: false )
+		hash = {
 			identifier: self.identifier,
 			type: self.class.name.to_s.sub( /.+::/, '' ).downcase,
 			parent: self.parent,
@@ -937,6 +937,14 @@ class Arborist::Node
 			dependencies: self.dependencies.to_h,
 			quieted_reasons: self.quieted_reasons,
 		}
+
+		if deep
+			hash[ :children ] = self.children.each_with_object( {} ) do |(ident, node), h|
+				h[ ident ] = node.to_h( deep )
+			end
+		end
+
+		return hash
 	end
 
 

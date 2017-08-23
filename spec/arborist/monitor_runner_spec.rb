@@ -3,19 +3,14 @@
 require_relative '../spec_helper'
 
 require 'arborist/monitor_runner'
-
+require 'arborist/node/root'
 
 describe Arborist::MonitorRunner do
 
-	let( :zmq_loop ) { instance_double(ZMQ::Loop) }
 	let( :req_socket ) { instance_double(ZMQ::Socket::Req) }
-	let( :pollitem ) { instance_double(ZMQ::Pollitem) }
 
-	let( :runner ) do
-		obj = described_class.new
-		obj.reactor = zmq_loop
-		obj
-	end
+	let( :reactor ) { instance_double(CZTop::Reactor) }
+	let( :runner ) { described_class.new }
 
 	let( :monitor_class ) { Class.new(Arborist::Monitor) }
 
@@ -23,74 +18,6 @@ describe Arborist::MonitorRunner do
 	let( :mon2 ) { monitor_class.new("testing monitor2", :testing) { splay 10 } }
 	let( :mon3 ) { monitor_class.new("testing monitor3", :testing) }
 	let( :monitors ) {[ mon1, mon2, mon3 ]}
-
-
-	it "can load monitors from an enumerator that yields Arborist::Monitors" do
-		runner.load_monitors([ mon1, mon2, mon3 ])
-		expect( runner.monitors ).to include( mon1, mon2, mon3 )
-	end
-
-
-	describe "a runner with loaded monitors" do
-
-		before( :each ) do
-			allow( zmq_loop ).to receive( :register ).with( an_instance_of(ZMQ::Pollitem) )
-		end
-
-
-		it "registers its monitors to run on an interval and starts the ZMQ loop when run" do
-			runner.monitors.replace([ mon1 ])
-
-			interval_timer = instance_double( ZMQ::Timer )
-			expect( ZMQ::Timer ).to receive( :new ) do |i_delay, i_repeat, &i_block|
-				expect( i_delay ).to eq( mon1.interval )
-				expect( i_repeat ).to eq( 0 )
-
-				expect( runner.handler ).to receive( :run_monitor ).with( mon1 )
-
-				i_block.call
-				interval_timer
-			end
-
-			expect( zmq_loop ).to receive( :register_timer ).with( interval_timer )
-			expect( zmq_loop ).to receive( :start )
-
-			runner.run
-		end
-
-
-		it "delays registration of its interval timer if a monitor has a splay" do
-			runner.monitors.replace([ mon2 ])
-
-			interval_timer = instance_double( ZMQ::Timer )
-			expect( ZMQ::Timer ).to receive( :new ).with( mon2.interval, 0 ).
-				and_return( interval_timer )
-
-			timer = instance_double( ZMQ::Timer )
-			expect( ZMQ::Timer ).to receive( :new ) do |delay, repeat, &block|
-				expect( delay ).to be >= 0
-				expect( delay ).to be <= mon2.splay
-				expect( repeat ).to eq( 1 )
-
-				block.call
-				timer
-			end
-
-			expect( zmq_loop ).to receive( :register_timer ).with( interval_timer )
-			expect( zmq_loop ).to receive( :register_timer ).with( timer )
-			expect( zmq_loop ).to receive( :start )
-
-			runner.run
-		end
-
-	end
-
-
-	describe Arborist::MonitorRunner::Handler do
-
-		let( :tree_api_handler ) { Arborist::Manager::TreeAPI.new(:pollable, :manager) }
-
-		let( :handler ) { described_class.new( zmq_loop ) }
 
 		let( :node_tree ) {{
 			'router' => {
@@ -106,44 +33,78 @@ describe Arborist::MonitorRunner do
 		}}
 
 
-		it "can run a monitor using async ZMQ IO" do
-			expect( zmq_loop ).to receive( :register ).with( handler.pollitem )
+	before( :each ) do
+		allow( CZTop::Reactor ).to receive( :new ).and_return( reactor )
+		allow( reactor ).to receive( :register )
+		allow( reactor ).to receive( :unregister )
+	end
 
-			# Queue up the monitor requests and register the socket as wanting to write
+
+	it "can load monitors from an enumerator that yields Arborist::Monitors" do
+		runner.load_monitors([ mon1, mon2, mon3 ])
+		expect( runner.monitors ).to include( mon1, mon2, mon3 )
+	end
+
+
+	describe "a runner with loaded monitors" do
+
+		it "registers its monitors to run on an interval and starts the ZMQ loop when run" do
+			runner.monitors.replace([ mon1 ])
+
+			expect( reactor ).to receive( :add_periodic_timer ).with( mon1.interval )
+			expect( reactor ).to receive( :start_polling )
+
+			runner.run
+		end
+
+
+		it "delays registration of its interval timer if a monitor has a splay" do
+			runner.monitors.replace([ mon2 ])
+
+			expect( reactor ).to receive( :add_oneshot_timer ).
+				with( a_value_between(0, mon2.splay) ).and_yield
+			expect( reactor ).to receive( :add_periodic_timer ).with( mon2.interval )
+			expect( reactor ).to receive( :start_polling )
+
+			runner.run
+		end
+
+
+		it "can run a monitor using async ZMQ IO" do
+
+			# Set up the monitor's execution block with fixtured data
 			mon1.exec do |nodes|
 				ping_monitor_data
 			end
-			expect {
-				handler.run_monitor( mon1 )
-			}.to change { handler.registered? }.from( false ).to( true )
 
-			# Fetch
-			request = handler.client.make_fetch_request(
-				mon1.positive_criteria,
-				include_down: false,
-				properties: mon1.node_properties
-			)
-			response = tree_api_handler.successful_response( node_tree )
+			expect( reactor ).to receive( :event_enabled? ).with( runner.client.tree_api, :write ).
+				at_least( :once ).
+				and_return( true )
 
-			expect( handler.client.tree_api ).to receive( :send ).with( request )
-			expect( handler.client.tree_api ).to receive( :recv ).and_return( response )
 
-			expect {
-				handler.on_writable
-			}.to_not change { handler.registered? }
+			fetch_request = instance_double( CZTop::Message )
+			fetch_response = Arborist::TreeAPI.successful_response( node_tree )
+			update_request = instance_double( CZTop::Message )
+			update_response = Arborist::TreeAPI.successful_response( nil )
 
-			# Update
-			request = handler.client.make_update_request( ping_monitor_data )
-			response = tree_api_handler.successful_response( nil )
-			expect( handler.client.tree_api ).to receive( :send ).with( request )
-			expect( handler.client.tree_api ).to receive( :recv ).and_return( response )
+			expect( CZTop::Message ).to receive( :new ).and_return( fetch_request, update_request )
+			expect( fetch_request ).to receive( :send_to ).with( runner.client.tree_api )
+			expect( update_request ).to receive( :send_to ).with( runner.client.tree_api )
+			expect( CZTop::Message ).to receive( :receive_from ).with( runner.client.tree_api ).
+				and_return( fetch_response, update_response )
+			expect( reactor ).to receive( :disable_events ).with( runner.client.tree_api, :write )
 
-			# Unregister
-			expect( zmq_loop ).to receive( :remove ).with( handler.pollitem )
-			expect {
-				handler.on_writable
-			}.to change { handler.registered? }.from( true ).to( false )
+			runner.run_monitor( mon1 )
 
+			# trigger the fetch request
+			fetch_event = instance_double( CZTop::Reactor::Event,
+				writable?: true, socket: runner.client.tree_api )
+			runner.handle_io_event( fetch_event )
+
+			# trigger the update request
+			update_event = instance_double( CZTop::Reactor::Event,
+				writable?: true, socket: runner.client.tree_api )
+			runner.handle_io_event( update_event )
 		end
 
 
@@ -159,23 +120,25 @@ describe Arborist::MonitorRunner do
 			nodes = { 'test1' => {}, 'test2' => {} }
 			monitor_results = { 'test1' => {ping: {rtt: 1}}, 'test2' => {ping: {rtt: 8}} }
 
-			expect( handler ).to receive( :fetch ).
+			expect( runner ).to receive( :fetch ).
 				with( {type: 'host'}, false, [:addresses], {} ).
 				and_yield( nodes )
 
 			expect( monitor ).to receive( :run ).with( nodes ).
 				and_return( monitor_results )
 
-			expect( handler ).to receive( :update ).
+			expect( runner ).to receive( :update ).
 				with({
 					"test1"=>{:ping=>{:rtt=>1}, "_monitor_key"=>:test},
 					"test2"=>{:ping=>{:rtt=>8}, "_monitor_key"=>:test}
 				})
 
-			handler.run_monitor( monitor )
+			runner.run_monitor( monitor )
 		end
 
 	end
+
+
 
 end
 
