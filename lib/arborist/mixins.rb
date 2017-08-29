@@ -86,6 +86,17 @@ module Arborist
 			attr_predicate( attrname )
 		end
 
+
+		### Create an method that is both a reader and a writer for an instance
+		### variable. If called with a (non-nil) argument, it will set the variable to
+		### the new value. It returns whatever the instance variable is set to.
+		def dsl_accessor( attrname )
+			define_method( attrname ) do |arg=nil|
+				instance_variable_set( "@#{attrname}", arg ) unless arg.nil?
+				return instance_variable_get( "@#{attrname}" )
+			end
+		end
+
 	end # module MethodUtilities
 
 

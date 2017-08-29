@@ -82,11 +82,30 @@ describe Arborist, "mixins" do
 			expect( extended_class ).to respond_to( :foo? )
 		end
 
+
 		it "can declare a class-level predicate method" do
 			extended_class.singleton_predicate_reader :foo
 			expect( extended_class ).to_not respond_to( :foo )
 			expect( extended_class ).to_not respond_to( :foo= )
 			expect( extended_class ).to respond_to( :foo? )
+		end
+
+
+		it "can declare an instance DSLish accessor" do
+			extended_class.dsl_accessor( :foo )
+			instance = extended_class.new
+
+			instance.foo( 13 )
+			expect( instance.foo ).to eq( 13 )
+		end
+
+
+		it "the instance DSLish accessor works with a `false` argument" do
+			extended_class.dsl_accessor( :foo )
+			instance = extended_class.new
+
+			instance.foo( false )
+			expect( instance.foo ).to equal( false )
 		end
 
 	end
