@@ -16,9 +16,11 @@ bin/arborist
 lib/arborist.rb
 lib/arborist/cli.rb
 lib/arborist/client.rb
+lib/arborist/command/ack.rb
 lib/arborist/command/client.rb
 lib/arborist/command/config.rb
 lib/arborist/command/start.rb
+lib/arborist/command/tree.rb
 lib/arborist/command/watch.rb
 lib/arborist/dependency.rb
 lib/arborist/event.rb

@@ -410,6 +410,7 @@ class Arborist::Monitor
 	### external command.
 	def exec_callbacks( mod )
 		self.log.info "Setting exec callbacks handler to: %p" % [ mod.name ]
+		@node_properties |= mod.node_properties if mod.respond_to?( :node_properties )
 		self.exec_callbacks_mod = mod
 	end
 

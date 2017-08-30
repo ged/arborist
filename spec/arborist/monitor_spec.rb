@@ -371,5 +371,34 @@ describe Arborist::Monitor do
 		expect( results['leaf'] ).to eq({ echoed: 'yep' })
 	end
 
+
+	it "uses node properties specified by the exec_callbacks module if it provides them" do
+		the_module = Module.new do
+
+			def self::node_properties
+				%i[ uri http_method body mimetype ]
+			end
+
+			def exec_input( nodes, writer )
+				writer.puts( nodes.keys )
+			end
+
+			def handle_results( pid, out, err )
+				err.flush
+				return out.each_line.with_object({}) do |line, accum|
+					accum[ line.chomp ] = { echoed: 'yep' }
+				end
+			end
+
+		end
+
+		mon = described_class.new( "the description", :testing ) do
+			exec 'cat'
+			exec_callbacks( the_module )
+		end
+
+		expect( mon.node_properties ).to include( :uri, :http_method, :body, :mimetype )
+	end
+
 end
 
