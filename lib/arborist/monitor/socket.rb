@@ -25,8 +25,8 @@ module Arborist::Monitor::Socket
 			timeout: 2.seconds
 		}
 
-		# Always request the node addresses.
-		USED_PROPERTIES = [ :addresses ].freeze
+		# Always request the node addresses and port.
+		USED_PROPERTIES = [ :addresses, :port ].freeze
 
 
 		### Instantiate a monitor check and run it for the specified +nodes+.
@@ -182,10 +182,19 @@ module Arborist::Monitor::Socket
 			timeout: 0.001
 		}
 
+		# Always request the node addresses and port.
+		USED_PROPERTIES = [ :addresses, :port ].freeze
+
 
 		### Instantiate a monitor check and run it for the specified +nodes+.
 		def self::run( nodes )
 			return self.new.run( nodes )
+		end
+
+
+		### Return the properties used by this monitor.
+		def self::node_properties
+			return USED_PROPERTIES
 		end
 
 
