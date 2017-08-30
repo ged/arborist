@@ -123,7 +123,8 @@ class Arborist::Node
 		event :update do
 			transition [:up, :unknown] => :disabled, if: :ack_set?
 			transition [:down, :unknown, :acked] => :up, unless: :has_errors?
-			transition [:up, :unknown, :acked] => :down, if: :has_errors?
+			transition [:up, :unknown] => :down, if: :has_errors?
+			transition :acked => :down, if: :has_unacked_errors?
 			transition :down => :acked, if: :ack_set?
 			transition :disabled => :unknown, unless: :ack_set?
 		end
@@ -1044,6 +1045,13 @@ class Arborist::Node
 			[ has_errors ? "did not" : "did" ]
 		self.log.debug "Errors are: %p" % [ self.errors ]
 		return has_errors
+	end
+
+
+	### State machine guard predicate -- Returns +true+ if the node is has errors
+	### and does not have an ACK status set.
+	def has_unacked_errors?
+		return self.has_errors? && !self.ack_set?
 	end
 
 
