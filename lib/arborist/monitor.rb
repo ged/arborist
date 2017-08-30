@@ -363,7 +363,9 @@ class Arborist::Monitor
 			self.log.warn "Ignored block with exec %s (%p)" % [ command.first, block ] if block
 
 			if command.first.respond_to?( :run )
-				@exec_block = command.first.method( :run )
+				runner = command.first
+				@exec_block = runner.method( :run )
+				@node_properties |= runner.node_properties if runner.respond_to?( :node_properties )
 			else
 				@exec_command = command
 			end

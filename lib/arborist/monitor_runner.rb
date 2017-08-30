@@ -119,6 +119,8 @@ class Arborist::MonitorRunner
 		include_down = monitor.include_down?
 		props        = monitor.node_properties
 
+		self.log.info "Running %s monitor" % [ monitor.description || monitor.class.name ]
+
 		self.log.debug "Fetching node data for %p" % [ monitor ]
 		self.search( positive, include_down, props, negative ) do |nodes|
 			self.log.debug "  running the monitor for %d nodes" % [ nodes.length ]

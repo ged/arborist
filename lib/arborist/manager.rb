@@ -336,8 +336,15 @@ class Arborist::Manager
 	### Register a periodic timer that will save a snapshot of the node tree's state to the state
 	### file on a configured interval if one is configured.
 	def register_checkpoint_timer
-		return nil unless self.class.state_file
-		interval = self.class.checkpoint_frequency or return nil
+		unless self.class.state_file
+			self.log.info "No state file configured; skipping checkpoint timer setup."
+			return nil
+		end
+		interval = self.class.checkpoint_frequency
+		unless interval && interval.nonzero?
+			self.log.info "Checkpoint frequency is %p; skipping checkpoint timer setup." % [ interval ]
+			return nil
+		end
 
 		self.log.info "Setting up node state checkpoint every %0.3fs" % [ interval ]
 		@checkpoint_timer = self.reactor.add_periodic_timer( interval ) do
@@ -564,7 +571,7 @@ class Arborist::Manager
 	### Set up the ZeroMQ REP socket for the Tree API.
 	def setup_tree_socket
 		@tree_socket = CZTop::Socket::REP.new
-		self.log.debug "  binding the tree API socket (%#0x) to %p" %
+		self.log.info "  binding the tree API socket (%#0x) to %p" %
 			[ @tree_socket.object_id * 2, Arborist.tree_api_url ]
 		@tree_socket.options.linger = 0
 		@tree_socket.bind( Arborist.tree_api_url )
@@ -595,10 +602,7 @@ class Arborist::Manager
 		raise "Manager is shutting down" unless self.running?
 
 		header, body = Arborist::TreeAPI.decode( raw_request )
-		raise Arborist::MessageError, "missing required header 'action'" unless
-			header.key?( 'action' )
-		handler = self.lookup_tree_request_action( header ) or
-			raise Arborist::MessageError, "No such action '%s'" % [ header['action'] ]
+		handler = self.lookup_tree_request_action( header )
 
 		return handler.call( header, body )
 
@@ -624,19 +628,19 @@ class Arborist::Manager
 		raise Arborist::MessageError, "unsupported version %d" % [ header['version'] ] unless
 			header['version'] == 1
 
-		action = header['action'] or return nil
-		return nil unless VALID_TREEAPI_ACTIONS.include?( action )
+		action = header['action'] or
+			raise Arborist::MessageError, "missing required header 'action'"
+		raise Arborist::MessageError, "No such action '%s'" % [ action ] unless
+			VALID_TREEAPI_ACTIONS.include?( action )
 
 		handler_name = "handle_%s_request" % [ action ]
-		return nil unless self.respond_to?( handler_name )
-
 		return self.method( handler_name )
 	end
 
 
 	### Return a response to the `status` action.
 	def handle_status_request( header, body )
-		self.log.debug "STATUS: %p" % [ header ]
+		self.log.info "STATUS: %p" % [ header ]
 		return Arborist::TreeAPI.successful_response(
 			server_version: Arborist::VERSION,
 			state: self.running? ? 'running' : 'not running',
@@ -648,7 +652,7 @@ class Arborist::Manager
 
 	### Return a response to the `subscribe` action.
 	def handle_subscribe_request( header, body )
-		self.log.debug "SUBSCRIBE: %p" % [ header ]
+		self.log.info "SUBSCRIBE: %p" % [ header ]
 		event_type      = header[ 'event_type' ]
 		node_identifier = header[ 'identifier' ]
 
@@ -666,7 +670,7 @@ class Arborist::Manager
 
 	### Return a response to the `unsubscribe` action.
 	def handle_unsubscribe_request( header, body )
-		self.log.debug "UNSUBSCRIBE: %p" % [ header ]
+		self.log.info "UNSUBSCRIBE: %p" % [ header ]
 		subscription_id = header[ 'subscription_id' ] or
 			return Arborist::TreeAPI.error_response( 'client', 'No identifier specified for UNSUBSCRIBE.' )
 		subscription = self.remove_subscription( subscription_id ) or
@@ -682,18 +686,22 @@ class Arborist::Manager
 
 	### Return a repsonse to the `fetch` action.
 	def handle_fetch_request( header, body )
-		self.log.debug "FETCH: %p" % [ header ]
+		self.log.info "FETCH: %p" % [ header ]
 		from  = header['from'] || '_'
 		depth = header['depth']
+		tree  = header['tree']
 
 		start_node = self.nodes[ from ]
 		self.log.debug "  Listing nodes under %p" % [ start_node ]
-		iter = if depth
+
+		if tree
+			iter = [ start_node.to_h(depth: (depth || -1)) ]
+		elsif depth
 			self.log.debug "    depth limited to %d" % [ depth ]
-			self.depth_limited_enumerator_for( start_node, depth )
+			iter = self.depth_limited_enumerator_for( start_node, depth )
 		else
 			self.log.debug "    no depth limit"
-			self.enumerator_for( start_node )
+			iter = self.enumerator_for( start_node )
 		end
 		data = iter.map( &:to_h )
 		self.log.debug "  got data for %d nodes" % [ data.length ]
@@ -704,7 +712,7 @@ class Arborist::Manager
 
 	### Return a response to the 'search' action.
 	def handle_search_request( header, body )
-		self.log.debug "SEARCH: %p" % [ header ]
+		self.log.info "SEARCH: %p" % [ header ]
 
 		include_down = header['include_down']
 		values = if header.key?( 'return' )
@@ -724,7 +732,7 @@ class Arborist::Manager
 
 	### Update nodes using the data from the update request's +body+.
 	def handle_update_request( header, body )
-		self.log.debug "UPDATE: %p" % [ header ]
+		self.log.info "UPDATE: %p" % [ header ]
 
 		unless body.respond_to?( :each )
 			return Arborist::TreeAPI.error_response( 'client', 'Malformed update: body does not respond to #each' )
@@ -740,7 +748,7 @@ class Arborist::Manager
 
 	### Remove a node and its children.
 	def handle_prune_request( header, body )
-		self.log.debug "PRUNE: %p" % [ header ]
+		self.log.info "PRUNE: %p" % [ header ]
 
 		identifier = header[ 'identifier' ] or
 			return Arborist::TreeAPI.error_response( 'client', 'No identifier specified for PRUNE.' )
@@ -752,7 +760,7 @@ class Arborist::Manager
 
 	### Add a node
 	def handle_graft_request( header, body )
-		self.log.debug "GRAFT: %p" % [ header ]
+		self.log.info "GRAFT: %p" % [ header ]
 
 		identifier = header[ 'identifier' ] or
 			return Arborist::TreeAPI.error_response( 'client', 'No identifier specified for GRAFT.' )
@@ -781,7 +789,7 @@ class Arborist::Manager
 
 	### Modify a node's operational attributes
 	def handle_modify_request( header, body )
-		self.log.debug "MODIFY: %p" % [ header ]
+		self.log.info "MODIFY: %p" % [ header ]
 
 		identifier = header[ 'identifier' ] or
 			return Arborist::TreeAPI.error_response( 'client', 'No identifier specified for MODIFY.' )

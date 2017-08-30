@@ -51,7 +51,7 @@ class Arborist::Node::Ack
 
 
 	### Return the Ack as a Hash.
-	def to_h
+	def to_h( * )
 		return {
 			message: self.message,
 			sender: self.sender,

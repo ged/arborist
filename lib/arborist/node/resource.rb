@@ -63,9 +63,10 @@ class Arborist::Node::Resource < Arborist::Node
 
 
 	### Serialize the resource node.  Return a Hash of the host node's state.
-	def to_h
+	def to_h( * )
 		return super.merge(
-			addresses: self.addresses.map( &:to_s )
+			addresses: self.addresses.map( &:to_s ),
+			category: self.category
 		)
 	end
 

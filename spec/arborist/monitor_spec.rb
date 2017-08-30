@@ -230,6 +230,27 @@ describe Arborist::Monitor do
 	end
 
 
+	it "uses node properties specified by the runnable object if it provides them" do
+		mod = Module.new do
+			class << self; attr_accessor :was_run ; end
+			@was_run = false
+
+			def self::run( nodes )
+				self.was_run = true
+			end
+
+			def self::node_properties
+				%i[ uri http_method body mimetype ]
+			end
+		end
+
+		mon = described_class.new( "the description", :testing )
+		mon.exec( mod )
+
+		expect( mon.node_properties ).to include( :uri, :http_method, :body, :mimetype )
+	end
+
+
 	it "can provide a function for building arguments for its command" do
 		mon = described_class.new( "the description", :testing ) do
 

@@ -457,6 +457,30 @@ describe Arborist::Node do
 				end
 			end
 
+			let( :tree ) do
+				node_hierarchy( node,
+					node_hierarchy( 'host-a',
+						testing_node( 'host-a-www' ),
+						testing_node( 'host-a-smtp' ),
+						testing_node( 'host-a-imap' )
+					),
+					node_hierarchy( 'host-b',
+						testing_node( 'host-b-www' ),
+						testing_node( 'host-b-nfs' ),
+						testing_node( 'host-b-ssh' )
+					),
+					node_hierarchy( 'host-c',
+						testing_node( 'host-c-www' )
+					),
+					node_hierarchy( 'host-d',
+						testing_node( 'host-d-ssh' ),
+						testing_node( 'host-d-amqp' ),
+						testing_node( 'host-d-database' ),
+						testing_node( 'host-d-memcached' )
+					)
+				)
+			end
+
 
 			it "can restore saved state from an older copy of the node" do
 				old_node = Marshal.load( Marshal.dump(node) )
@@ -532,7 +556,7 @@ describe Arborist::Node do
 
 
 			it "can return a Hash of serializable node data" do
-				result = node.to_h
+				result = tree.to_h
 
 				expect( result ).to be_a( Hash )
 				expect( result ).to include(
@@ -554,7 +578,38 @@ describe Arborist::Node do
 				expect( result[:errors] ).to be_empty
 				expect( result[:dependencies] ).to be_a( Hash )
 				expect( result[:quieted_reasons] ).to be_a( Hash )
+
+				expect( result[:children] ).to be_empty
 			end
+
+
+			it "can include all of its serialized children" do
+				result = tree.to_h( depth: -1 )
+
+				expect( result ).to be_a( Hash )
+				expect( result ).to include(
+					:identifier,
+					:parent, :description, :tags, :properties, :ack, :status,
+					:last_contacted, :status_changed, :errors, :quieted_reasons,
+					:dependencies
+				)
+
+				expect( result[:children] ).to be_a( Hash )
+				expect( result[:children].length ).to eq( 4 )
+
+				host_a = result[:children]['host-a']
+				expect( host_a ).to be_a( Hash )
+				expect( host_a ).to include(
+					:identifier,
+					:parent, :description, :tags, :properties, :ack, :status,
+					:last_contacted, :status_changed, :errors, :quieted_reasons,
+					:dependencies
+				)
+				expect( host_a[:children].length ).to eq( 3 )
+			end
+
+
+			it "can include a specific depth of its children"
 
 
 			it "can be reconstituted from a serialized Hash of node data" do

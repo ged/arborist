@@ -126,7 +126,7 @@ module Arborist::TestHelpers
 	#
 
 	def node_subclass
-		@node_subclass ||= Class.new( Arborist::Node )
+		return TestNode
 	end
 
 
@@ -134,6 +134,18 @@ module Arborist::TestHelpers
 		node = node_subclass.new( identifier, &block )
 		node.parent( parent ) if parent
 		return node
+	end
+
+
+	def node_hierarchy( root, *children )
+		root = node_subclass.new( root ) unless root.is_a?( Arborist::Node )
+
+		children.each do |child|
+			child.parent( root.identifier )
+			root.add_child( child )
+		end
+
+		return root
 	end
 
 

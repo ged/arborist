@@ -933,8 +933,10 @@ class Arborist::Node
 	end
 
 
-	### Return a Hash of the node's state.
-	def to_h( deep: false )
+	### Return a Hash of the node's state. If +depth+ is greater than 0, that many
+	### levels of child nodes are included in the node's `:children` value. Setting
+	### +depth+ to a negative number will return all of the node's children.
+	def to_h( depth: 0 )
 		hash = {
 			identifier: self.identifier,
 			type: self.class.name.to_s.sub( /.+::/, '' ).downcase,
@@ -952,10 +954,13 @@ class Arborist::Node
 			quieted_reasons: self.quieted_reasons,
 		}
 
-		if deep
+		if depth.nonzero?
+			self.log.debug "including children for depth %p" % [ depth ]
 			hash[ :children ] = self.children.each_with_object( {} ) do |(ident, node), h|
-				h[ ident ] = node.to_h( deep )
+				h[ ident ] = node.to_h( depth: depth - 1 )
 			end
+		else
+			hash[ :children ] = {}
 		end
 
 		return hash

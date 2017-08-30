@@ -137,6 +137,12 @@ module Arborist
 	end
 
 
+	### Return a new Arborist::Client.
+	def self::client
+		return Arborist::Client.new
+	end
+
+
 	### Load all node and event types
 	def self::load_all
 		Arborist::Node.load_all

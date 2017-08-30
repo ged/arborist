@@ -103,7 +103,7 @@ class Arborist::Node::Host < Arborist::Node
 	#
 
 	### Return a Hash of the host node's state.
-	def to_h
+	def to_h( * )
 		return super.merge( addresses: self.addresses.map(&:to_s) )
 	end
 

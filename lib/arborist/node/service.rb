@@ -54,6 +54,19 @@ class Arborist::Node::Service < Arborist::Node
 	public
 	######
 
+	##
+	# Get/set the port the service binds to
+	dsl_accessor :port
+
+	##
+	# Get/set the application protocol the service uses
+	dsl_accessor :app_protocol
+
+	##
+	# Get/set the network protocol the service uses
+	dsl_accessor :protocol
+
+
 	### Set service +attributes+.
 	def modify( attributes )
 		attributes = stringify_keys( attributes )
@@ -63,27 +76,6 @@ class Arborist::Node::Service < Arborist::Node
 		self.port( attributes['port'] )
 		self.app_protocol( attributes['app_protocol'] )
 		self.protocol( attributes['protocol'] )
-	end
-
-
-	### Get/set the port the service is bound to.
-	def port( new_port=nil )
-		return @port unless new_port
-		@port = new_port
-	end
-
-
-	### Get/set the (layer 7) protocol used by the service
-	def app_protocol( new_proto=nil )
-		return @app_protocol unless new_proto
-		@app_protocol = new_proto
-	end
-
-
-	### Get/set the transport layer protocol the service uses
-	def protocol( new_proto=nil )
-		return @protocol unless new_proto
-		@protocol = new_proto
 	end
 
 
@@ -114,7 +106,7 @@ class Arborist::Node::Service < Arborist::Node
 		self.log.debug "Matching %p: %p against %p" % [ key, val, self ]
 		return case key
 			when 'port'
-				val = default_port_for( val, @protocol ) unless val.is_a?( Fixnum )
+				val = default_port_for( val, @protocol ) unless val.is_a?( Integer )
 				self.port == val.to_i
 			when 'address'
 				search_addr = IPAddr.new( val )
@@ -161,7 +153,7 @@ class Arborist::Node::Service < Arborist::Node
 	#
 
 	### Return a Hash of the host node's state.
-	def to_h
+	def to_h( * )
 		return super.merge(
 			addresses: self.addresses.map(&:to_s),
 			protocol: self.protocol,

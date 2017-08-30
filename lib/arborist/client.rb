@@ -101,11 +101,12 @@ class Arborist::Client
 
 
 	### Return the manager's current node tree.
-	def make_fetch_request( from: nil, depth: nil )
+	def make_fetch_request( from: nil, depth: nil, tree: false )
 		header = {}
 		self.log.debug "From is: %p" % [ from ]
 		header[:from] = from if from
 		header[:depth] = depth if depth
+		header[:tree] = 'true' if tree
 
 		return Arborist::TreeAPI.request( :fetch, header, nil )
 	end
