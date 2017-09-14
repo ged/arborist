@@ -129,6 +129,20 @@ class Arborist::Client
 	end
 
 
+	### Return the identifiers that have a secondary (i.e., not child-parent)
+	### dependency on the node with the specified +identifier+.
+	def deps( identifier )
+		request = self.make_deps_request( identifier )
+		return self.send_tree_api_request( request )
+	end
+
+
+	### Return the manager's current node tree.
+	def make_deps_request( identifier )
+		return Arborist::TreeAPI.request( :deps, { from: identifier }, nil )
+	end
+
+
 	### Update the identified nodes in the manager with the specified data.
 	def update( *args )
 		request = self.make_update_request( *args )

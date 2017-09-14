@@ -367,7 +367,6 @@ class Arborist::Node
 	# The node's secondary dependencies, expressed as an Arborist::Node::Sexp
 	attr_accessor :dependencies
 
-
 	##
 	# The reasons this node was quieted. This is a Hash of text descriptions keyed by the
 	# type of dependency it came from (either :primary or :secondary).
@@ -494,6 +493,19 @@ class Arborist::Node
 	### Return subscriptions matching the specified +event+ on the receiving node.
 	def find_matching_subscriptions( event )
 		return self.subscriptions.values.find_all {|sub| event =~ sub }
+	end
+
+
+	### Return the Set of identifier of nodes that are secondary dependencies of this node.
+	def node_subscribers
+		self.log.debug "Finding node subscribers among %d subscriptions" % [ self.subscriptions.length ]
+		return self.subscriptions.each_with_object( Set.new ) do |(identifier, sub), set|
+			if sub.respond_to?( :node_identifier )
+				set.add( sub.node_identifier )
+			else
+				self.log.debug "Skipping %p: not a node subscription" % [ sub ]
+			end
+		end
 	end
 
 
@@ -664,9 +676,7 @@ class Arborist::Node
 				raise Arborist::ConfigError, "Can't depend on descendant node %p." % [ identifier ]
 			end
 
-			sub = Arborist::Subscription.new do |_, event|
-				self.handle_event( event )
-			end
+			sub = Arborist::NodeSubscription.new( self )
 			manager.subscribe( identifier, sub )
 		end
 	end

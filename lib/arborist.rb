@@ -162,6 +162,7 @@ module Arborist
 	autoload :Observer, 'arborist/observer'
 	autoload :ObserverRunner, 'arborist/observer_runner'
 	autoload :Subscription, 'arborist/subscription'
+	autoload :NodeSubscription, 'arborist/node_subscription'
 
 end # module Arborist
 

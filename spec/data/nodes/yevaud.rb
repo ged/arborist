@@ -13,11 +13,13 @@ Arborist::Host 'yevaud' do
 	tags :laptop,
 	     :developer
 
+	service 'ntp'
 	service 'ssh'
 	service 'rabbitmq', app_protocol: 'amqp'
-	service 'postgresql'
 
-	service 'cozy_frontend',       port: 3000, app_protocol: 'http'
+	service 'cozy_frontend',       port: 3000, app_protocol: 'http' do
+		depends_on 'sidonie-postgresql', 'yevaud-rabbitmq'
+	end
 	service 'cozy_admin_frontend', port: 4331, app_protocol: 'http'
 	service 'cozy_services',       port: 8888, app_protocol: 'http'
 	service 'cozy_admin_services', port: 8889, app_protocol: 'http'

@@ -753,13 +753,13 @@ describe Arborist::Node do
 		end
 
 
+
 		it "allows the addition of a Subscription" do
 			sub = Arborist::Subscription.new {}
 			node.add_subscription( sub )
 			expect( node.subscriptions ).to include( sub.id )
 			expect( node.subscriptions[sub.id] ).to be( sub )
 		end
-
 
 		it "allows the removal of a Subscription" do
 			sub = Arborist::Subscription.new {}
@@ -781,6 +781,11 @@ describe Arborist::Node do
 			expect( results.size ).to eq( 1 )
 			expect( results ).to all( be_a(Arborist::Subscription) )
 			expect( results.first ).to be( sub )
+		end
+
+
+		it "can return the identifiers of all other nodes that subscribe to it" do
+			
 		end
 
 	end

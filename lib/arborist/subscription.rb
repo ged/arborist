@@ -21,12 +21,12 @@ class Arborist::Subscription
 	### Instantiate a new Subscription object given an +event+ pattern
 	### and event +criteria+.
 	def initialize( event_type=nil, criteria={}, negative_criteria={}, &callback )
-		raise LocalJumpError, "requires a callback block" unless callback
-
 		@callback   = callback
 		@event_type = event_type
 		@criteria   = stringify_keys( criteria )
 		@negative_criteria = stringify_keys( negative_criteria )
+
+		self.check_callback
 
 		@id         = self.generate_id
 	end
@@ -59,9 +59,9 @@ class Arborist::Subscription
 	end
 
 
-	### Create an identifier for this subscription object.
-	def generate_id
-		return SecureRandom.uuid
+	### Check to make sure the subscription will function as it's set up.
+	def check_callback
+		raise LocalJumpError, "requires a callback block" unless self.callback
 	end
 
 
@@ -76,17 +76,6 @@ class Arborist::Subscription
 	end
 
 
-	### Returns +true+ if the receiver is interested in publishing the specified +event+.
-	def interested_in?( event )
-		self.log.debug "Testing %p against type = %p and criteria = %p but not %p" %
-			[ event, self.event_type, self.criteria, self.negative_criteria ]
-		rval = event.match( self )
-		self.log.debug "  event %s match." % [ rval ? "did" : "did NOT" ]
-		return rval
-	end
-	alias_method :is_interested_in?, :interested_in?
-
-
 	### Return a String representation of the object suitable for debugging.
 	def inspect
 		return "#<%p:%#x [%s] for %s events matching: %p %s-> %p>" % [
@@ -99,5 +88,22 @@ class Arborist::Subscription
 			self.callback,
 		]
 	end
+
+
+	### Create an identifier for this subscription object.
+	def generate_id
+		return SecureRandom.uuid
+	end
+
+
+	### Returns +true+ if the receiver is interested in publishing the specified +event+.
+	def interested_in?( event )
+		self.log.debug "Testing %p against type = %p and criteria = %p but not %p" %
+			[ event, self.event_type, self.criteria, self.negative_criteria ]
+		rval = event.match( self )
+		self.log.debug "  event %s match." % [ rval ? "did" : "did NOT" ]
+		return rval
+	end
+	alias_method :is_interested_in?, :interested_in?
 
 end # class Arborist::Subscription

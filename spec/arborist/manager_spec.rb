@@ -568,6 +568,40 @@ describe Arborist::Manager do
 				expect( body ).to include( hash_including('identifier' => 'yevaud') )
 			end
 
+
+			it "can start at a node other than the root" do
+				msg = Arborist::TreeAPI.request( :fetch, {from: 'sidonie'}, nil )
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+				expect( body.length ).to eq( manager.nodes.keys.count {|id| id.include?('sidonie')} )
+				expect( body ).to all( be_a(Hash) )
+				expect( body ).to_not include( hash_including('identifier' => '_') )
+				expect( body ).to_not include( hash_including('identifier' => 'duir') )
+				expect( body ).to include( hash_including('identifier' => 'sidonie') )
+				expect( body ).to include( hash_including('identifier' => 'sidonie-ssh') )
+				expect( body ).to include( hash_including('identifier' => 'sidonie-demon-http') )
+				expect( body ).to_not include( hash_including('identifier' => 'yevaud') )
+			end
+
+
+			it "can be fetched as a tree" do
+				msg = Arborist::TreeAPI.request( :fetch, {tree: true}, nil )
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+				expect( body.length ).to eq( 1 )
+				expect( body.first ).to be_a( Hash )
+				expect( body.first ).to include( 'children' )
+				expect( body.first['identifier'] ).to eq( '_' )
+				expect( body.first['children'].keys ).to include( 'duir', 'localhost' )
+			end
+
+
 			it "can be limited by depth" do
 				msg = Arborist::TreeAPI.request( :fetch, {depth: 1}, nil )
 				msg.send_to( sock )
@@ -581,6 +615,7 @@ describe Arborist::Manager do
 				expect( body ).to include( hash_including('identifier' => 'duir') )
 				expect( body ).to_not include( hash_including('identifier' => 'duir-ssh') )
 			end
+
 		end
 
 
@@ -656,7 +691,9 @@ describe Arborist::Manager do
 				sub_id = manager.subscriptions.keys.first
 
 				expect( hdr ).to include( 'success' => true )
-				expect( body ).to include( 'id' => sub_id )
+				expect( body ).to be_a( Hash )
+				expect( body ).to include( 'id' )
+				expect( manager.subscriptions.keys ).to include( body['id'] )
 			end
 
 
@@ -672,10 +709,10 @@ describe Arborist::Manager do
 				)
 				hdr, body = Arborist::TreeAPI.decode( resmsg )
 
-				sub_id = manager.subscriptions.keys.first
-
 				expect( hdr ).to include( 'success' => true )
-				expect( body ).to eq( 'id' => sub_id )
+				expect( body ).to be_a( Hash )
+				expect( body ).to include( 'id' )
+				expect( manager.subscriptions.keys ).to include( body['id'] )
 			end
 
 
@@ -1026,6 +1063,23 @@ describe Arborist::Manager do
 		end
 
 
+		describe "deps" do
+
+			it "returns a list of the identifiers of nodes that depend on it" do
+				msg = Arborist::TreeAPI.request( :deps, {from: 'sidonie'}, nil )
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+				expect( body ).to be_a( Hash )
+				expect( body ).to include( 'deps' )
+				expect( body['deps'] ).to be_an( Array ).and( include('yevaud-cozy_frontend') )
+			end
+
+		end
+
+
 		describe "malformed requests" do
 
 			it "send an error response if the request can't be deserialized" do
@@ -1168,7 +1222,9 @@ describe Arborist::Manager do
 				)
 				expect( body ).to be_nil
 			end
+
 		end
+
 	end
 
 

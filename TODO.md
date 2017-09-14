@@ -5,12 +5,6 @@
 * README, Tutorial, Setup docs
 * Performance/profiling examination
 
-
-### Setup/Installation
-
-* Add a CLI for generating a basic setup and then adding nodes/monitors/observers to it.
-* Potential federation / referral for sibling managers
-
 ### Nodes
 
 * Ask a node (via tree-api or otherwise) what nodes it affects (immediate children, secondary dependents)
@@ -34,8 +28,13 @@
 
 ## Third Release (0.3)
 
+### Setup/Installation
+
+* Add a CLI for generating a basic setup and then adding nodes/monitors/observers to it.
+
 ### Manager
 
+* Potential federation / referral for sibling managers
 * Add optional authentication support (ZAUTH)
 
 

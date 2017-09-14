@@ -33,6 +33,7 @@ class Arborist::Manager
 
 	# Array of actions supported by the Tree API
 	VALID_TREEAPI_ACTIONS = %w[
+		deps
 		fetch
 		graft
 		modify
@@ -691,7 +692,8 @@ class Arborist::Manager
 		depth = header['depth']
 		tree  = header['tree']
 
-		start_node = self.nodes[ from ]
+		start_node = self.nodes[ from ] or
+			return Arborist::TreeAPI.error_response( 'client', "No such node %s." % [from] )
 		self.log.debug "  Listing nodes under %p" % [ start_node ]
 
 		if tree
@@ -707,6 +709,24 @@ class Arborist::Manager
 		self.log.debug "  got data for %d nodes" % [ data.length ]
 
 		return Arborist::TreeAPI.successful_response( data )
+	end
+
+
+	### Return a response to the `deps` action.
+	def handle_deps_request( header, body )
+		self.log.info "DEPS: %p" % [ header ]
+		from = header['from'] || '_'
+
+		start_node = self.nodes[ from ] or
+			return Arborist::TreeAPI.error_response( 'client', "No such node %s." % [from] )
+		iter = self.enumerator_for( start_node )
+		deps = iter.inject( Set.new ) do |depset, node|
+			nsubs = node.node_subscribers
+			self.log.debug "Merging %d node subscribers from %s" % [ nsubs.length, node.identifier ]
+			depset | nsubs
+		end
+
+		return Arborist::TreeAPI.successful_response({ deps: deps.to_a })
 	end
 
 

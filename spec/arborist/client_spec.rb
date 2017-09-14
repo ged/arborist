@@ -173,6 +173,17 @@ describe Arborist::Client do
 			end
 
 
+			it "can fetch a list of all nodes which have a dependency on a target node" do
+				res = client.deps( 'sidonie-postgresql' )
+
+				expected_ids = manager.nodes['sidonie-postgresql'].node_subscribers.to_a
+
+				expect( res ).to be_a( Hash ).and( include('deps') )
+				expect( res['deps'] ).to be_an( Array )
+				expect( res['deps'] ).to contain_exactly( *expected_ids )
+			end
+
+
 			it "can subscribe to all events" do
 				sub_id = client.subscribe
 				expect( sub_id ).to be_a( String )

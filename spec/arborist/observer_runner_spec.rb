@@ -105,7 +105,7 @@ describe Arborist::ObserverRunner do
 			thr = Thread.new { runner.run }
 			wait( 3 ).for { runner }.to be_running
 
-			expect( @manager.subscriptions.length ).to eq( runner.subscriptions.length )
+			expect( @manager.subscriptions.length ).to eq( runner.subscriptions.length + 1 )
 
 			runner.simulate_signal( :TERM )
 			thr.join( 2 )
