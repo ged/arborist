@@ -616,6 +616,17 @@ describe Arborist::Manager do
 				expect( body ).to_not include( hash_including('identifier' => 'duir-ssh') )
 			end
 
+
+			it "errors when fetching from a nonexistent node" do
+				msg = Arborist::TreeAPI.request( :fetch, {from: "nope-nope-nope"}, nil )
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => false )
+				expect( hdr ).to include( "reason" => "No such node nope-nope-nope." )
+				expect( body ).to be_nil
+			end
 		end
 
 
