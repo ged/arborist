@@ -692,8 +692,8 @@ class Arborist::Manager
 		depth = header['depth']
 		tree  = header['tree']
 
-		start_node = self.nodes[ from ] or
-			return Arborist::TreeAPI.error_response( 'client', "No such node %s." % [from] )
+		start_node = self.nodes[ from ]
+		return Arborist::TreeAPI.successful_response( [] ) unless start_node
 		self.log.debug "  Listing nodes under %p" % [ start_node ]
 
 		if tree
