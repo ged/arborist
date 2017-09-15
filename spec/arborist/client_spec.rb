@@ -111,6 +111,13 @@ describe Arborist::Client do
 			end
 
 
+			it "returns an empty array if fetching from an unknown node" do
+				res = client.fetch( from: 'nonexistent')
+				expect( res ).to be_an( Array )
+				expect( res.length ).to eq( 0 )
+			end
+
+
 			it "can search all node properties for all 'up' nodes" do
 				res = client.search
 				expect( res ).to be_a( Hash )
