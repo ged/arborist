@@ -48,9 +48,9 @@ class Arborist::Client
 	### +identifier+, an acknowledgement +message+, and +sender+.  You
 	### can optionally include a +via+ (source), and override the default
 	### +time+ of now.
-	def acknowledge( node, message, sender, via=nil, time=Time.now )
+	def acknowledge( identifier:, message:, sender:, via: nil, time: Time.now )
 		data = {
-			node => {
+			identifier => {
 				ack: {
 					message: message,
 					sender:  sender,
@@ -65,9 +65,9 @@ class Arborist::Client
 	alias_method :ack, :acknowledge
 
 
-	### Clear an acknowledged/disabled +node+.
-	def clear_acknowledgement( node )
-		data = { node => { ack: nil } }
+	### Clear an acknowledged/disabled node +identifier+.
+	def clear_acknowledgement( identifier: )
+		data = { identifier => { ack: nil } }
 		request = self.make_update_request( data )
 		self.send_tree_api_request( request )
 		return true

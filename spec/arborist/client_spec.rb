@@ -52,7 +52,7 @@ describe Arborist::Client do
 			it "provides a convenience method for acknowledging" do
 				manager.nodes['sidonie'].update( error: "Clown apocalypse" )
 
-				res = client.acknowledge( :sidonie, "I'm on it.", "ged" )
+				res = client.acknowledge( identifier: 'sidonie', message: "I'm on it.", sender: "ged" )
 
 				expect( manager.nodes['sidonie'] ).to be_acked
 			end
@@ -61,12 +61,17 @@ describe Arborist::Client do
 			it "provides a convenience method for clearing acknowledgments" do
 				manager.nodes['sidonie'].update( error: "Clown apocalypse" )
 
-				res = client.acknowledge( :sidonie, "I'm on it.", "ged" )
-				res = client.clear_acknowledgement( :sidonie )
+				res = client.acknowledge( identifier: 'sidonie', message: "I'm on it.", sender: "ged" )
+				res = client.clear_acknowledgement( identifier: 'sidonie' )
 
 				expect( manager.nodes['sidonie'] ).to_not be_acked
 			end
 
+			it "have a descriptive error message when missing arguments" do
+				expect {
+					client.acknowledge( identifier: 'sidonie', message: "I'm on it." )
+				}.to raise_error( ArgumentError, /missing keyword: sender/ )
+			end
 		end
 
 

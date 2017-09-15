@@ -692,6 +692,7 @@ class Arborist::Manager
 		tree  = header['tree']
 
 		start_node = self.nodes[ from ]
+		return Arborist::TreeAPI.successful_response( nil ) unless start_node
 		self.log.debug "  Listing nodes under %p" % [ start_node ]
 
 		if tree
