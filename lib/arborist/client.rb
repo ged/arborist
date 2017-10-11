@@ -113,7 +113,8 @@ class Arborist::Client
 
 
 	### Return the manager's current node tree.
-	def search( criteria={}, options={} )
+	def search( criteria:{}, options:{}, **args )
+		criteria = args if criteria.empty?
 		request = self.make_search_request( criteria, **options )
 		return self.send_tree_api_request( request )
 	end
@@ -131,7 +132,7 @@ class Arborist::Client
 
 	### Return the identifiers that have a secondary (i.e., not child-parent)
 	### dependency on the node with the specified +identifier+.
-	def deps( identifier )
+	def deps( identifier: )
 		request = self.make_deps_request( identifier )
 		return self.send_tree_api_request( request )
 	end
@@ -201,8 +202,8 @@ class Arborist::Client
 	end
 
 
-	### Remove the node with the specified +identfier+.
-	def make_prune_request( identifier )
+	### Remove the node with the specified +identifier+.
+	def make_prune_request( identifier: )
 		self.log.debug "Making prune request for identifier: %s" % [ identifier ]
 
 		return Arborist::TreeAPI.request( :prune, {identifier: identifier}, nil )
@@ -217,12 +218,9 @@ class Arborist::Client
 	end
 
 
-	### Add a node with the specified +identifier+ and +arguments+.
-	def make_graft_request( identifier, attributes={} )
+	### Add a node with the specified +identifier+, +type+, +parent+, and +arguments+.
+	def make_graft_request( identifier:, type:, parent: nil, attributes:{} )
 		self.log.debug "Making graft request for identifer: %s" % [ identifier ]
-
-		parent = attributes.delete( :parent )
-		type   = attributes.delete( :type )
 
 		header = {
 			identifier: identifier,
@@ -242,8 +240,8 @@ class Arborist::Client
 	end
 
 
-	### Modify the operations +attributes+ of the node with the specified +identifier+.
-	def make_modify_request( identifier, attributes={} )
+	### Modify the operational +attributes+ of the node with the specified +identifier+.
+	def make_modify_request( identifier:, attributes: )
 		self.log.debug "Making modify request for identifer: %s" % [ identifier ]
 
 		return Arborist::TreeAPI.request( :modify, {identifier: identifier}, attributes )

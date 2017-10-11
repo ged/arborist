@@ -120,7 +120,7 @@ describe Arborist::Client do
 
 
 			it "can search identifiers for all 'up' nodes" do
-				res = client.search( {}, properties: nil )
+				res = client.search( options: { properties: nil } )
 				expect( res ).to be_a( Hash )
 				expect( res.length ).to be == manager.nodes.length
 				expect( res.values ).to all( be_empty )
@@ -128,7 +128,7 @@ describe Arborist::Client do
 
 
 			it "can search a subset of properties for all 'up' nodes" do
-				res = client.search( {}, properties: [:addresses, :status] )
+				res = client.search( options: { properties: [:addresses, :status] })
 				expect( res ).to be_a( Hash )
 				expect( res.length ).to be == manager.nodes.length
 				expect( res.values ).to all( be_a(Hash) )
@@ -137,7 +137,7 @@ describe Arborist::Client do
 
 
 			it "can search a subset of properties for all 'up' nodes matching specified criteria" do
-				res = client.search( {type: 'host'}, properties: [:addresses, :status] )
+				res = client.search( criteria: {type: 'host'}, options: {properties: [:addresses, :status]} )
 				expect( res ).to be_a( Hash )
 				expect( res.length ).to be == manager.nodes.values.count {|n| n.type == 'host' }
 				expect( res.values ).to all( include('addresses', 'status') )
@@ -145,7 +145,12 @@ describe Arborist::Client do
 
 
 			it "can search all node properties for 'up' nodes that don't match specified criteria" do
-				res = client.search( {}, properties: [:addresses, :status], exclude: {tag: 'testing'} )
+				res = client.search(
+					options: {
+						properties: [:addresses, :status],
+						exclude: {tag: 'testing'}
+					}
+				)
 
 				testing_nodes = manager.nodes.values.select {|n| n.tags.include?('testing') }
 
@@ -160,7 +165,7 @@ describe Arborist::Client do
 				# Down a node
 				manager.nodes['duir'].update( error: 'something happened' )
 
-				res = client.search( {type: 'host'}, include_down: true )
+				res = client.search( criteria: {type: 'host'}, options: {include_down: true} )
 
 				expect( res ).to be_a( Hash )
 				expect( res ).to include( 'duir' )
@@ -179,7 +184,7 @@ describe Arborist::Client do
 
 
 			it "can fetch a list of all nodes which have a dependency on a target node" do
-				res = client.deps( 'sidonie-postgresql' )
+				res = client.deps( identifier: 'sidonie-postgresql' )
 
 				expected_ids = manager.nodes['sidonie-postgresql'].node_subscribers.to_a
 
@@ -277,7 +282,7 @@ describe Arborist::Client do
 
 
 			it "can prune nodes from the tree" do
-				res = client.prune( 'sidonie-ssh' )
+				res = client.prune( identifier: 'sidonie-ssh' )
 
 				expect( res ).to be_a( Hash )
 				expect( res ).to include( 'identifier' => 'sidonie-ssh' )
@@ -286,13 +291,13 @@ describe Arborist::Client do
 
 
 			it "returns nil without error when pruning a node that doesn't exist" do
-				res = client.prune( 'carrigor' )
+				res = client.prune( identifier: 'carrigor' )
 				expect( res ).to be_nil
 			end
 
 
 			it "can graft new nodes onto the tree" do
-				res = client.graft( 'breakfast-burrito', type: 'host' )
+				res = client.graft( identifier: 'breakfast-burrito', type: 'host' )
 				expect( res ).to eq({ 'identifier' => 'breakfast-burrito' })
 				expect( manager.nodes ).to include( 'breakfast-burrito' )
 				expect( manager.nodes['breakfast-burrito'] ).to be_a( Arborist::Node::Host )
@@ -301,11 +306,14 @@ describe Arborist::Client do
 
 
 			it "can graft nodes with attributes onto the tree" do
-				res = client.graft( 'breakfast-burrito',
+				res = client.graft(
+					identifier: 'breakfast-burrito',
 					type: 'service',
 					parent: 'duir',
-					port: 9999,
-					tags: ['yusss']
+					attributes: {
+						port: 9999,
+						tags: ['yusss']
+					}
 				)
 				expect( res ).to eq({ 'identifier' => 'duir-breakfast-burrito' })
 				expect( manager.nodes ).to include( 'duir-breakfast-burrito' )
@@ -317,7 +325,7 @@ describe Arborist::Client do
 
 
 			it "can modify operational attributes of a node" do
-				res = client.modify( "duir", tags: 'girlrobot' )
+				res = client.modify( identifier: "duir", attributes: { tags: 'girlrobot' })
 				expect( res ).to be_truthy
 				expect( manager.nodes['duir'].tags ).to eq( ['girlrobot'] )
 			end

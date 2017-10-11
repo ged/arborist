@@ -663,7 +663,7 @@ class Arborist::Manager
 
 		subscription = self.create_subscription( node_identifier, event_type, positive, negative )
 		self.log.info "Subscription to %s events at or under %s: %p" %
-			[ event_type, node_identifier || 'the root node', subscription ]
+			[ event_type || 'all', node_identifier || 'the root node', subscription ]
 
 		return Arborist::TreeAPI.successful_response( id: subscription.id )
 	end
@@ -784,6 +784,11 @@ class Arborist::Manager
 
 		identifier = header[ 'identifier' ] or
 			return Arborist::TreeAPI.error_response( 'client', 'No identifier specified for GRAFT.' )
+
+		if self.nodes[ identifier ]
+			return Arborist::TreeAPI.error_response( 'client', "Node %p already exists." % [identifier] )
+		end
+
 		type = header[ 'type' ] or
 			return Arborist::TreeAPI.error_response( 'client', 'No type specified for GRAFT.' )
 		parent = header[ 'parent' ] || '_'

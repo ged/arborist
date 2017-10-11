@@ -989,6 +989,21 @@ describe Arborist::Manager do
 				expect( hdr['reason'] ).to match( /no host given/i )
 			end
 
+
+			it "errors if adding a node that already exists" do
+				header = {
+					identifier: 'duir',
+			        type: 'host',
+				}
+				msg = Arborist::TreeAPI.request( :graft, header, {} )
+
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => false )
+				expect( hdr['reason'] ).to match( /exists/i )
+			end
 		end
 
 

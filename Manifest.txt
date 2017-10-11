@@ -43,6 +43,7 @@ lib/arborist/monitor.rb
 lib/arborist/monitor/socket.rb
 lib/arborist/monitor_runner.rb
 lib/arborist/node.rb
+lib/arborist/node_subscription.rb
 lib/arborist/node/ack.rb
 lib/arborist/node/host.rb
 lib/arborist/node/resource.rb
