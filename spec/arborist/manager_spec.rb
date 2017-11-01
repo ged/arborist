@@ -217,7 +217,38 @@ describe Arborist::Manager do
 		end
 
 
-		it "is sent at the configured interval"
+		it "is sent at the configured interval" do
+			described_class.configure( heartbeat_frequency: 11 )
+			expect( manager.reactor ).to receive( :add_periodic_timer ).with( 11 )
+
+			manager.register_heartbeat_timer
+		end
+
+
+		it "doesn't try to publish the heartbeat if it's not been started" do
+			manager.start_time = nil
+
+			manager.publish_heartbeat_event
+			expect( manager.event_queue ).to be_empty
+		end
+
+
+		it "contains runtime information about the manager" do
+			time = Time.now
+			manager.start_time = time
+
+			manager.publish_heartbeat_event
+			event = manager.event_queue.shift
+
+			expect( event ).to be_a( CZTop::Message )
+			decoded = Arborist::EventAPI.decode( event )
+
+			expect( decoded ).to include(
+				'run_id' => manager.run_id,
+				'start_time' => time.iso8601,
+				'version' => Arborist::VERSION
+			)
+		end
 
 	end
 

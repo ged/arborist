@@ -183,7 +183,6 @@ class Arborist::Manager
 	def run
 		self.log.info "Getting ready to start the manager."
 		self.setup_sockets
-		self.publish_system_event( 'startup', start_time: Time.now.to_s, version: Arborist::VERSION )
 		self.register_timers
 		self.with_signal_handler( reactor, *QUEUE_SIGS ) do
 			self.start_accepting_requests
@@ -973,7 +972,12 @@ class Arborist::Manager
 
 	### Publish a system event that observers can watch for to detect restarts.
 	def publish_heartbeat_event
-		self.publish_system_event( 'heartbeat', run_id: self.run_id )
+		return unless self.start_time
+		self.publish_system_event( 'heartbeat',
+			run_id: self.run_id,
+			start_time: self.start_time.iso8601,
+			version: Arborist::VERSION
+		)
 	end
 
 
