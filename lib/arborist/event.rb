@@ -63,6 +63,22 @@ class Arborist::Event
 		}
 	end
 
+
+	### Return a string representation of the object suitable for debugging.
+	def inspect
+		return "#<%p:%#016x %s>" % [
+			self.class,
+			self.object_id * 2,
+			self.inspect_details,
+		]
+	end
+
+
+	### Return the detail portion of the #inspect string appropriate for this event type.
+	def inspect_details
+		return self.payload.inspect
+	end
+
 end # class Arborist::Event
 
 
