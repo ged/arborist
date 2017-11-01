@@ -33,16 +33,6 @@ describe Arborist::Event do
 		end
 
 
-		it "matches a subscription type via routing key match" do
-			sub = Arborist::Subscription.new( 'test.*' ) {}
-			another_sub = Arborist::Subscription.new( 'sys.*' ) {}
-			event = described_class.create( TestEvent, [] )
-
-			expect( event ).to match( sub )
-			expect( event ).to_not match( another_sub )
-		end
-
-
 		it "always matches a subscription with a nil event type" do
 			sub = Arborist::Subscription.new {}
 			event = described_class.create( TestEvent, [] )
