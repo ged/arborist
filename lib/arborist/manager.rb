@@ -959,7 +959,7 @@ class Arborist::Manager
 	def on_event_socket_event( event )
 		if event.writable?
 			if (( msg = self.event_queue.shift ))
-				self.log.debug "Publishing event %p" % [ msg ]
+				# self.log.debug "Publishing event %p" % [ msg ]
 				event.socket << msg
 			end
 		else

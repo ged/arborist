@@ -26,7 +26,7 @@ module Arborist::TreeAPI
 		raise Arborist::MessageError, "header is not a Map" unless
 			header.is_a?( Hash )
 
-		self.log.debug "Encoding header: %p with body: %p" % [ header, body ]
+		# self.log.debug "Encoding header: %p with body: %p" % [ header, body ]
 		header = stringify_keys( header )
 		header['version'] = PROTOCOL_VERSION
 
@@ -35,7 +35,7 @@ module Arborist::TreeAPI
 
 		payload = MessagePack.pack([ header, body ])
 
-		self.log.debug "Making zmq message with payload: %p" % [ payload ]
+		# self.log.debug "Making zmq message with payload: %p" % [ payload ]
 		return CZTop::Message.new( payload )
 	end
 

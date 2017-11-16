@@ -14,8 +14,7 @@
     node.update
     sys.node_added
     sys.node_removed
-    sys.reloaded
-    sys.hearbeat
+    sys.heartbeat
 
 
 ## Event Movement
