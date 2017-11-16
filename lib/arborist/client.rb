@@ -87,20 +87,21 @@ class Arborist::Client
 	end
 
 
-	### Return the manager's current status as a hash.
+	### Return a `status` request as a ZMQ message (a CZTop::Message).
 	def make_status_request
 		return Arborist::TreeAPI.request( :status )
 	end
 
 
-	### Return the manager's current node tree.
+	### Fetch the manager's current node tree.
 	def fetch( **args )
 		request = self.make_fetch_request( **args )
 		return self.send_tree_api_request( request )
 	end
 
 
-	### Return the manager's current node tree.
+	### Return a `fetch` request as a ZMQ message (a CZTop::Message) with the given
+	### attributes.
 	def make_fetch_request( from: nil, depth: nil, tree: false )
 		header = {}
 		self.log.debug "From is: %p" % [ from ]
@@ -120,7 +121,8 @@ class Arborist::Client
 	end
 
 
-	### Return the manager's current node tree.
+	### Return a `search` request as a ZMQ message (a CZTop::Message) with the given
+	### attributes.
 	def make_search_request( criteria, include_down: false, properties: :all, exclude: {} )
 		header = {}
 		header[ :include_down ] = true if include_down
@@ -138,7 +140,8 @@ class Arborist::Client
 	end
 
 
-	### Return the manager's current node tree.
+	### Return a `deps` request as a ZMQ message (a CZTop::Message) with the given
+	### +identifier+.
 	def make_deps_request( identifier )
 		return Arborist::TreeAPI.request( :deps, { from: identifier }, nil )
 	end
@@ -152,7 +155,8 @@ class Arborist::Client
 	end
 
 
-	### Update the identified nodes in the manager with the specified data.
+	### Return an `update` request as a zmq message (a CZTop::Message) with the given
+	### +data+.
 	def make_update_request( data )
 		return Arborist::TreeAPI.request( :update, nil, data )
 	end
@@ -166,7 +170,8 @@ class Arborist::Client
 	end
 
 
-	### Make a subscription request for the specified +criteria+, +identifier+, and +event_type+.
+	### Return a `subscribe` request as a zmq message (a CZTop::Message) with the
+	### specified attributes.
 	def make_subscribe_request( criteria: {}, identifier: nil, event_type: nil, exclude: {} )
 		self.log.debug "Making subscription request for identifier: %p, event_type: %p, criteria: %p" %
 			[ identifier, event_type, criteria ]
@@ -186,7 +191,8 @@ class Arborist::Client
 	end
 
 
-	### Remove the subscription with the specified +subid+.
+	### Return an `unsubscribe` request as a zmq message (a CZTop::Message) with the
+	### specified +subid+.
 	def make_unsubscribe_request( subid )
 		self.log.debug "Making unsubscribe request for subid: %s" % [ subid ]
 
@@ -202,7 +208,8 @@ class Arborist::Client
 	end
 
 
-	### Remove the node with the specified +identifier+.
+	### Return a `prune` request as a zmq message (a CZTop::Message) with the
+	### specified +identifier+.
 	def make_prune_request( identifier: )
 		self.log.debug "Making prune request for identifier: %s" % [ identifier ]
 
@@ -218,7 +225,8 @@ class Arborist::Client
 	end
 
 
-	### Add a node with the specified +identifier+, +type+, +parent+, and +arguments+.
+	### Return a `graft` request as a zmq message (a CZTop::Message) with the
+	### specified attributes.
 	def make_graft_request( identifier:, type:, parent: nil, attributes:{} )
 		self.log.debug "Making graft request for identifer: %s" % [ identifier ]
 
@@ -240,7 +248,8 @@ class Arborist::Client
 	end
 
 
-	### Modify the operational +attributes+ of the node with the specified +identifier+.
+	### Return a `modify` request as a zmq message (a CZTop::Message) with the
+	### specified attributes.
 	def make_modify_request( identifier:, attributes: )
 		self.log.debug "Making modify request for identifer: %s" % [ identifier ]
 
