@@ -103,21 +103,7 @@ module Arborist::CLI::Tree
 	### Return a more colorful description of the status of the given +node+.
 	def status_description( node )
 		status = node['status'] or return '-'
-
-		case status
-		when 'up'
-			return hl( status ).color( :green )
-		when 'down'
-			return hl( status ).color( :bold, :white, :on_red )
-		when 'quieted'
-			return hl( status ).color( :dark, :red )
-		when 'unknown'
-			return hl( status ).color( :blue )
-		when 'acked'
-			return hl( status ).color( :magenta )
-		else
-			return status
-		end
+		return hl( status ).color( status.to_sym ) rescue status
 	end
 
 

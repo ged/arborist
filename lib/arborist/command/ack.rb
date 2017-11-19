@@ -1,21 +1,21 @@
 # -*- ruby -*-
 #encoding: utf-8
 
-require 'pp'
+require 'etc'
 
 require 'arborist/cli' unless defined?( Arborist::CLI )
 require 'arborist/client'
 
 # Command to ack a node
-module Arborist::CLI::Tree
+module Arborist::CLI::Ack
 	extend Arborist::CLI::Subcommand
 
 
 	desc 'Ack a node in the Arborist tree'
 
 	arg :IDENTIFIER
-	arg :USERID, optional: true
 	arg :MESSAGE, optional: true
+	arg :USERID, optional: true
 
 	command :ack do |cmd|
 
@@ -29,12 +29,17 @@ module Arborist::CLI::Tree
 			client = Arborist::Client.new
 
 			if clearmode
-				res = client.clear_ack( identifier )
+				res = client.clear_ack( identifier: identifier )
 			else
-				userid = args.shift or help_now!( "No user ID specified!" )
-				message = args.shift or help_now!( "No ack message given!" )
+				message = args.shift || help_now!( "No ack message given!" )
+				userid  = args.shift || Etc.getpwuid.gecos
 
-				res = client.ack( identifier, message, userid, "command line" )
+				res = client.ack(
+					identifier: identifier,
+					message:    message,
+					sender:     userid,
+					via:        "command line"
+				)
 			end
 
 			if res
@@ -46,5 +51,5 @@ module Arborist::CLI::Tree
 
 	end
 
-end # module Arborist::CLI::Tree
+end # module Arborist::CLI::Ack
 
