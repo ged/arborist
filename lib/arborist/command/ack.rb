@@ -32,7 +32,7 @@ module Arborist::CLI::Ack
 				res = client.clear_ack( identifier: identifier )
 			else
 				message = args.shift || help_now!( "No ack message given!" )
-				userid  = args.shift || Etc.getpwuid.gecos
+				userid  = args.shift || Etc.getpwuid.name
 
 				res = client.ack(
 					identifier: identifier,
