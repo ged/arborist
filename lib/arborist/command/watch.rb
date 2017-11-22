@@ -1,6 +1,7 @@
 # -*- ruby -*-
 #encoding: utf-8
 
+require 'tty/spinner'
 require 'msgpack'
 
 require 'arborist/cli' unless defined?( Arborist::CLI )
@@ -27,6 +28,9 @@ module Arborist::CLI::Watch
 			prompt.say "Subscribing to manager heartbeat events."
 			sock.subscribe( 'sys.heartbeat' )
 
+			spinner = TTY::Spinner.new( "[           :spinner           ] waiting for events...\r",
+				frames: HEARTBEAT_CHARACTERS, hide_cursor: true )
+
 			begin
 				last_runid = nil
 				prompt.say "Watching for events on manager at %s" % [ client.event_api_url ]
@@ -47,7 +51,7 @@ module Arborist::CLI::Watch
 							self.log.debug "Manager is alive (runid: %s)" % [ this_runid ]
 						end
 
-						$stderr.print( heartbeat() )
+						spinner.spin
 						last_runid = this_runid
 					when 'sys.node_added'
 						prompt.say "[%s] «Node added» %s\n" % [
@@ -129,12 +133,6 @@ module Arborist::CLI::Watch
 		return hl.dark.white( diff.join(', ') )
 	end
 
-
-	### Return a heartbeat string for the current time.
-	def heartbeat
-		idx = (Time.now.to_i % HEARTBEAT_CHARACTERS.length) - 1
-		return " " + hl.bright_red( HEARTBEAT_CHARACTERS[ idx ] ) + "\x08\x08"
-	end
 
 end # module Arborist::CLI::Watch
 
