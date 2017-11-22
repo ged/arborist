@@ -204,6 +204,7 @@ describe Arborist::Node do
 			expect( node ).to_not have_children
 		end
 
+
 		describe "status" do
 
 			it "starts out in `unknown` status" do
@@ -224,7 +225,7 @@ describe Arborist::Node do
 
 			it "transitions from `down` to `acked` status if it's updated with an `ack` property" do
 				node.status = 'down'
-				node.errors = 'Something is wrong | he falls | betraying the trust | "\
+				node.errors['moldovia'] = 'Something is wrong | he falls | betraying the trust | "\
 					"there is a disaster in his life.'
 				node.update( ack: {message: "Leitmotiv", sender: 'ged'}  )
 				expect( node ).to be_acked
@@ -785,7 +786,7 @@ describe Arborist::Node do
 
 
 		it "can return the identifiers of all other nodes that subscribe to it" do
-			
+
 		end
 
 	end
@@ -1061,6 +1062,92 @@ describe Arborist::Node do
 		it "arrayifies tags modifications" do
 			node.modify( tags: 'single' )
 			expect( node.tags ).to eq( %w[single] )
+		end
+
+	end
+
+
+	describe "reparenting" do
+
+		before( :each ) do
+			@old_parent = concrete_class.new( 'router1' ) do
+				description "The first router"
+			end
+			@new_parent = concrete_class.new( 'router2' ) do
+				description "The second router"
+			end
+			@node = concrete_class.new( 'foo' ) do
+				parent 'router1'
+				description "The prototypical node"
+			end
+
+			@old_parent.add_child( @node )
+		end
+
+		let( :node ) { @node }
+		let( :old_parent ) { @old_parent }
+		let( :new_parent ) { @new_parent }
+
+
+		it "moves itself to the new node and removes itself from its old parent" do
+			expect( old_parent.children ).to include( node.identifier )
+			expect( new_parent.children ).to_not include( node.identifier )
+
+			node.reparent( old_parent, new_parent )
+
+			expect( old_parent.children ).to_not include( node.identifier )
+			expect( new_parent.children ).to include( node.identifier )
+		end
+
+
+		it "sets its state to unknown if it was down prior to the move" do
+			node.update( error: 'Rock and Roll McDonalds' )
+
+			node.reparent( old_parent, new_parent )
+
+			expect( node ).to be_unknown
+		end
+
+
+		it "sets its state to unknown if it was quieted by its parent prior to the move" do
+			node.quieted_reasons[ :primary ] = "Timex takes a licking and... well, broke, it looks like."
+			node.status = 'quieted'
+
+			node.reparent( old_parent, new_parent )
+
+			expect( node ).to be_unknown
+		end
+
+
+		it "keeps its quieted state if it was quieted by secondary dependency prior to the move" do
+			node.quieted_reasons[ :primary ] = "Timex takes a licking and... well, broke, it looks like."
+			node.quieted_reasons[ :secondary ] = "Western Union:  The fastest way to send money"
+			node.status = 'quieted'
+
+			node.reparent( old_parent, new_parent )
+
+			expect( node ).to be_quieted
+		end
+
+
+		it "keeps its disabled state" do
+			node.update( ack: { message: 'Moving the machine', sender: 'Me' } )
+			expect( node ).to be_disabled
+
+			node.reparent( old_parent, new_parent )
+
+			expect( node ).to be_disabled
+		end
+
+
+		it "keeps its acked state" do
+			node.update( error: 'Batman whooped my ass.' )
+			node.update( ack: { message: 'Moving the machine', sender: 'Me' } )
+			expect( node ).to be_acked
+
+			node.reparent( old_parent, new_parent )
+
+			expect( node ).to be_acked
 		end
 
 	end

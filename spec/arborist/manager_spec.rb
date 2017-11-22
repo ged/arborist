@@ -1117,6 +1117,33 @@ describe Arborist::Manager do
 				hdr, body = Arborist::TreeAPI.decode( resmsg )
 				expect( hdr ).to include( 'success' => false )
 			end
+
+
+			it "reparents a node whose parent is altered" do
+				header = {
+					identifier: 'sidonie'
+				}
+				attributes = {
+					parent: 'yevaud'
+				}
+
+				msg = Arborist::TreeAPI.request( :modify, header, attributes )
+
+				node = manager.nodes[ 'sidonie' ]
+				old_parent = manager.nodes[ 'duir' ]
+				expect( node.parent ).to eq( 'duir' )
+
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+
+				new_parent = manager.nodes[ 'yevaud' ]
+				expect( node.parent ).to eq( 'yevaud' )
+				expect( old_parent.children ).to_not include( 'sidonie' )
+				expect( new_parent.children ).to include( 'sidonie' )
+			end
 		end
 
 

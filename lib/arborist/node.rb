@@ -134,6 +134,11 @@ class Arborist::Node
 			transition :quieted => :unknown, unless: :has_quieted_reason?
 		end
 
+		event :reparent do
+			transition any - [:disabled, :quieted, :acked] => :unknown
+			transition :quieted => :unknown, unless: :has_quieted_reason?
+		end
+
 		after_transition any => :acked, do: :on_ack
 		after_transition :acked => :up, do: :on_ack_cleared
 		after_transition :down => :up, do: :on_node_up
@@ -730,6 +735,17 @@ class Arborist::Node
 	ensure
 		self.update_delta.clear
 		self.pending_change_events.clear
+	end
+
+
+	### Move a node from +old_parent+ to +new_parent+.
+	def reparent( old_parent, new_parent )
+		old_parent.remove_child( self )
+		self.parent( new_parent.identifier )
+		new_parent.add_child( self )
+
+		self.quieted_reasons.delete( :primary )
+		super
 	end
 
 

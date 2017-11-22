@@ -823,6 +823,13 @@ class Arborist::Manager
 
 		self.log.debug "Modifying operational attributes of the %s node: %p" % [ identifier, body ]
 
+		if new_parent_identifier = body.delete( 'parent' )
+			old_parent = self.nodes[ node.parent ]
+			new_parent = self.nodes[ new_parent_identifier ] or
+				return Arborist::TreeAPI.error_response( 'client', "No such parent node: %p" % [new_parent_identifier] )
+			node.reparent( old_parent, new_parent )
+		end
+
 		node.modify( body )
 
 		return Arborist::TreeAPI.successful_response( nil )
