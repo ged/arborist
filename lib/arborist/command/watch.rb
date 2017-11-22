@@ -51,18 +51,18 @@ module Arborist::CLI::Watch
 						last_runid = this_runid
 					when 'sys.node_added'
 						prompt.say "[%s] «Node added» %s\n" % [
-							hl(Time.now.strftime('%Y-%m-%d %H:%M:%S %Z')).color(:dark, :white),
-							hl(event['node']).color( :bold, :cyan )
+							hl.dark.white( Time.now.strftime('%Y-%m-%d %H:%M:%S %Z') ),
+							hl.bold.cyan( event['node'] )
 						]
 					when 'sys.node_removed'
 						prompt.say "[%s] »Node removed« %s\n" % [
-							hl(Time.now.strftime('%Y-%m-%d %H:%M:%S %Z')).color(:dark, :white),
-							hl(event['node']).color( :dark, :cyan )
+							hl.dark.white( Time.now.strftime('%Y-%m-%d %H:%M:%S %Z') ),
+							hl.dark.cyan( event['node'] )
 						]
 					else
 						prompt.say "[%s] %s\n" % [
-							hl(Time.now.strftime('%Y-%m-%d %H:%M:%S %Z')).color(:dark, :white),
-							hl(dump_event( event )).color( :dark, :white )
+							hl.dark.white( Time.now.strftime('%Y-%m-%d %H:%M:%S %Z') ),
+							hl.dark.white( dump_event( event ) )
 						]
 					end
 				end
@@ -97,41 +97,43 @@ module Arborist::CLI::Watch
 		when 'node.update'
 			type, status, errors = event['data'].values_at( *%w'type status errors' )
 			return "%s updated: %s is %s%s" % [
-				hl( id ).color( :cyan ),
+				hl.cyan( id ),
 				type,
-				hl( status ).color( status.to_sym ),
+				hl.decorate( status, status.to_sym ),
 				errors ? " (#{errors})" : ''
 			]
 		when 'node.delta'
 			pairs = diff_pairs( event['data'] )
-			return "%s delta, changes: %s" % [ hl( id ).color( :cyan ), pairs ]
+			return "%s delta, changes: %s" % [ hl.cyan( id ), pairs ]
 		else
-			return "%s event: %p" % [ hl(event_type).color(:dark, :white), event ]
+			return "%s event: %p" % [ hl.dark.white( event_type ), event ]
 		end
 	end
 
 
 	### Return a string showing the differences in a delta event's change +data+.
 	def diff_pairs( data )
-		return data.collect do |key, pairs|
+		diff = data.collect do |key, pairs|
 			if pairs.is_a?( Hash )
 				diff_pairs( pairs )
 			else
 				val1, val2 = *pairs
 				"%s: %s -> %s" % [
-					hl( key ).color( :dark, :white ),
-					hl( val1 ).color( :yellow ),
-					hl( val2 ).color( :bold, :yellow )
+					hl.dark.white( key ),
+					hl.yellow( val1 ),
+					hl.bold.yellow( val2 )
 				]
 			end
-		end.join( hl(", ").color(:dark, :white) )
+		end
+
+		return hl.dark.white( diff.join(', ') )
 	end
 
 
 	### Return a heartbeat string for the current time.
 	def heartbeat
 		idx = (Time.now.to_i % HEARTBEAT_CHARACTERS.length) - 1
-		return " " + HEARTBEAT_CHARACTERS[ idx ] + "\x08\x08"
+		return " " + hl.bright_red( HEARTBEAT_CHARACTERS[ idx ] ) + "\x08\x08"
 	end
 
 end # module Arborist::CLI::Watch

@@ -3,6 +3,8 @@
 
 require 'loggability'
 require 'highline'
+require 'tty'
+require 'pastel'
 require 'gli'
 
 require 'arborist' unless defined?( Arborist )
@@ -18,18 +20,6 @@ module Arborist::CLI
 
 	# Write logs to Arborist's logger
 	log_to :arborist
-
-
-	# Make a HighLine color scheme
-	COLOR_SCHEME = HighLine::ColorScheme.new do |scheme|
-		scheme[:header]    = [ :bold, :yellow ]
-		scheme[:subheader] = [ :bold, :white ]
-		scheme[:key]       = [ :white ]
-		scheme[:value]     = [ :bold, :white ]
-		scheme[:error]     = [ :red ]
-		scheme[:warning]   = [ :yellow ]
-		scheme[:message]   = [ :reset ]
-	end
 
 
 	#
@@ -97,8 +87,8 @@ module Arborist::CLI
 		self.require_additional_libs( global[:r] ) if global[:r]
 		self.load_config( global )
 		self.set_logging_level( global[:l] ) if global[:l] # again; override config file
-		self.install_highline_colorscheme
 
+		self.setup_pastel_aliases
 		self.setup_output( global )
 
 		true
@@ -125,10 +115,6 @@ module Arborist::CLI
 	##
 	# Registered subcommand modules
 	singleton_attr_accessor :subcommand_modules
-
-	##
-	# The IO opened to the output file
-	singleton_attr_accessor :outfile
 
 
 	### Overridden -- Add registered subcommands immediately before running.
@@ -159,17 +145,17 @@ module Arborist::CLI
 	end
 
 
-	### Return the HighLine prompt used by the command to communicate with the
-	### user.
-	def self::prompt
-		@prompt ||= HighLine.new( $stdin, $stderr )
+	### Return the Pastel colorizer.
+	###
+	def self::pastel
+		@pastel ||= Pastel.new( enabled: $stdout.tty? )
 	end
 
 
-	### If the command's output was redirected to a file, return the open File object
-	### for it.
-	def self::outfile
-		return @outfile
+	### Return the TTY prompt used by the command to communicate with the
+	### user.
+	def self::prompt
+		@prompt ||= TTY::Prompt.new
 	end
 
 
@@ -199,24 +185,23 @@ module Arborist::CLI
 	end
 
 
-	### Install the color scheme used by HighLine
-	def self::install_highline_colorscheme
-		HighLine.color_scheme = HighLine::ColorScheme.new do |cs|
-			cs[:headline]   = [ :bold, :white, :on_black ]
-			cs[:success]    = [ :bold, :green ]
-			cs[:error]      = [ :bold, :red ]
-			cs[:up]         = [ :green ]
-			cs[:down]       = [ :red ]
-			cs[:unknown]    = [ :dark, :yellow ]
-			cs[:disabled]   = [ :dark, :white ]
-			cs[:quieted]    = [ :dark, :green ]
-			cs[:acked]      = [ :yellow ]
-			cs[:highlight]  = [ :bold, :yellow ]
-			cs[:search_hit] = [ :black, :on_white ]
-			cs[:prompt]     = [ :cyan ]
-			cs[:even_row]   = [ :bold ]
-			cs[:odd_row]    = [ :normal ]
-		end
+	### Setup pastel color aliases
+	###
+	def self::setup_pastel_aliases
+		self.pastel.alias_color( :headline, :bold, :white, :on_black )
+		self.pastel.alias_color( :success, :bold, :green )
+		self.pastel.alias_color( :error, :bold, :red )
+		self.pastel.alias_color( :up, :green )
+		self.pastel.alias_color( :down, :red )
+		self.pastel.alias_color( :unknown, :dark, :yellow )
+		self.pastel.alias_color( :disabled, :dark, :white )
+		self.pastel.alias_color( :quieted, :dark, :green )
+		self.pastel.alias_color( :acked, :yellow )
+		self.pastel.alias_color( :highlight, :bold, :yellow )
+		self.pastel.alias_color( :search_hit, :black, :on_white )
+		self.pastel.alias_color( :prompt, :cyan )
+		self.pastel.alias_color( :even_row, :bold )
+		self.pastel.alias_color( :odd_row, :reset )
 	end
 
 
@@ -293,22 +278,21 @@ module Arborist::CLI
 		end
 
 
-		### Return the specified +text+ as a Highline::String for convenient formatting,
-		### color, etc.
-		def hl( text )
-			return HighLine::String.new( text.to_s )
+		### Return the global Pastel object for convenient formatting, color, etc.
+		def hl
+			return Arborist::CLI.pastel
 		end
 
 
 		### Return the specified +string+ in the 'headline' ANSI color.
 		def headline_string( string )
-			return hl( string ).color( :headline )
+			return hl.headline( string )
 		end
 
 
 		### Return the specified +string+ in the 'highlight' ANSI color.
 		def highlight_string( string )
-			return hl( string ).color( :highlight )
+			return hl.highlight( string )
 		end
 
 
@@ -320,24 +304,33 @@ module Arborist::CLI
 
 		### Return the specified +string+ in the 'error' ANSI color.
 		def error_string( string )
-			return hl( string ).color( :error )
+			return hl.error( string )
 		end
 
 
-		### Output a table with the given +rows+.
-		def display_table( rows )
-			colwidths = rows.transpose.map do |colvals|
-				colvals.map {|val| visible_chars(val) }.max
+		### Output a table with the given +header+ (an array) and +rows+
+		### (an array of arrays).
+		def display_table( header, rows )
+			table = TTY::Table.new( header, rows )
+			renderer = nil
+
+			if hl.enabled?
+				renderer = TTY::Table::Renderer::Unicode.new(
+					table,
+					multiline: true,
+					padding: [0,1,0,1]
+				)
+				renderer.border.style = :dim
+
+			else
+				renderer = TTY::Table::Renderer::ASCII.new(
+					table,
+					multiline: true,
+					padding: [0,1,0,1]
+				)
 			end
 
-			rows.each do |row|
-				row_string = row.zip( colwidths ).inject( '' ) do |accum, (val, colsize)|
-					padding = ' ' * (colsize - visible_chars(val) + 2)
-					accum + val.to_s + padding
-				end
-
-				Arborist::CLI.prompt.say( row_string + "\n" )
-			end
+			puts renderer.render
 		end
 
 

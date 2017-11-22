@@ -16,7 +16,7 @@ module Arborist::CLI::Summary
 		'          _             _    _',
 		' __ _ _ _| |__  ___ _ _(_)__| |',
 		'/ _` | \'_| \'_ \\/ _ \\ \'_| (_-< _|',
-		'\\__,_|_| |_.__/\\___/_| |_/__/\\__| v%s, %s nodes',
+		'\\__,_|_| |_.__/\\___/_| |_/__/\\__| %s, %s nodes',
 	]
 
 	desc 'Summarize known problems'
@@ -37,34 +37,23 @@ module Arborist::CLI::Summary
 			down     = get_status( nodes, 'down' )
 			acked    = get_status( nodes, 'acked' )
 			disabled = get_status( nodes, 'disabled' )
+			quieted  = get_status( nodes, 'quieted' )
 			problems = ! ( down.size + acked.size + disabled.size ).zero?
 
 			prompt.say "Connected to: %s" % [ highlight_string(client.tree_api_url) ]
+			prompt.say "Status as of: %s" % [ hl.on_blue.bright_white(Time.now.to_s) ]
+
 			(0..2).each do |i|
-				prompt.say "%s" % [ hl( BANNER[i] ).color( :success ) ]
+				prompt.say "%s" % [ hl.bold.bright_green( BANNER[i] ) ]
 			end
-			prompt.say hl(BANNER.last).color( :success ) % [
+			prompt.say hl.bold.bright_green( BANNER.last ) % [
 				highlight_string(status['server_version']),
 				highlight_string(status['nodecount'])
 			]
 
 			puts
 			if problems
-				unless disabled.size.zero?
-					section "Disabled"
-					display_table( format_acked(disabled, options[:sort]) )
-					puts
-				end
-				unless acked.size.zero?
-					section "Acknowledged"
-					display_table( format_acked(acked, options[:sort]) )
-					puts
-				end
-				unless down.size.zero?
-					section "Down"
-					display_table( format_down(down, options[:sort]) )
-					puts
-				end
+				output_problems( disabled, acked, down, quieted, options[:sort] )
 			else
 				prompt.say success_string( "No problems found!" )
 			end
@@ -84,11 +73,35 @@ module Arborist::CLI::Summary
 	end
 
 
-	### Spit out a separator with a headline.
-	def section( str )
-		width = HighLine::SystemExtensions.terminal_size.first
-		width = width > 72 ? 72 : width
-		prompt.say "\n%s\n%s" % [ headline_string( str ), '-' * width ]
+	### Output all problems.
+	###
+	def output_problems( disabled, acked, down, quieted, sort )
+		unless disabled.size.zero?
+			prompt.say hl.headline( "Disabled Nodes" )
+			display_table( *format_acked(disabled, sort) )
+			puts
+		end
+		unless acked.size.zero?
+			prompt.say hl.headline( "Acknowledged Outages" )
+			display_table( *format_acked(acked, sort) )
+			puts
+		end
+		unless down.size.zero?
+			prompt.say hl.headline( "Current Outages" )
+			header = [
+				highlight_string( 'identifier' ),
+				highlight_string( 'type' ),
+				highlight_string( 'when' ),
+				highlight_string( 'errors' )
+			]
+
+			display_table( header, format_down(down, sort) )
+			prompt.say "%d nodes have been %s as a result of the above problems." % [
+				quieted.size,
+				hl.quieted( 'quieted' )
+			]
+			puts
+		end
 	end
 
 
@@ -104,38 +117,28 @@ module Arborist::CLI::Summary
 
 		rows = nodes.sort_by{|n| n[sort_key] }.each_with_object([]) do |node, acc|
 			acc << [
-				hl( node['identifier'] ).color( :disabled ),
+				hl.disabled( node['identifier'] ),
 				node[ 'type' ],
 				Time.parse( node[ 'status_changed' ] ).as_delta,
 				node[ 'ack' ][ 'sender' ],
 				node[ 'ack' ][ 'message' ]
 			]
 		end
-
-		return rows.unshift( header )
+		return header, rows
 	end
 
 
 	### Prepare an array of down nodes.
 	def format_down( nodes, sort_key )
-		header = [
-			highlight_string( 'identifier' ),
-			highlight_string( 'type' ),
-			highlight_string( 'when' ),
-			highlight_string( 'errors' )
-		]
-
-		rows = nodes.sort_by{|n| n[sort_key] }.each_with_object([]) do |node, acc|
+		return nodes.sort_by{|n| n[sort_key] }.each_with_object([]) do |node, acc|
 			errors = node[ 'errors' ].map{|err| "%s: %s" % [ err.first, err.last ]}
 			acc << [
-				hl( node['identifier'] ).color( :down ),
+				hl.down( node['identifier'] ),
 				node[ 'type' ],
 				Time.parse( node[ 'status_changed' ] ).as_delta,
-				errors.join( ', ' )
+				errors.join( '\n' )
 			]
 		end
-
-		return rows.unshift( header )
 	end
 
 end # module Arborist::CLI::Summary

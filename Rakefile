@@ -42,7 +42,8 @@ hoespec = Hoe.spec 'arborist' do |spec|
 	spec.dependency 'cztop', '~> 0.11'
 	spec.dependency 'cztop-reactor', '~> 0.3'
 	spec.dependency 'gli', '~> 2.3'
-	spec.dependency 'highline', '~> 1.7'
+	spec.dependency 'tty', '~> 0.7'
+	spec.dependency 'tty-tree', '~> 0.1'
 
 	spec.dependency 'rspec', '~> 3.2', :developer
 	spec.dependency 'rspec-wait', '~> 0.0', :developer

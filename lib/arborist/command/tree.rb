@@ -3,6 +3,7 @@
 
 require 'pp'
 require 'msgpack'
+require 'tty-tree'
 
 require 'arborist/cli' unless defined?( Arborist::CLI )
 require 'arborist/client'
@@ -33,24 +34,33 @@ module Arborist::CLI::Tree
 			client = Arborist::Client.new
 
 			opts = { tree: true }
-			opts[:from] = options[:from] if options[:from]
-			opts[:depth] = options[:depth] if options[:depth]
+			opts[ :from ]  = options[ :from ]  if options[ :from ]
+			opts[ :depth ] = options[ :depth ] if options[ :depth ]
 
-			status = client.status
 			nodes = client.fetch( opts )
-			root = nodes.first
-
-			prompt.say "Arborist Manager %s {%s} [%s nodes] (uptime: %ss)" % [
-				highlight_string(status['server_version']),
-				highlight_string(client.tree_api_url),
-				highlight_string(status['nodecount']),
-				highlight_string(status['uptime'])
-			]
 
 			if options[:raw]
-				pp root
+				pp nodes.first
+
 			else
-				dump_tree( root, options )
+				status = client.status
+				prompt.say "Arborist Manager %s {%s} [%s nodes] (uptime: %s secs)\n\n" % [
+					highlight_string( status['server_version'] ),
+					highlight_string( client.tree_api_url ),
+					highlight_string( status['nodecount'] ),
+					highlight_string( "%d" % status['uptime'] )
+				]
+
+				root = nodes.first
+				root_data = {}
+				tree_data = { node_description(root) => root_data }
+
+				root[ 'children' ].each_value do |node|
+					root_data[ node_description(node) ] = build_tree( node )
+				end
+
+				tree = TTY::Tree.new( tree_data )
+				prompt.say tree.render( indent: 4 )
 			end
 		end
 
@@ -61,29 +71,38 @@ module Arborist::CLI::Tree
 	module_function
 	###############
 
-	### Dump the node tree starting at the specified +root+ node.
-	def dump_tree( node, options )
-		desc = node_description( node, options )
-		prompt.say( desc )
+	#### Reorganize the node data to format used by TTY::Tree.
+	def build_tree( node )
+		return [] if node[ 'children' ].empty?
 
-		prompt.indent do
-			node['children'].each_value do |subnode|
-				dump_tree( subnode, options )
-			end
+		children = []
+		node[ 'children' ].each_value do |child|
+			children << { node_description(child) => build_tree(child) }
 		end
+		return children
 	end
 
 
 	### Return a description of the specified +node+.
-	def node_description( node, options )
-		desc = highlight_string( node['identifier'] )
-		desc << " %s" % [ hl(node['type']).color( :dark, :white ) ]
+	def node_description( node )
+		desc = ""
+
+		case node['type']
+		when 'root'
+			desc << "%s" % [ hl.bold.bright_blue(node['type']) ]
+		else
+			desc << highlight_string( node['identifier'] )
+			desc << " %s" % [ hl.dark.white(node['type']) ]
+		end
+
 		desc << " [%s]" % [ node['description'] ] unless
 			!node['description'] || node['description'].empty?
 		desc << " (%s)" % [ status_description(node) ]
 
 		child_count = node[ 'children' ].length
-		desc << " [%d child nodes]" % [ child_count ] unless child_count.zero?
+		desc << " [%d child node%s" % [
+			child_count, child_count == 1 ? ']' : 's]'
+		] unless child_count.zero?
 
 		case node['status']
 		when 'down'
@@ -103,7 +122,7 @@ module Arborist::CLI::Tree
 	### Return a more colorful description of the status of the given +node+.
 	def status_description( node )
 		status = node['status'] or return '-'
-		return hl( status ).color( status.to_sym ) rescue status
+		return hl.decorate( status, status.to_sym ) rescue status
 	end
 
 
