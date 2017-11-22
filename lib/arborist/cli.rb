@@ -66,8 +66,8 @@ module Arborist::CLI
 	arg_name :LEVEL
 	flag [:l, :loglevel], must_match: Loggability::LOG_LEVELS.keys
 
-	desc "Don't actually do anything, just show what would happen."
-	switch [:n, 'dry-run']
+	# desc "Don't actually do anything, just show what would happen."
+	# switch [:n, 'dry-run']
 
 	desc "Additional Ruby libs to require before doing anything."
 	flag [:r, 'requires'], type: Array
