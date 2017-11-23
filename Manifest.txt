@@ -19,7 +19,9 @@ lib/arborist/client.rb
 lib/arborist/command/ack.rb
 lib/arborist/command/client.rb
 lib/arborist/command/config.rb
+lib/arborist/command/reset.rb
 lib/arborist/command/start.rb
+lib/arborist/command/summary.rb
 lib/arborist/command/tree.rb
 lib/arborist/command/watch.rb
 lib/arborist/dependency.rb
@@ -43,12 +45,12 @@ lib/arborist/monitor.rb
 lib/arborist/monitor/socket.rb
 lib/arborist/monitor_runner.rb
 lib/arborist/node.rb
-lib/arborist/node_subscription.rb
 lib/arborist/node/ack.rb
 lib/arborist/node/host.rb
 lib/arborist/node/resource.rb
 lib/arborist/node/root.rb
 lib/arborist/node/service.rb
+lib/arborist/node_subscription.rb
 lib/arborist/observer.rb
 lib/arborist/observer/action.rb
 lib/arborist/observer/summarize.rb
@@ -74,6 +76,7 @@ spec/arborist/node/resource_spec.rb
 spec/arborist/node/root_spec.rb
 spec/arborist/node/service_spec.rb
 spec/arborist/node_spec.rb
+spec/arborist/node_subscription_spec.rb
 spec/arborist/observer/action_spec.rb
 spec/arborist/observer/summarize_spec.rb
 spec/arborist/observer_runner_spec.rb
