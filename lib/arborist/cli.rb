@@ -298,7 +298,7 @@ module Arborist::CLI
 
 		### Return the specified +string+ in the 'success' ANSI color.
 		def success_string( string )
-			return hl( string ).color( :success )
+			return hl.success( string )
 		end
 
 
