@@ -356,28 +356,11 @@ module Arborist::CLI
 	end # module Subcommand
 
 
-	### Register one or more subcommands with the 'arborist' command shell. The given
-	### block will be evaluated in the context of Arborist::CLI.
-	def self::register( &block )
-		self.instance_eval( &block )
-	end
-
-
-	### Custom command loader. The default one is silly.
-	def self::load_commands( path )
-		self.log.debug "Load commands from %s" % [ path ]
-		Pathname.glob( path + '*.rb' ).each do |rbfile|
+	### Load commands from any files in the specified directory relative to LOAD_PATHs
+	def self::commands_from( subdir )
+		Gem.find_latest_files( File.join(subdir, '*.rb') ).each do |rbfile|
 			self.log.debug "  loading %s..." % [ rbfile ]
 			require( rbfile )
-		end
-	end
-
-
-	# Load commands from any files in the specified directory relative to LOAD_PATHs
-	def self::commands_from( subdir )
-		$LOAD_PATH.map {|path| Pathname(path) }.each do |libdir|
-			command_dir = libdir.expand_path + subdir
-			load_commands( command_dir )
 		end
 	end
 
