@@ -112,31 +112,58 @@ class Arborist::MonitorRunner
 	end
 
 
-	### Run the specified +monitor+ and update nodes with the results.
+	### Update nodes with the results of a monitor's run.
 	def run_monitor( monitor )
 		positive     = monitor.positive_criteria
 		negative     = monitor.negative_criteria
 		include_down = monitor.include_down?
 		props        = monitor.node_properties
+		description  = monitor.description || monitor.class.name
 
-		self.log.info "Running %s monitor" % [ monitor.description || monitor.class.name ]
-
-		self.log.debug "Fetching node data for %p" % [ monitor ]
 		self.search( positive, include_down, props, negative ) do |nodes|
-			self.log.debug "  running the monitor for %d nodes" % [ nodes.length ]
-			results = monitor.run( nodes )
-			monitor_key = monitor.key
+			self.log.info "Running %p monitor for %d node(s)" % [ description, nodes.length ]
 
-			results.each do |ident, properties|
-				properties['_monitor_key'] = monitor_key
-			end
+			unless nodes.empty?
+				results = self.run_monitor_safely( monitor, nodes )
 
-			self.log.debug "  updating with results: %p" % [ results ]
-			self.update( results ) do
-				self.log.debug "Updated %d via the '%s' monitor" %
-					[ results.length, monitor.description ]
+				self.log.debug "  updating with results: %p" % [ results ]
+				self.update( results ) do
+					self.log.debug "Updated %d via the '%s' monitor" %
+						[ results.length, description ]
+				end
 			end
 		end
+	end
+
+
+	### Exec +monitor+ against the provided +nodes+ hash, treating
+	### runtime exceptions as an error condition.  Returns an update
+	### hash, keyed by node identifier.
+	###
+	def run_monitor_safely( monitor, nodes )
+		description = monitor.description || monitor.class.name
+
+		results = begin
+			monitor.run( nodes )
+		rescue => err
+			errmsg = "Exception while running %p monitor: %s: %s" % [
+				description,
+				err.class.name,
+				err.message
+			]
+			self.log.error( errmsg )
+			nodes.keys.each_with_object({}) do |id, results|
+				results[id] = { error: errmsg }
+			end
+		end
+
+		# Attach monitor key.
+		#
+		results.each do |ident, properties|
+			properties['_monitor_key'] = monitor.key
+		end
+
+		return results
 	end
 
 

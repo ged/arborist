@@ -136,9 +136,54 @@ describe Arborist::MonitorRunner do
 			runner.run_monitor( monitor )
 		end
 
+
+		it "sets an error condition if the monitor raises an exception" do
+			monitor = Arborist::Monitor.new do
+				description 'test monitor'
+				key :test
+				every 20
+				match type: 'host'
+				use :addresses
+				exec do |nodes|
+					raise "boom!"
+				end
+			end
+			nodes = { 'test' => {} }
+
+			expect( runner ).to receive( :search ).
+				with( {type: 'host'}, false, [:addresses], {} ).
+				and_yield( nodes )
+
+			expect( runner ).to receive( :update ).
+				with({ "test" => {
+					error: 'Exception while running "test monitor" monitor: RuntimeError: boom!',
+					 "_monitor_key" => :test
+				}
+			})
+
+			runner.run_monitor( monitor )
+		end
+
+		it "skips the monitor execution if no nodes were returned in the search" do
+			monitor = Arborist::Monitor.new do
+				description 'test monitor'
+				key :test
+				every 20
+				match type: 'host'
+				use :addresses
+				exec 'fping', '-e', '-t', '150'
+			end
+			nodes = {}
+
+			expect( runner ).to receive( :search ).
+				with( {type: 'host'}, false, [:addresses], {} ).
+				and_yield( nodes )
+
+			expect( runner ).to_not receive( :update )
+			runner.run_monitor( monitor )
+		end
+
+
 	end
-
-
-
 end
 
