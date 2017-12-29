@@ -136,7 +136,7 @@ module Arborist::CLI::Summary
 				hl.down( node['identifier'] ),
 				node[ 'type' ],
 				Time.parse( node[ 'status_changed' ] ).as_delta,
-				errors.join( '\n' )
+				errors.join( "\n" )
 			]
 		end
 	end
