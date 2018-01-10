@@ -8,6 +8,12 @@ require 'arborist/cli' unless defined?( Arborist::CLI )
 module Arborist::CLI::Start
 	extend Arborist::CLI::Subcommand
 
+	VALID_DAEMONS = %w[
+		manager
+		monitors
+		observers
+	]
+
 	desc 'Start an Arborist daemon'
 	long_desc <<-EOF
 	Start the Arborist manager, observers, or monitors. The SOURCE is
@@ -29,6 +35,10 @@ module Arborist::CLI::Start
 		cmd.action do |globals, options, args|
 			appname = args.shift
 			source  = args.shift
+
+			unless VALID_DAEMONS.include?( appname )
+				raise "Unknown daemon component.  Should be one of: %s" % [ VALID_DAEMONS.join(', ') ]
+			end
 
 			loader = Arborist::Loader.create( options[:loader], source )
 			runner = case appname
