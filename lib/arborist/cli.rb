@@ -2,7 +2,6 @@
 #encoding: utf-8
 
 require 'loggability'
-require 'highline'
 require 'tty'
 require 'pastel'
 require 'gli'
@@ -272,7 +271,7 @@ module Arborist::CLI
 		end
 
 
-		### Get the prompt (a Highline object)
+		### Get the prompt (a TTY::Prompt object)
 		def prompt
 			return Arborist::CLI.prompt
 		end
