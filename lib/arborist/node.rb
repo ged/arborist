@@ -465,7 +465,7 @@ class Arborist::Node
 	### Get or set the node's configuration hash. This can be used to pass per-node
 	### information to systems using the tree (e.g., monitors, subscribers).
 	def config( new_config=nil )
-		@config = stringify_keys( new_config ) if new_config
+		@config.merge!( stringify_keys( new_config ) ) if new_config
 		return @config
 	end
 
