@@ -54,6 +54,12 @@ class Arborist::Node::Resource < Arborist::Node
 	end
 
 
+	### Delegate the resource's hostname to it's parent host.
+	def hostname
+		return @host.hostname
+	end
+
+
 	### Overridden to disallow modification of a Resource parent, as it needs a
 	### reference to the Host node for delegation.
 	def parent( new_parent=nil )

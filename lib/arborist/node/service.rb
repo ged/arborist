@@ -101,6 +101,12 @@ class Arborist::Node::Service < Arborist::Node
 	end
 
 
+	### Delegate the service's hostname to it's parent host.
+	def hostname
+		return @host.hostname
+	end
+
+
 	### Returns +true+ if the node matches the specified +key+ and +val+ criteria.
 	def match_criteria?( key, val )
 		self.log.debug "Matching %p: %p against %p" % [ key, val, self ]

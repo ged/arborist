@@ -81,6 +81,35 @@ describe Arborist::Node::Host do
 	end
 
 
+	it "can be created with a hostname attribute" do
+		result = described_class.new( 'testhost', hostname: 'example.com' )
+		expect( result.hostname ).to eq( 'example.com')
+	end
+
+
+	it "sets a hostname if unset, and the address was discovered via DNS" do
+		expect( TCPSocket ).to receive( :gethostbyname ).with( 'example.com' ).
+			and_return(['example.com', [], Socket::AF_INET, '1.1.1.1'])
+		result = described_class.new( 'testhost' ) do
+			address 'example.com'
+		end
+		expect( result.addresses ).to include( IPAddr.new('1.1.1.1') )
+		expect( result.hostname ).to eq( 'example.com')
+	end
+
+
+	it "leaves the hostname untouched if already set" do
+		expect( TCPSocket ).to receive( :gethostbyname ).with( 'example.com' ).
+			and_return(['example.com', [], Socket::AF_INET, '1.1.1.1'])
+		result = described_class.new( 'testhost' ) do
+			hostname 'www.example.com'
+			address 'example.com'
+		end
+		expect( result.addresses ).to include( IPAddr.new('1.1.1.1') )
+		expect( result.hostname ).to_not eq( 'example.com')
+	end
+
+
 	it "appends block address arguments to addresses in attributes" do
 		result = described_class.new( 'testhost', addresses: '192.168.118.3' ) do
 			address '127.0.0.1'
@@ -116,6 +145,16 @@ describe Arborist::Node::Host do
 	end
 
 
+	it "includes its hostname when turned into a Hash" do
+		node = described_class.new( 'testhost' ) do
+			hostname 'example.com'
+		end
+
+		expect( node.to_h ).to include( :hostname )
+		expect( node.to_h[:hostname] ).to eq( 'example.com' )
+	end
+
+
 	it "keeps its addresses when marshalled" do
 		node = described_class.new( 'testhost' ) do
 			address '192.168.118.3'
@@ -124,6 +163,16 @@ describe Arborist::Node::Host do
 		clone = Marshal.load( Marshal.dump(node) )
 
 		expect( clone.addresses ).to eq( node.addresses )
+	end
+
+
+	it "keeps its hostname when marshalled" do
+		node = described_class.new( 'testhost' ) do
+			hostname 'example.com'
+		end
+		clone = Marshal.load( Marshal.dump(node) )
+
+		expect( clone.hostname ).to eq( node.hostname )
 	end
 
 
@@ -154,12 +203,26 @@ describe Arborist::Node::Host do
 	end
 
 
+	it "is not equal to another host node with differing hostnames" do
+		node1 = described_class.new( 'testhost' ) do
+			hostname 'example.com'
+		end
+		node2 = described_class.new( 'testhost' ) do
+			hostname 'pets.com'
+		end
+
+		expect( node1 ).to_not eq( node2 )
+	end
+
+
+
 	describe "matching" do
 
 		let( :node ) do
 			described_class.new( 'testhost' ) do
 				address '192.168.66.12'
 				address '10.2.12.68'
+				hostname 'example.com'
 			end
 		end
 
@@ -167,6 +230,11 @@ describe Arborist::Node::Host do
 		it "can be matched with one of its addresses" do
 			expect( node ).to match_criteria( address: '192.168.66.12' )
 			expect( node ).to_not match_criteria( address: '127.0.0.1' )
+		end
+
+
+		it "can be matched on its hostname" do
+			expect( node ).to match_criteria( hostname: 'example.com' )
 		end
 
 
