@@ -10,8 +10,9 @@ using Arborist::TimeRefinements
 
 # A declaration of an action to run against Manager nodes to update their state.
 class Arborist::Monitor
-	extend Loggability,
-	       Arborist::MethodUtilities
+	extend Configurability,
+		   Loggability,
+		   Arborist::MethodUtilities
 
 	# Loggability API -- write logs to the Arborist log host
 	log_to :arborist
@@ -30,9 +31,16 @@ class Arborist::Monitor
 	# The default monitoring interval, in seconds
 	DEFAULT_INTERVAL = 5.minutes
 
-	##
-	# The default number of seconds to defer startup to splay common intervals
-	DEFAULT_SPLAY = 0
+
+	# Configurability API -- use the 'arborist' section
+	configurability( 'arborist.monitor' ) do
+
+		##
+		# A default splay to apply to all Monitors.
+		setting :splay, default: 0 do |value|
+			Float( value )
+		end
+	end
 
 
 	Arborist.add_dsl_constructor( self ) do |description=nil, key=nil, &block|
@@ -147,7 +155,7 @@ class Arborist::Monitor
 		@key = key
 		@description = description || self.class.name
 		@interval = DEFAULT_INTERVAL
-		@splay = DEFAULT_SPLAY
+		@splay = Arborist::Monitor.splay
 
 		@positive_criteria = {}
 		@negative_criteria = {}
@@ -224,7 +232,7 @@ class Arborist::Monitor
 
 	### Return a string representation of the object suitable for debugging.
 	def inspect
-		return "#<%p:%#x %s (every %ds ±%ds)>" % [
+		return "#<%p:%#x %s (every %ds +-%ds)>" % [
 			self.class,
 			self.object_id * 2,
 			self.description || "(no description)",
