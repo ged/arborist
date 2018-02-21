@@ -35,8 +35,11 @@ describe Arborist::MonitorRunner do
 
 	before( :each ) do
 		allow( CZTop::Reactor ).to receive( :new ).and_return( reactor )
+		allow( Thread ).to receive( :new ).and_yield
 		allow( reactor ).to receive( :register )
 		allow( reactor ).to receive( :unregister )
+		allow( reactor ).to receive( :add_periodic_timer ).
+			with( described_class::THREAD_CLEANUP_INTERVAL )
 	end
 
 

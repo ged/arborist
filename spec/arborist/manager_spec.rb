@@ -26,7 +26,7 @@ describe Arborist::Manager do
 
 
 	let( :manager ) { described_class.new }
-
+	let( :tmpfile_pathname ) { Pathname(Dir::Tmpname.create(['arb', 'tree']) {}) }
 
 
 	#
@@ -169,7 +169,7 @@ describe Arborist::Manager do
 
 
 		it "checkpoints the state file periodically if an interval is configured" do
-			statefile = Pathname( Dir.tmpdir ) + Dir::Tmpname.make_tmpname( 'arb', 'tree' )
+			statefile = tmpfile_pathname()
 			described_class.configure( checkpoint_frequency: 20_000, state_file: statefile )
 
 			manager = described_class.new

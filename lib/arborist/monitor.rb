@@ -145,7 +145,7 @@ class Arborist::Monitor
 	### returned.
 	def initialize( description=nil, key=nil, &block )
 		@key = key
-		@description = description
+		@description = description || self.class.name
 		@interval = DEFAULT_INTERVAL
 		@splay = DEFAULT_SPLAY
 

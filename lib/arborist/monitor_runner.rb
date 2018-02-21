@@ -1,6 +1,8 @@
 # -*- ruby -*-
 #encoding: utf-8
 
+require 'set'
+
 require 'cztop'
 require 'cztop/reactor'
 require 'cztop/reactor/signal_handling'
@@ -21,17 +23,21 @@ class Arborist::MonitorRunner
 		# :TODO: :QUIT, :WINCH, :USR2, :TTIN, :TTOU
 	] & Signal.list.keys.map( &:to_sym )
 
+	# Number of seconds between thread cleanup
+	THREAD_CLEANUP_INTERVAL = 5 # seconds
+
 
 	log_to :arborist
 
 
 	### Create a new Arborist::MonitorRunner
 	def initialize
-		@monitors      = []
-		@handler       = nil
-		@reactor       = CZTop::Reactor.new
-		@client        = Arborist::Client.new
-		@request_queue = {}
+		@monitors        = []
+		@handler         = nil
+		@reactor         = CZTop::Reactor.new
+		@client          = Arborist::Client.new
+		@runner_threads  = {}
+		@request_queue   = {}
 	end
 
 
@@ -60,6 +66,10 @@ class Arborist::MonitorRunner
 	# The Arborist::Client that will provide the message packing and unpacking
 	attr_reader :client
 
+	##
+	# A hash of monitor object -> thread used to contain and track running monitor threads.
+	attr_reader :runner_threads
+
 
 	### Load monitors from the specified +enumerator+.
 	def load_monitors( enumerator )
@@ -72,6 +82,8 @@ class Arborist::MonitorRunner
 		self.monitors.each do |mon|
 			self.add_timer_for( mon )
 		end
+
+		self.add_thread_cleanup_timer
 
 		self.with_signal_handler( self.reactor, *QUEUE_SIGS ) do
 			self.reactor.register( self.client.tree_api, :write, &self.method(:handle_io_event) )
@@ -118,19 +130,26 @@ class Arborist::MonitorRunner
 		negative     = monitor.negative_criteria
 		include_down = monitor.include_down?
 		props        = monitor.node_properties
-		description  = monitor.description || monitor.class.name
 
 		self.search( positive, include_down, props, negative ) do |nodes|
-			self.log.info "Running %p monitor for %d node(s)" % [ description, nodes.length ]
+			self.log.info "Running %p monitor for %d node(s)" % [
+				monitor.description,
+				nodes.length
+			]
 
 			unless nodes.empty?
-				results = self.run_monitor_safely( monitor, nodes )
+				self.runner_threads[ monitor ] = Thread.new do
+					Thread.current[:monitor_desc] = monitor.description
+					results = self.run_monitor_safely( monitor, nodes )
 
-				self.log.debug "  updating with results: %p" % [ results ]
-				self.update( results ) do
-					self.log.debug "Updated %d via the '%s' monitor" %
-						[ results.length, description ]
+					self.log.debug "  updating with results: %p" % [ results ]
+					self.update( results ) do
+						self.log.debug "Updated %d via the '%s' monitor" %
+							[ results.length, monitor.description ]
+					end
 				end
+				self.log.debug "THREAD: Started %p for %p" % [ self.runner_threads[monitor], monitor ]
+				self.log.debug "THREAD: Runner threads have: %p" % [ self.runner_threads.to_a ]
 			end
 		end
 	end
@@ -141,13 +160,11 @@ class Arborist::MonitorRunner
 	### hash, keyed by node identifier.
 	###
 	def run_monitor_safely( monitor, nodes )
-		description = monitor.description || monitor.class.name
-
 		results = begin
 			monitor.run( nodes )
 		rescue => err
 			errmsg = "Exception while running %p monitor: %s: %s" % [
-				description,
+				monitor.description,
 				err.class.name,
 				err.message
 			]
@@ -182,6 +199,7 @@ class Arborist::MonitorRunner
 	### Create an update request using the runner's client, then queue the request up
 	### with the specified +block+ as the callback.
 	def update( nodemap, &block )
+		return if nodemap.empty?
 		update = self.client.make_update_request( nodemap )
 		self.queue_request( update, &block )
 	end
@@ -234,7 +252,9 @@ class Arborist::MonitorRunner
 		self.log.info "Creating timer for %p" % [ monitor ]
 
 		return self.reactor.add_periodic_timer( interval ) do
-			self.run_monitor( monitor )
+			unless self.runner_threads.key?( monitor )
+				self.run_monitor( monitor )
+			end
 		end
 	end
 
@@ -247,6 +267,33 @@ class Arborist::MonitorRunner
 
 		self.reactor.add_oneshot_timer( delay ) do
 			self.add_interval_timer_for( monitor )
+		end
+	end
+
+
+	### Set up a timer to clean up monitor threads.
+	def add_thread_cleanup_timer
+		self.log.debug "Starting thread cleanup timer for %p." % [ self.runner_threads ]
+		self.reactor.add_periodic_timer( THREAD_CLEANUP_INTERVAL ) do
+			self.cleanup_monitor_threads
+		end
+	end
+
+
+	### :TODO: Handle the thread-interrupt stuff?
+
+	### Clean up any monitor runner threads that are dead.
+	def cleanup_monitor_threads
+		self.runner_threads.values.reject( &:alive? ).each do |thr|
+			monitor = self.runner_threads.key( thr )
+			self.runner_threads.delete( monitor )
+
+			begin
+				thr.join
+			rescue => err
+				self.log.error "%p while running %s: %s" %
+					[ err.class, thr[:monitor_desc], err.message ]
+			end
 		end
 	end
 

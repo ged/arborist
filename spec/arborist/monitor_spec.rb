@@ -96,12 +96,12 @@ describe Arborist::Monitor do
 	end
 
 
-	it "raises a ConfigError if constructed without a description" do
-		expect {
-			described_class.new do
-				key :key
-			end
-		}.to raise_error( Arborist::ConfigError, /no description/i )
+	it "uses a default description if constructed without one" do
+		mon = described_class.new do
+			key :key
+		end
+
+		expect( mon.description ).to_not be_empty
 	end
 
 
