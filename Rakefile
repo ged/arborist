@@ -1,5 +1,6 @@
 #!/usr/bin/env rake
 
+require 'pathname'
 require 'rake/clean'
 
 begin
@@ -9,6 +10,10 @@ rescue LoadError
 end
 
 GEMSPEC = 'arborist.gemspec'
+
+BASEDIR = Pathname( __FILE__ ).dirname
+LIBDIR = BASEDIR + 'lib'
+NODE_STATE_GRAPH = BASEDIR + 'node-state-machine.dot'
 
 
 Hoe.plugin :mercurial
@@ -37,7 +42,7 @@ hoespec = Hoe.spec 'arborist' do |spec|
 	spec.dependency 'loggability', '~> 0.12'
 	spec.dependency 'configurability', '~> 3.0'
 	spec.dependency 'pluggability', '~> 0.4'
-	spec.dependency 'state_machines', '~> 0.2'
+	spec.dependency 'state_machines', '~> 0.5'
 	spec.dependency 'msgpack', '~> 1.0'
 	spec.dependency 'cztop', '~> 0.11'
 	spec.dependency 'cztop-reactor', '~> 0.3'
@@ -50,6 +55,8 @@ hoespec = Hoe.spec 'arborist' do |spec|
 	spec.dependency 'simplecov', '~> 0.9', :developer
 	spec.dependency 'timecop', '~> 0.7', :developer
 	spec.dependency 'rdoc', '~> 5.1', :developer
+	spec.dependency 'rdoc', '~> 5.1', :developer
+	spec.dependency 'state_machines-graphviz', '~> 0.0', :developer
 
 	spec.require_ruby_version( '>=2.3.1' )
 	spec.hg_sign_tags = true if spec.respond_to?( :hg_sign_tags= )
@@ -105,4 +112,27 @@ end
 CLOBBER.include( GEMSPEC )
 
 task :default => :gemspec
+
+
+file NODE_STATE_GRAPH
+
+desc "Generate a graph of the node status state machine."
+task NODE_STATE_GRAPH do |task|
+	$LOAD_PATH.unshift( LIBDIR.to_s )
+
+	require 'state_machines'
+	require 'state_machines/graphviz'
+	require 'arborist/node'
+
+	state_machine = Arborist::Node.state_machine
+	name = File.basename( NODE_STATE_GRAPH, '.dot' )
+	puts "Writing status state machine diagram to #{NODE_STATE_GRAPH}"
+	graph = state_machine.draw( path: BASEDIR.to_s, name: name, format: 'dot' )
+	# graph.output
+end
+
+CLEAN.include( NODE_STATE_GRAPH.to_s )
+
+
+task :diagrams => [ NODE_STATE_GRAPH ]
 

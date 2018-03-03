@@ -1144,6 +1144,7 @@ describe Arborist::Manager do
 				expect( old_parent.children ).to_not include( 'sidonie' )
 				expect( new_parent.children ).to include( 'sidonie' )
 			end
+
 		end
 
 
@@ -1162,6 +1163,105 @@ describe Arborist::Manager do
 			end
 
 		end
+
+
+		describe "ack" do
+
+			it "acknowledges a single node" do
+				msg = Arborist::TreeAPI.request( :ack,
+					{identifier: 'sidonie'},
+					{message: "Planned maintenance", sender: 'xerces'}
+				)
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+				expect( body ).to be_nil
+
+				expect( manager.nodes['sidonie'] ).to be_disabled
+			end
+
+
+			it "returns an error if the node to ack doesn't exist" do
+				msg = Arborist::TreeAPI.request( :ack,
+					{identifier: 'shemp-ssh'},
+					{message: "Planned maintenance", sender: 'xerces'}
+				)
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => false )
+				expect( hdr['reason'] ).to match( /no such node/i )
+			end
+
+
+			it "returns an error if the node to ack isn't specified" do
+				msg = Arborist::TreeAPI.request( :ack, {}, {message: "", sender: ''} )
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => false )
+				expect( hdr['reason'] ).to match( /no identifier/i )
+			end
+
+
+			it "returns an error if one of the required arguments isn't provided" do
+				msg = Arborist::TreeAPI.request( :ack,
+					{identifier: 'sidonie'},
+					{message: "Planned maintenance"}
+				)
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => false )
+				expect( hdr['reason'] ).to match( /missing required ack sender/i )
+			end
+
+		end
+
+
+		describe "unack" do
+
+			it "removes an acknowledgement from a single node" do
+				msg = Arborist::TreeAPI.request( :unack, {identifier: 'sidonie'}, nil )
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => true )
+				expect( body ).to be_nil
+
+				expect( manager.nodes['sidonie'] ).to be_unknown
+			end
+
+
+			it "returns an error if the node to unack doesn't exist" do
+				msg = Arborist::TreeAPI.request( :unack, {identifier: 'shemp-ssh'}, nil )
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => false )
+				expect( hdr['reason'] ).to match( /no such/i )
+			end
+
+
+			it "returns an error if the node to unack isn't specified" do
+				msg = Arborist::TreeAPI.request( :unack, {}, nil )
+				msg.send_to( sock )
+				resmsg = sock.receive
+
+				hdr, body = Arborist::TreeAPI.decode( resmsg )
+				expect( hdr ).to include( 'success' => false )
+				expect( hdr['reason'] ).to match( /no identifier/i )
+			end
+
+		end
+
 
 
 		describe "malformed requests" do

@@ -22,7 +22,8 @@ class Arborist::Manager
 	extend Configurability,
 		   Loggability,
 	       Arborist::MethodUtilities
-	include CZTop::Reactor::SignalHandling
+	include CZTop::Reactor::SignalHandling,
+	        Arborist::HashUtilities
 
 
 	# Signals the manager responds to
@@ -33,6 +34,7 @@ class Arborist::Manager
 
 	# Array of actions supported by the Tree API
 	VALID_TREEAPI_ACTIONS = %w[
+		ack
 		deps
 		fetch
 		graft
@@ -41,6 +43,7 @@ class Arborist::Manager
 		search
 		status
 		subscribe
+		unack
 		unsubscribe
 		update
 	]
@@ -831,6 +834,41 @@ class Arborist::Manager
 		end
 
 		node.modify( body )
+
+		return Arborist::TreeAPI.successful_response( nil )
+	end
+
+
+	### Acknowledge a node
+	def handle_ack_request( header, body )
+		self.log.info "ACK: %p" % [ header ]
+
+		identifier = header[ 'identifier' ] or
+			return Arborist::TreeAPI.error_response( 'client', 'No identifier specified for ACK.' )
+		node = self.nodes[ identifier ] or
+			return Arborist::TreeAPI.error_response( 'client', "No such node %p" % [identifier] )
+
+		self.log.debug "Acking the %s node: %p" % [ identifier, body ]
+
+		body = symbolify_keys( body )
+		node.acknowledge( **body )
+
+		return Arborist::TreeAPI.successful_response( nil )
+	end
+
+
+	### Un-acknowledge a node
+	def handle_unack_request( header, body )
+		self.log.info "UNACK: %p" % [ header ]
+
+		identifier = header[ 'identifier' ] or
+			return Arborist::TreeAPI.error_response( 'client', 'No identifier specified for UNACK.' )
+		node = self.nodes[ identifier ] or
+			return Arborist::TreeAPI.error_response( 'client', "No such node %p" % [identifier] )
+
+		self.log.debug "Unacking the %s node: %p" % [ identifier, body ]
+
+		node.unacknowledge
 
 		return Arborist::TreeAPI.successful_response( nil )
 	end

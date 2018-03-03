@@ -47,34 +47,6 @@ describe Arborist::Client do
 		let( :manager ) { @manager }
 
 
-		describe "high-level methods" do
-
-			it "provides a convenience method for acknowledging" do
-				manager.nodes['sidonie'].update( error: "Clown apocalypse" )
-
-				res = client.acknowledge( identifier: 'sidonie', message: "I'm on it.", sender: "ged" )
-
-				expect( manager.nodes['sidonie'] ).to be_acked
-			end
-
-
-			it "provides a convenience method for clearing acknowledgments" do
-				manager.nodes['sidonie'].update( error: "Clown apocalypse" )
-
-				res = client.acknowledge( identifier: 'sidonie', message: "I'm on it.", sender: "ged" )
-				res = client.clear_acknowledgement( identifier: 'sidonie' )
-
-				expect( manager.nodes['sidonie'] ).to_not be_acked
-			end
-
-			it "have a descriptive error message when missing arguments" do
-				expect {
-					client.acknowledge( identifier: 'sidonie', message: "I'm on it." )
-				}.to raise_error( ArgumentError, /missing keyword: sender/ )
-			end
-		end
-
-
 		describe "protocol-level API" do
 
 			it "can fetch the status of the manager it's connected to" do
@@ -330,6 +302,31 @@ describe Arborist::Client do
 				expect( manager.nodes['duir'].tags ).to eq( ['girlrobot'] )
 			end
 
+
+			it "can acknowledge a node" do
+				manager.nodes['sidonie'].update( error: "Clown apocalypse" )
+
+				res = client.acknowledge( identifier: 'sidonie', message: "I'm on it.", sender: "ged" )
+
+				expect( manager.nodes['sidonie'] ).to be_acked
+			end
+
+
+			it "can clear a node's acknowledgment" do
+				manager.nodes['sidonie'].update( error: "Clown apocalypse" )
+
+				res = client.acknowledge( identifier: 'sidonie', message: "I'm on it.", sender: "ged" )
+				res = client.clear_acknowledgement( identifier: 'sidonie' )
+
+				expect( manager.nodes['sidonie'] ).to_not be_acked
+			end
+
+
+			it "acking raises an appropriate error when it's missing arguments" do
+				expect {
+					client.acknowledge( identifier: 'sidonie', message: "I'm on it." )
+				}.to raise_error( ArgumentError, /missing keyword: sender/ )
+			end
 		end
 
 	end

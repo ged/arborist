@@ -116,17 +116,26 @@ class Arborist::Node
 		state :unknown,
 			:up,
 			:down,
+			:warn,
 			:acked,
 			:disabled,
 			:quieted
 
 		event :update do
-			transition [:up, :unknown] => :disabled, if: :ack_set?
-			transition [:down, :unknown, :acked] => :up, unless: :has_errors?
-			transition [:up, :unknown] => :down, if: :has_errors?
-			transition :acked => :down, if: :has_unacked_errors?
-			transition :down => :acked, if: :ack_set?
-			transition :disabled => :unknown, unless: :ack_set?
+			transition [:down, :warn, :unknown, :acked] => :up, unless: :has_errors_or_warnings?
+			transition [:up, :warn, :unknown] => :down, if: :has_errors?
+			transition [:up, :unknown] => :warn, if: :has_only_warnings?
+		end
+
+		event :acknowledge do
+			transition any - [:down, :acked] => :disabled
+			transition [:down, :acked] => :acked
+		end
+
+		event :unacknowledge do
+			transition [:acked, :disabled] => :warn, if: :has_warnings?
+			transition [:acked, :disabled] => :down, if: :has_errors?
+			transition [:acked, :disabled] => :unknown
 		end
 
 		event :handle_event do
@@ -142,8 +151,9 @@ class Arborist::Node
 		after_transition any => :acked, do: :on_ack
 		after_transition :acked => :up, do: :on_ack_cleared
 		after_transition :down => :up, do: :on_node_up
-		after_transition [:unknown, :up] => :down, do: :on_node_down
-		after_transition [:unknown, :up] => :disabled, do: :on_node_disabled
+		after_transition :up => :warn, do: :on_node_warn
+		after_transition [:unknown, :warn, :up] => :down, do: :on_node_down
+		after_transition [:unknown, :warn, :up] => :disabled, do: :on_node_disabled
 		after_transition any => :quieted, do: :on_node_quieted
 		after_transition :disabled => :unknown, do: :on_node_enabled
 		after_transition :quieted => :unknown, do: :on_node_unquieted
@@ -302,6 +312,7 @@ class Arborist::Node
 
 		# Attributes that govern state
 		@errors          = {}
+		@warnings        = {}
 		@ack             = nil
 		@last_contacted  = Time.at( 0 )
 		@quieted_reasons = {}
@@ -350,6 +361,11 @@ class Arborist::Node
 	# The Hash of last errors encountered by a monitor attempting to update this
 	# node, keyed by the monitor's `key`.
 	attr_accessor :errors
+
+	##
+	# The Hash of last warnings encountered by a monitor attempting to update this
+	# node, keyed by the monitor's `key`.
+	attr_accessor :warnings
 
 	##
 	# The acknowledgement currently in effect. Should be an instance of Arborist::Node::ACK
@@ -516,22 +532,8 @@ class Arborist::Node
 
 	### Update specified +properties+ for the node.
 	def update( new_properties )
-		new_properties = stringify_keys( new_properties )
-		monitor_key = new_properties[ '_monitor_key' ] || '_'
-
-		self.log.debug "Updated via a %s monitor: %p" % [ monitor_key, new_properties ]
 		self.last_contacted = Time.now
-
-		if new_properties.key?( 'ack' )
-			self.ack = new_properties.delete( 'ack' )
-		elsif new_properties['error']
-			self.errors[ monitor_key ] = new_properties.delete( 'error' )
-		else
-			self.errors.delete( monitor_key )
-		end
-
-		self.properties.merge!( new_properties, &self.method(:merge_and_record_delta) )
-		compact_hash( self.properties )
+		self.update_properties( new_properties )
 
 		# Super to the state machine event method
 		super
@@ -547,6 +549,74 @@ class Arborist::Node
 		return events
 	ensure
 		self.update_delta.clear
+		self.pending_change_events.clear
+	end
+
+
+	### Update the node's properties with those in +new_properties+ (a String-keyed Hash)
+	def update_properties( new_properties )
+		new_properties = stringify_keys( new_properties )
+		monitor_key = new_properties[ '_monitor_key' ] || '_'
+
+		self.log.debug "Updated via a %s monitor: %p" % [ monitor_key, new_properties ]
+		self.update_errors( monitor_key, new_properties.delete('error') )
+		self.update_warnings( monitor_key, new_properties.delete('warning') )
+
+		self.properties.merge!( new_properties, &self.method(:merge_and_record_delta) )
+		compact_hash( self.properties )
+	end
+
+
+	### Update the errors hash for the specified +monitor_key+ to +value+.
+	def update_errors( monitor_key, value=nil )
+		if value
+			self.errors[ monitor_key ] = value
+		else
+			self.errors.delete( monitor_key )
+		end
+	end
+
+
+	### Update the warnings hash for the specified +monitor_key+ to +value+.
+	def update_warnings( monitor_key, value=nil )
+		if value
+			self.warnings[ monitor_key ] = value
+		else
+			self.warnings.delete( monitor_key )
+		end
+	end
+
+
+	### Acknowledge any current or future abnormal status for this node.
+	def acknowledge( **args )
+		self.ack = args
+
+		super()
+
+		events = self.pending_change_events.clone
+		results = self.broadcast_events( *events )
+		self.log.debug ">>> Results from broadcast: %p" % [ results ]
+		events.concat( results )
+
+		return events
+	ensure
+		self.pending_change_events.clear
+	end
+
+
+	### Clear any current acknowledgement.
+	def unacknowledge
+		self.ack = nil
+
+		super()
+
+		events = self.pending_change_events.clone
+		results = self.broadcast_events( *events )
+		self.log.debug ">>> Results from broadcast: %p" % [ results ]
+		events.concat( results )
+
+		return events
+	ensure
 		self.pending_change_events.clear
 	end
 
@@ -860,6 +930,7 @@ class Arborist::Node
 	### Returns +true+ if the node's status indicates it shouldn't be
 	### included by default when traversing nodes.
 	def unreachable?
+		self.log.debug "Testing for reachability; status is: %p" % [ self.status ]
 		return UNREACHABLE_STATES.include?( self.status )
 	end
 
@@ -952,7 +1023,9 @@ class Arborist::Node
 	# :section: Serialization API
 	#
 
-	### Restore any saved state from the +old_node+ loaded from the state file.
+	### Restore any saved state from the +old_node+ loaded from the state file. This is
+	### used to overlay selective bits of the saved node tree to the equivalent nodes loaded
+	### from node definitions.
 	def restore( old_node )
 		@status          = old_node.status
 		@properties      = old_node.properties.dup
@@ -960,6 +1033,7 @@ class Arborist::Node
 		@last_contacted  = old_node.last_contacted
 		@status_changed  = old_node.status_changed
 		@errors          = old_node.errors
+		@warnings        = old_node.warnings
 		@quieted_reasons = old_node.quieted_reasons
 
 		# Only merge in downed dependencies.
@@ -986,6 +1060,7 @@ class Arborist::Node
 			last_contacted: self.last_contacted ? self.last_contacted.iso8601 : nil,
 			status_changed: self.status_changed ? self.status_changed.iso8601 : nil,
 			errors: self.errors,
+			warnings: self.warnings,
 			dependencies: self.dependencies.to_h,
 			quieted_reasons: self.quieted_reasons,
 		}
@@ -1027,6 +1102,7 @@ class Arborist::Node
 		@ack             = Arborist::Node::Ack.from_hash( hash[:ack] ) if hash[:ack]
 
 		@errors          = hash[:errors]
+		@warnings        = hash[:warnings]
 		@properties      = hash[:properties] || {}
 		@last_contacted  = Time.parse( hash[:last_contacted] )
 		@quieted_reasons = hash[:quieted_reasons] || {}
@@ -1078,8 +1154,7 @@ class Arborist::Node
 	end
 
 
-	### State machine guard predicate -- Returns +true+ if the last time the node
-	### was monitored resulted in an update.
+	### State machine guard predicate -- returns +true+ if the node has errors.
 	def has_errors?
 		has_errors = ! self.errors.empty?
 		self.log.debug "Checking to see if last contact cleared remaining errors (it %s)" %
@@ -1089,10 +1164,33 @@ class Arborist::Node
 	end
 
 
-	### State machine guard predicate -- Returns +true+ if the node is has errors
+	### State machine guard predicate -- Returns +true+ if the node has errors
 	### and does not have an ACK status set.
 	def has_unacked_errors?
 		return self.has_errors? && !self.ack_set?
+	end
+
+
+	### State machine guard predicate -- returns +true+ if the node has warnings.
+	def has_warnings?
+		has_warnings = ! self.warnings.empty?
+		self.log.debug "Checking to see if last contact cleared remaining warnings (it %s)" %
+			[ has_warnings ? "did not" : "did" ]
+		self.log.debug "Warnings are: %p" % [ self.warnings ]
+		return has_warnings
+	end
+
+
+	### State machine guard predicate -- returns +true+ if the node has warnings or errors.
+	def has_errors_or_warnings?
+		return self.has_errors? || self.has_warnings?
+	end
+
+
+	### State machine guard predicate -- returns +true+ if the node has warnings but
+	### no errors.
+	def has_only_warnings?
+		return self.has_warnings? && ! self.has_errors?
 	end
 
 
@@ -1103,6 +1201,16 @@ class Arborist::Node
 			"%s: %s" % [ key, msg ]
 		end.join( '; ' )
 	end
+
+
+	### Return a string describing the warnings that are set on the node.
+	def warnings_description
+		return "No warnings" if self.warnings.empty?
+		return self.warnings.map do |key, msg|
+			"%s: %s" % [ key, msg ]
+		end.join( '; ' )
+	end
+
 
 	#
 	# :section: State Callbacks
@@ -1153,6 +1261,13 @@ class Arborist::Node
 	def on_node_down( transition )
 		self.log.error "%s is %s" % [ self.identifier, self.status_description ]
 		self.update_delta[ 'errors' ] = [ nil, self.errors_description ]
+	end
+
+
+	### Callback for when a node goes from up to warn
+	def on_node_warn( transition )
+		self.log.error "%s is %s" % [ self.identifier, self.status_description ]
+		self.update_delta[ 'warnings' ] = [ nil, self.warnings_description ]
 	end
 
 

@@ -11,6 +11,7 @@ rspec-wait
 schedulability
 simplecov
 state_machines
+state_machines-graphviz
 timecop
 treequel
 tty

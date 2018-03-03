@@ -27,6 +27,26 @@ describe Arborist::Node do
 	let( :identifier2 ) { 'the_other_identifier' }
 
 
+	shared_examples_for "a reachable node" do
+
+		it "is still 'reachable'" do
+			expect( node ).to be_reachable
+			expect( node ).to_not be_unreachable
+		end
+
+	end
+
+
+	shared_examples_for "an unreachable node" do
+
+		it "is not 'reachable'" do
+			expect( node ).to_not be_reachable
+			expect( node ).to be_unreachable
+		end
+
+	end
+
+
 	it "can be loaded from a file" do
 		concrete_instance = nil
 		expect( Kernel ).to receive( :load ).with( "a/path/to/a/node.rb" ) do
@@ -145,188 +165,411 @@ describe Arborist::Node do
 
 	context "an instance of a concrete subclass" do
 
-		let( :node ) { concrete_class.new(identifier) }
-		let( :child_node ) do
-			concrete_class.new(identifier2) do
+		let( :parent_node ) { concrete_class.new(identifier) }
+		let( :sibling_node ) do
+			concrete_class.new( 'sibling' ) do
+				parent 'the_identifier'
+			end
+		end
+		let( :node ) do
+			concrete_class.new( identifier2 ) do
 				parent 'the_identifier'
 			end
 		end
 
 
 		it "can declare what its parent is by identifier" do
-			expect( child_node.parent ).to eq( identifier )
+			expect( node.parent ).to eq( identifier )
 		end
 
 
 		it "can have child nodes added to it" do
-			node.add_child( child_node )
-			expect( node.children ).to include( child_node.identifier )
+			parent_node.add_child( node )
+			expect( parent_node.children ).to include( node.identifier )
 		end
 
 
 		it "can have child nodes appended to it" do
-			node << child_node
-			expect( node.children ).to include( child_node.identifier )
+			parent_node << node
+			expect( parent_node.children ).to include( node.identifier )
 		end
 
 
 		it "raises an error if a node which specifies a different parent is added to it" do
-			not_child_node = concrete_class.new(identifier2) do
+			stranger_node = concrete_class.new( identifier2 ) do
 				parent 'youre_not_my_mother'
 			end
 			expect {
-				node.add_child( not_child_node )
+				parent_node.add_child( stranger_node )
 			}.to raise_error( /not a child of/i )
 		end
 
 
 		it "doesn't add the same child more than once" do
-			node.add_child( child_node )
-			node.add_child( child_node )
-			expect( node.children.size ).to eq( 1 )
+			parent_node.add_child( node )
+			parent_node.add_child( node )
+			expect( parent_node.children.size ).to eq( 1 )
 		end
 
 
 		it "knows it doesn't have any children if it's empty" do
-			expect( node ).to_not have_children
+			expect( parent_node ).to_not have_children
 		end
 
 
 		it "knows it has children if subnodes have been added" do
-			node.add_child( child_node )
-			expect( node ).to have_children
+			parent_node.add_child( node )
+			expect( parent_node ).to have_children
 		end
 
 
 		it "knows how to remove one of its children" do
-			node.add_child( child_node )
-			node.remove_child( child_node )
-			expect( node ).to_not have_children
+			parent_node.add_child( node )
+			parent_node.remove_child( node )
+			expect( parent_node ).to_not have_children
 		end
 
 
-		describe "status" do
+		it "starts out in `unknown` status" do
+			expect( parent_node ).to be_unknown
+		end
 
-			it "starts out in `unknown` status" do
-				expect( node ).to be_unknown
+
+		it "groups errors from separate monitors by their key" do
+			expect( node ).to be_unknown
+
+			node.update( _monitor_key: 'MonitorTron2000', error: 'ded' )
+			node.update( _monitor_key: 'MonitorTron5000', error: 'moar ded' )
+			expect( node ).to be_down
+
+			expect( node.errors.length ).to eq( 2 )
+			node.update( _monitor_key: 'MonitorTron5000' )
+
+			expect( node ).to be_down
+			expect( node.errors.length ).to eq( 1 )
+
+			node.update( _monitor_key: 'MonitorTron2000' )
+			expect( node ).to be_up
+		end
+
+
+		it "sets a default monitor key" do
+			node.update( error: 'ded' )
+			expect( node ).to be_down
+			expect( node.errors ).to eq({ '_' => 'ded' })
+		end
+
+
+		describe "in `unknown` status" do
+
+			let( :node ) do
+				obj = super()
+				obj.status = 'unknown'
+				obj
 			end
 
 
-			it "transitions to `up` status if its state is updated with no `error` property" do
-				node.update( tested: true )
-				expect( node ).to be_up
+			it_behaves_like "a reachable node"
+
+
+			it "transitions to `up` status if doesn't have any errors after an update" do
+				expect {
+					node.update( tested: true )
+				}.to change { node.status }.from( 'unknown' ).to( 'up' )
 			end
 
 
 			it "transitions to `down` status if its state is updated with an `error` property" do
-				node.update( error: "Couldn't talk to it!" )
-				expect( node ).to be_down
+				expect {
+					node.update( error: "Couldn't talk to it!" )
+				}.to change { node.status }.from( 'unknown' ).to( 'down' )
 			end
 
-			it "transitions from `down` to `acked` status if it's updated with an `ack` property" do
-				node.status = 'down'
-				node.errors['moldovia'] = 'Something is wrong | he falls | betraying the trust | "\
+
+			it "transitions to `warn` status if its state is updated with a `warning` property" do
+				expect {
+					node.update( warning: "Things are starting to look bad!" )
+				}.to change { node.status }.from( 'unknown' ).to( 'warn' )
+			end
+
+
+			it "transitions to `disabled` if it's acknowledged" do
+				expect {
+					node.acknowledge( message: "Maintenance", sender: 'mahlon' )
+				}.to change { node.status }.from( 'unknown' ).to( 'disabled' )
+			end
+
+		end
+
+
+		describe "in `up` status" do
+
+			let( :node ) do
+				obj = super()
+				obj.status = 'up'
+				obj
+			end
+
+
+			it_behaves_like "a reachable node"
+
+
+			it "stays in `up` status if doesn't have any errors after an update" do
+				expect {
+					node.update( tested: true )
+				}.to_not change { node.status }.from( 'up' )
+			end
+
+
+			it "transitions to `down` status if its state is updated with an `error` property" do
+				expect {
+					node.update( error: "Couldn't talk to it!" )
+				}.to change { node.status }.from( 'up' ).to( 'down' )
+			end
+
+
+			it "transitions to `warn` status if its state is updated with a `warning` property" do
+				expect {
+					node.update( warning: "Things are starting to look bad!" )
+				}.to change { node.status }.from( 'up' ).to( 'warn' )
+			end
+
+
+			it "transitions to `disabled` if it's acknowledged" do
+				expect {
+					node.acknowledge( message: "Maintenance", sender: 'mahlon' )
+				}.to change { node.status }.from( 'up' ).to( 'disabled' )
+			end
+
+
+			it "transitions to `quieted` if it's notified that its parent has gone down" do
+				down_event = Arborist::Event.create( :node_down, parent_node )
+				expect {
+					node.handle_event( down_event )
+				}.to change { node.status }.from( 'up' ).to( 'quieted' )
+			end
+
+		end
+
+
+		describe "in `down` status" do
+
+			let( :node ) do
+				obj = super()
+				obj.status = 'down'
+				obj.errors['moldovia'] = 'Something is wrong | he falls | betraying the trust | "\
 					"there is a disaster in his life.'
-				node.update( ack: {message: "Leitmotiv", sender: 'ged'}  )
-				expect( node ).to be_acked
+				obj
 			end
 
-			it "transitions from `acked` to `up` status if its error is cleared" do
-				node.status = 'down'
-				node.errors = { '_' => 'Something is wrong | he falls | betraying the trust | "\
-					"there is a disaster in his life.' }
-				node.update( ack: {message: "Leitmotiv", sender: 'ged'}  )
-				node.update( error: nil )
 
-				expect( node ).to be_up
+			it_behaves_like "an unreachable node"
+
+
+			it "transitions to `acked` status if it's acknowledged" do
+				expect {
+					node.acknowledge( message: "Leitmotiv", sender: 'ged' )
+				}.to change { node.status }.from( 'down' ).to( 'acked' )
 			end
 
-			it "stays `up` if its error is cleared and stays cleared" do
-				node.status = 'down'
-				node.errors = { '_' => 'stay up damn you!' }
-				node.update( ack: {message: "Leitmotiv", sender: 'ged'}  )
-				node.update( error: nil )
-				node.update( error: nil )
 
-				expect( node ).to be_up
+			it "transitions to `up` status if all of its errors are cleared" do
+				expect {
+					node.update( error: nil, _monitor_key: 'moldovia' )
+				}.to change { node.status }.from( 'down' ).to( 'up' )
 			end
 
-			it "transitions to `disabled` from `up` status if it's updated with an `ack` property" do
-				node.status = 'up'
-				node.update( ack: {message: "Maintenance", sender: 'mahlon'} )
+		end
 
-				expect( node ).to be_disabled
+
+		describe "in `warn` status" do
+
+			let( :node ) do
+				obj = super()
+				obj.status = 'warn'
+				obj.warnings = { 'beach' => 'Sweaty but functional servers.' }
+				obj
 			end
 
-			it "transitions to `disabled` from `unknown` status if it's updated with an `ack` property" do
-				node.status = 'unknown'
-				node.update( ack: {message: "Maintenance", sender: 'mahlon'} )
 
-				expect( node ).to be_disabled
+			it_behaves_like "a reachable node"
+
+
+			it "transitions to `up` if its warnings are cleared" do
+				expect {
+					node.update( warning: nil, _monitor_key: 'beach' )
+				}.to change { node.status }.from( 'warn' ).to( 'up' )
 			end
+
+
+			it "transitions to `down` if has an error set" do
+				expect {
+					node.update( error: "Shark warning.", _monitor_key: 'beach' )
+				}.to change { node.status }.from( 'warn' ).to( 'down' )
+			end
+
+
+			it "transitions to `disabled` if it's acknowledged" do
+				expect {
+					node.acknowledge( message: "Chill", sender: 'ged' )
+				}.to change { node.status }.from( 'warn' ).to( 'disabled' )
+			end
+
+		end
+
+
+		describe "in `acked` status" do
+
+			let( :node ) do
+				obj = super()
+				obj.status = 'acked'
+				obj.errors['moldovia'] = 'Something is wrong | he falls | betraying the trust | "\
+					"there is a disaster in his life.'
+				obj.acknowledge( message: "Leitmotiv", sender: 'ged' )
+				obj
+			end
+
+
+			it_behaves_like "a reachable node"
+
+
+			it "transitions to `up` status if its error is cleared" do
+				expect {
+					node.update( error: nil, _monitor_key: 'moldovia' )
+				}.to change { node.status }.from( 'acked' ).to( 'up' )
+			end
+
+
+			it "stays `up` if it is updated twice with an error key" do
+				node.update( error: nil, _monitor_key: 'moldovia' )
+
+				expect {
+					node.update( error: nil, _monitor_key: 'moldovia' ) # make sure it stays cleared
+				}.to_not change { node.status }.from( 'up' )
+			end
+
+		end
+
+
+		describe "in `disabled` status" do
+
+			let( :node ) do
+				obj = super()
+				obj.acknowledge( message: "Bikini models", sender: 'ged' )
+				obj
+			end
+
+
+			it_behaves_like "an unreachable node"
+
 
 			it "stays `disabled` if it gets an error" do
-				node.status = 'up'
-				node.update( ack: {message: "Maintenance", sender: 'mahlon'} )
-				node.update( error: "take me to the virus hospital" )
+				expect {
+					node.update( error: "take me to the virus hospital" )
+				}.to_not change { node.status }.from( 'disabled' )
 
-				expect( node ).to be_disabled
 				expect( node.ack ).to_not be_nil
 			end
+
+
+			it "stays `disabled` if it gets a warning" do
+				expect {
+					node.update( warning: "heartbone" )
+				}.to_not change { node.status }.from( 'disabled' )
+
+				expect( node.ack ).to_not be_nil
+			end
+
 
 			it "stays `disabled` if it gets a successful update" do
-				node.status = 'up'
-				node.update( ack: {message: "Maintenance", sender: 'mahlon'} )
-				node.update( ping: {time: 0.02} )
+				expect {
+					node.update( ping: {time: 0.02} )
+				}.to_not change { node.status }.from( 'disabled' )
 
-				expect( node ).to be_disabled
 				expect( node.ack ).to_not be_nil
 			end
 
-			it "transitions to `unknown` from `disabled` status if its ack is cleared" do
-				node.status = 'up'
-				node.update( ack: {message: "Maintenance", sender: 'mahlon'} )
-				node.update( ack: nil )
 
-				expect( node ).to_not be_disabled
-				expect( node ).to be_unknown
+			it "transitions to `unknown` if its acknowledgment is cleared" do
+				expect {
+					node.unacknowledge
+				}.to change { node.status }.from( 'disabled' ).to( 'unknown' )
+
 				expect( node.ack ).to be_nil
 			end
 
-			it "knows if it's status deems it 'reachable'" do
-				node.update( error: nil )
-				expect( node ).to be_reachable
-				expect( node ).to_not be_unreachable
+		end
+
+
+		describe "in `quieted` status because its parent is down" do
+
+			let( :down_event ) { Arborist::Event.create(:node_down, parent_node) }
+			let( :up_event ) { Arborist::Event.create(:node_up, parent_node) }
+
+			let( :node ) do
+				obj = super()
+				obj.handle_event( down_event )
+				obj
 			end
 
-			it "knows if it's status deems it 'unreachable'" do
-				node.update( error: 'ded' )
-				expect( node ).to be_unreachable
-				expect( node ).to_not be_reachable
+
+			it_behaves_like "an unreachable node"
+
+
+			it "remains `quieted` even if updated with an error" do
+				expect {
+					node.update( error: "Internal error", _monitor_key: 'webservice' )
+				}.to_not change { node.status }.from( 'quieted' )
 			end
 
-			it "groups errors from separate monitor by their key" do
-				expect( node ).to be_unknown
 
-				node.update( _monitor_key: 'MonitorTron2000', error: 'ded' )
-				node.update( _monitor_key: 'MonitorTron5000', error: 'moar ded' )
-				expect( node ).to be_down
+			it "transitions to `unknown` if its reasons for being quieted are cleared" do
+				up_event = Arborist::Event.create( :node_up, parent_node )
 
-				expect( node.errors.length ).to eq( 2 )
-				node.update( _monitor_key: 'MonitorTron5000' )
-
-				expect( node ).to be_down
-				expect( node.errors.length ).to eq( 1 )
-
-				node.update( _monitor_key: 'MonitorTron2000' )
-				expect( node ).to be_up
+				expect {
+					node.handle_event( up_event )
+				}.to change { node.status }.from( 'quieted' ).to( 'unknown' )
 			end
 
-			it "sets a default monitor key" do
-				node.update( error: 'ded' )
-				expect( node ).to be_down
-				expect( node.errors ).to eq({ '_' => 'ded' })
+
+			it "transitions to `disabled` if it's acknowledged" do
+				expect {
+					node.acknowledge( message: 'Turning this off for now.', sender: 'ged' )
+				}.to change { node.status }.from( 'quieted' ).to( 'disabled' )
 			end
+
+		end
+
+
+		describe "in `quieted` status because one of its dependencies is down" do
+
+			let( :down_event ) { Arborist::Event.create(:node_down, sibling_node) }
+			let( :up_event ) { Arborist::Event.create(:node_up, sibling_node) }
+
+			let( :node ) do
+				obj = super()
+				obj.depends_on( 'sibling' )
+				obj.handle_event( down_event )
+				obj
+			end
+
+
+			it_behaves_like "an unreachable node"
+
+
+			it "transitions to `unknown` if its reasons for being quieted are cleared" do
+				expect {
+					node.handle_event( up_event )
+				}.to change { node.status }.from( 'quieted' ).to( 'unknown' )
+			end
+
+
+			it "transitions to `disabled` if it's acknowledged" do
+				expect {
+					node.acknowledge( message: 'Turning this off for now.', sender: 'ged' )
+				}.to change { node.status }.from( 'quieted' ).to( 'disabled' )
+			end
+
 		end
 
 
@@ -425,13 +668,13 @@ describe Arborist::Node do
 		describe "Enumeration" do
 
 			it "iterates over its children for #each" do
-				parent = node
+				parent = parent_node
 				parent <<
 					concrete_class.new('child1') { parent 'the_identifier' } <<
 					concrete_class.new('child2') { parent 'the_identifier' } <<
 					concrete_class.new('child3') { parent 'the_identifier' }
 
-				expect( parent.map(&:identifier) ).to eq([ 'child1', 'child2', 'child3' ])
+				expect( parent_node.map(&:identifier) ).to eq([ 'child1', 'child2', 'child3' ])
 			end
 
 		end
@@ -631,10 +874,10 @@ describe Arborist::Node do
 
 			it "an ACKed node stays ACKed when serialized and restored" do
 				node.update( error: "there's a fire" )
-				node.update( ack: {
+				node.acknowledge(
 					message: 'We know about the fire. It rages on.',
 					sender: '1986 Labyrinth David Bowie'
-				})
+				)
 				expect( node ).to be_acked
 
 				restored_node = Marshal.load( Marshal.dump(node) )
@@ -728,16 +971,15 @@ describe Arborist::Node do
 
 		it "generates a node.acked event when a node is acked" do
 			node.update( error: 'ping failed ')
-			events = node.update(ack: {
+			events = node.acknowledge(
 				message: "I have a poisonous friend. She's living in the house.",
 				sender: 'Seabound'
-			})
+			)
 
-			expect( events.size ).to eq( 3 )
-			ack_event = events.find {|ev| ev.type == 'node.acked' }
+			expect( events.size ).to eq( 1 )
 
-			expect( ack_event ).to be_a( Arborist::Event )
-			expect( ack_event.payload ).to include( ack: a_hash_including(sender: 'Seabound') )
+			expect( events.first ).to be_a( Arborist::Event::NodeAcked )
+			expect( events.first.payload ).to include( ack: a_hash_including(sender: 'Seabound') )
 		end
 
 	end
@@ -1020,7 +1262,7 @@ describe Arborist::Node do
 			mgr.load_tree([ vmhost01, vm01, memcache ])
 
 			events = vmhost01.
-				update( ack: {message: "Imma gonna f up yo' sash", sender: "GOD"} )
+				acknowledge( message: "Imma gonna f up yo' sash", sender: "GOD" )
 			vmhost01.publish_events( *events )
 
 			expect( memcache ).to be_quieted
@@ -1131,7 +1373,7 @@ describe Arborist::Node do
 
 
 		it "keeps its disabled state" do
-			node.update( ack: { message: 'Moving the machine', sender: 'Me' } )
+			node.acknowledge( message: 'Moving the machine', sender: 'Me' )
 			expect( node ).to be_disabled
 
 			node.reparent( old_parent, new_parent )
@@ -1141,8 +1383,8 @@ describe Arborist::Node do
 
 
 		it "keeps its acked state" do
-			node.update( error: 'Batman whooped my ass.' )
-			node.update( ack: { message: 'Moving the machine', sender: 'Me' } )
+			node.update( error: 'Batman whooped my ass.', _monitor_key: 'gotham' )
+			node.acknowledge( message: 'Moving the machine', sender: 'Me' )
 			expect( node ).to be_acked
 
 			node.reparent( old_parent, new_parent )

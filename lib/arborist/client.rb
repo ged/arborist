@@ -40,43 +40,6 @@ class Arborist::Client
 
 
 	#
-	# High-level methods
-	#
-
-	### Mark a node as 'acknowledged' if it's down, or 'disabled' if
-	### it's up.  (A pre-emptive acknowledgement.)  Requires the node
-	### +identifier+, an acknowledgement +message+, and +sender+.  You
-	### can optionally include a +via+ (source), and override the default
-	### +time+ of now.
-	def acknowledge( identifier:, message:, sender:, via: nil, time: Time.now )
-		data = {
-			identifier => {
-				ack: {
-					message: message,
-					sender:  sender,
-					via:     via,
-					time:    time.to_s
-				}
-			}
-		}
-
-		return self.update( data )
-	end
-	alias_method :ack, :acknowledge
-
-
-	### Clear an acknowledged/disabled node +identifier+.
-	def clear_acknowledgement( identifier: )
-		data = { identifier => { ack: nil } }
-		request = self.make_update_request( data )
-		self.send_tree_api_request( request )
-		return true
-	end
-	alias_method :clear_ack, :clear_acknowledgement
-
-
-
-	#
 	# Protocol methods
 	#
 
@@ -254,6 +217,51 @@ class Arborist::Client
 		self.log.debug "Making modify request for identifer: %s" % [ identifier ]
 
 		return Arborist::TreeAPI.request( :modify, {identifier: identifier}, attributes )
+	end
+
+
+	### Mark a node as 'acknowledged' if it's down, or 'disabled' if
+	### it's up.  (A pre-emptive acknowledgement.)  Requires the node
+	### +identifier+, an acknowledgement +message+, and +sender+.  You
+	### can optionally include a +via+ (source), and override the default
+	### +time+ of now.
+	def acknowledge( *args )
+		request = self.make_acknowledge_request( *args )
+		response = self.send_tree_api_request( request )
+		return true
+	end
+	alias_method :ack, :acknowledge
+
+
+	### Return an `ack` request as a zmq message (a CZTop::Message) with the specified
+	### attributes.
+	def make_acknowledge_request( identifier:, message:, sender:, via: nil, time: Time.now )
+		ack = {
+			message: message,
+			sender:  sender,
+			via:     via,
+			time:    time.to_s
+		}
+
+		return Arborist::TreeAPI.request( :ack, {identifier: identifier}, ack )
+	end
+
+
+	### Clear the acknowledgement for a node.
+	def clear_acknowledgement( *args )
+		request = self.make_unack_request( *args )
+		response = self.send_tree_api_request( request )
+		return true
+	end
+	alias_method :unack, :clear_acknowledgement
+	alias_method :clear_ack, :clear_acknowledgement
+	alias_method :unacknowledge, :clear_acknowledgement
+
+
+	### Return an `unack` request as a zmq message (a CZTop::Message) with the specified
+	### attribute.
+	def make_unack_request( identifier: )
+		return Arborist::TreeAPI.request( :unack, {identifier: identifier}, nil )
 	end
 
 
