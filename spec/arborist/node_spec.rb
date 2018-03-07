@@ -328,6 +328,13 @@ describe Arborist::Node do
 			end
 
 
+			it "transitions to `down` status if it's updated with both an `error` and `warning` property" do
+				expect {
+					node.update( error: "Couldn't talk to it!", warning: "Above configured levels!" )
+				}.to change { node.status }.from( 'up' ).to( 'down' )
+			end
+
+
 			it "transitions to `warn` status if its state is updated with a `warning` property" do
 				expect {
 					node.update( warning: "Things are starting to look bad!" )
