@@ -35,6 +35,7 @@ lib/arborist/event/node_quieted.rb
 lib/arborist/event/node_unknown.rb
 lib/arborist/event/node_up.rb
 lib/arborist/event/node_update.rb
+lib/arborist/event/node_warn.rb
 lib/arborist/event_api.rb
 lib/arborist/exceptions.rb
 lib/arborist/loader.rb
