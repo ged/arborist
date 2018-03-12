@@ -19,8 +19,6 @@ Arborist is a monitoring toolkit that follows the UNIX philosophy
 of small parts and loose coupling for stability, reliability, and
 customizability.
 
-[![Build Status](https://semaphoreci.com/api/v1/projects/13677b60-5f81-4e6e-a9c6-e21d30daa4ca/461532/badge.svg)](https://semaphoreci.com/ged/arborist)
-
 
 ## Prerequisites
 
