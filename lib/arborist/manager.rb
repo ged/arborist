@@ -260,6 +260,17 @@ class Arborist::Manager
 	end
 
 
+	### Return a human-readable representation of the Manager suitable for debugging.
+	def inspect
+		return "#<%p:%#x {runid: %s} %d nodes>" % [
+			self.class,
+			self.object_id * 2,
+			self.run_id,
+			self.nodes.length,
+		]
+	end
+
+
 	#
 	# :section: Node state saving/reloading
 	#
