@@ -38,7 +38,9 @@ module Arborist::CLI::Reset
 				node.status = 'unknown'
 			end
 
-			manager.save_node_states
+			unless_dryrun( "Resetting node states." ) do
+				manager.save_node_states
+			end
 		end
 	end
 

@@ -52,7 +52,7 @@ module Arborist::CLI::Start
 					raise "Don't know how to start %p" % [ appname ]
 				end
 
-			unless_dryrun( "starting #{appname}" ) do
+			unless_dryrun( "starting #{appname} using #{runner.inspect}" ) do
 				start( runner, options[:p] )
 			end
 		end

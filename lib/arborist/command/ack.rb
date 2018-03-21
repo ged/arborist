@@ -45,12 +45,14 @@ module Arborist::CLI::Ack
 				help_now!( "Unable to determine ack user." ) unless userid
 
 				identifiers.each do |id|
-					res[ id ] = client.ack(
-						identifier: id,
-						message:    message,
-						sender:     userid,
-						via:        "command line"
-					)
+					res[ id ] = unless_dryrun( "Acking #{id}...", true ) do
+						client.ack(
+							identifier: id,
+							message:    message,
+							sender:     userid,
+							via:        "command line"
+						)
+					end
 				end
 			end
 
