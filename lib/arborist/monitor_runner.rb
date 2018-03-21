@@ -128,10 +128,10 @@ class Arborist::MonitorRunner
 	def run_monitor( monitor )
 		positive     = monitor.positive_criteria
 		negative     = monitor.negative_criteria
-		include_down = monitor.include_down?
+		exclude_down = monitor.exclude_down?
 		props        = monitor.node_properties
 
-		self.search( positive, include_down, props, negative ) do |nodes|
+		self.search( positive, exclude_down, props, negative ) do |nodes|
 			self.log.info "Running %p monitor for %d node(s)" % [
 				monitor.description,
 				nodes.length
@@ -186,9 +186,9 @@ class Arborist::MonitorRunner
 
 	### Create a search request using the runner's client, then queue the request up
 	### with the specified +block+ as the callback.
-	def search( criteria, include_down, properties, negative={}, &block )
+	def search( criteria, exclude_down, properties, negative={}, &block )
 		search = self.client.make_search_request( criteria,
-			include_down: include_down,
+			exclude_down: exclude_down,
 			properties: properties,
 			exclude: negative
 		)

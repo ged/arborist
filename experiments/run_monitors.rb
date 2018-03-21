@@ -75,9 +75,9 @@ class MonitorRunner < ZMQ::Handler
 
 	### Create a fetch request using the runner's client, then queue the request up
 	### with the specified +block+ as the callback.
-	def fetch( criteria, include_down, properties, &block )
+	def fetch( criteria, exclude_down, properties, &block )
 		fetch = self.client.make_fetch_request( criteria,
-			include_down: include_down,
+			exclude_down: exclude_down,
 			properties: properties
 		)
 		self.queue_request( fetch, &block )
@@ -94,7 +94,7 @@ class MonitorRunner < ZMQ::Handler
 
 	### Run the specified +monitor+ and update nodes with the results.
 	def run_monitor( monitor )
-		self.fetch( monitor.positive_criteria, monitor.include_down?, monitor.node_properties ) do |nodes|
+		self.fetch( monitor.positive_criteria, monitor.exclude_down?, monitor.node_properties ) do |nodes|
 			# :FIXME: Doesn't apply negative criteria
 			results = monitor.run( nodes )
 			self.update( results ) do

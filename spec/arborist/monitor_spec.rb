@@ -37,7 +37,7 @@ describe Arborist::Monitor do
 		expect( mon ).to be_a( described_class )
 		expect( mon.description ).to eq( "the description" )
 		expect( mon.key ).to eq( :key )
-		expect( mon.include_down? ).to be_falsey
+		expect( mon.exclude_down? ).to be_falsey
 		expect( mon.interval ).to eq( Arborist::Monitor::DEFAULT_INTERVAL )
 		expect( mon.splay ).to eq( 0 )
 		expect( mon.positive_criteria ).to be_empty
@@ -55,7 +55,7 @@ describe Arborist::Monitor do
 		expect( mon ).to be_a( described_class )
 		expect( mon.description ).to eq( "the description" )
 		expect( mon.key ).to eq( :key )
-		expect( mon.include_down? ).to be_falsey
+		expect( mon.exclude_down? ).to be_falsey
 		expect( mon.interval ).to eq( Arborist::Monitor::DEFAULT_INTERVAL )
 		expect( mon.splay ).to eq( 0 )
 		expect( mon.positive_criteria ).to be_empty
@@ -72,7 +72,7 @@ describe Arborist::Monitor do
 		expect( mon ).to be_a( described_class )
 		expect( mon.description ).to eq( "the description" )
 		expect( mon.key ).to eq( :key )
-		expect( mon.include_down? ).to be_falsey
+		expect( mon.exclude_down? ).to be_falsey
 		expect( mon.interval ).to eq( Arborist::Monitor::DEFAULT_INTERVAL )
 		expect( mon.splay ).to eq( 0 )
 		expect( mon.positive_criteria ).to be_empty
@@ -87,7 +87,7 @@ describe Arborist::Monitor do
 		expect( mon ).to be_a( described_class )
 		expect( mon.description ).to eq( "the description" )
 		expect( mon.key ).to eq( :the_key )
-		expect( mon.include_down? ).to be_falsey
+		expect( mon.exclude_down? ).to be_falsey
 		expect( mon.interval ).to eq( Arborist::Monitor::DEFAULT_INTERVAL )
 		expect( mon.splay ).to eq( 0 )
 		expect( mon.positive_criteria ).to be_empty
@@ -163,16 +163,16 @@ describe Arborist::Monitor do
 			match status: 'down'
 		end
 
-		expect( mon.include_down? ).to be_truthy
+		expect( mon.exclude_down? ).to be_truthy
 	end
 
 
 	it "can specify that it will include hosts marked as 'down'" do
 		mon = described_class.new( "testing monitor", :testing ) do
-			include_down true
+			exclude_down true
 		end
 
-		expect( mon.include_down? ).to be_truthy
+		expect( mon.exclude_down? ).to be_truthy
 	end
 
 

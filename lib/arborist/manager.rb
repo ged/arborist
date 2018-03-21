@@ -527,13 +527,13 @@ class Arborist::Manager
 
 	### Traverse the node tree and return the specified +return_values+ from any nodes which
 	### match the given +filter+, skipping downed nodes and all their children
-	### unless +include_down+ is set. If +return_values+ is set to +nil+, then all
+	### if +exclude_down+ is set. If +return_values+ is set to +nil+, then all
 	### values from the node will be returned.
-	def find_matching_node_states( filter, return_values, include_down=false, negative_filter={} )
-		nodes_iter = if include_down
-				self.all_nodes
-			else
+	def find_matching_node_states( filter, return_values, exclude_down=false, negative_filter={} )
+		nodes_iter = if exclude_down
 				self.reachable_nodes
+			else
+				self.all_nodes
 			end
 
 		states = nodes_iter.
@@ -736,7 +736,7 @@ class Arborist::Manager
 	def handle_search_request( header, body )
 		self.log.info "SEARCH: %p" % [ header ]
 
-		include_down = header['include_down']
+		exclude_down = header['exclude_down']
 		values = if header.key?( 'return' )
 				header['return'] || []
 			else
@@ -746,7 +746,7 @@ class Arborist::Manager
 		body = [ body ] unless body.is_a?( Array )
 		positive = body.shift
 		negative = body.shift || {}
-		states = self.find_matching_node_states( positive, values, include_down, negative )
+		states = self.find_matching_node_states( positive, values, exclude_down, negative )
 
 		return Arborist::TreeAPI.successful_response( states )
 	end

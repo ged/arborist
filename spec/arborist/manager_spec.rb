@@ -517,9 +517,9 @@ describe Arborist::Manager do
 			end
 
 
-			it "doesn't return nodes beneath downed nodes by default" do
+			it "omits nodes beneath downed nodes if asked to" do
 				manager.nodes['sidonie'].update( error: 'sunspots' )
-				msg = Arborist::TreeAPI.request( :search, type: 'service', port: 22 )
+				msg = Arborist::TreeAPI.request( :search, {exclude_down: true}, type: 'service', port: 22 )
 
 				msg.send_to( sock )
 				resmsg = sock.receive
@@ -532,9 +532,9 @@ describe Arborist::Manager do
 			end
 
 
-			it "does return nodes beneath downed nodes if asked to" do
+			it "include nodes beneath downed nodes by default" do
 				manager.nodes['sidonie'].update( error: 'plague of locusts' )
-				msg = Arborist::TreeAPI.request( :search, {include_down: true}, type: 'service', port: 22 )
+				msg = Arborist::TreeAPI.request( :search, type: 'service', port: 22 )
 
 				msg.send_to( sock )
 				resmsg = sock.receive

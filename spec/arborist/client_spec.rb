@@ -83,7 +83,7 @@ describe Arborist::Client do
 			end
 
 
-			it "can search all node properties for all 'up' nodes" do
+			it "can get a Hash of all nodes keyed by identifier" do
 				res = client.search
 				expect( res ).to be_a( Hash )
 				expect( res.length ).to be == manager.nodes.length
@@ -91,7 +91,16 @@ describe Arborist::Client do
 			end
 
 
-			it "can search identifiers for all 'up' nodes" do
+			it "includes downed nodes by default in the results of a search" do
+				manager.nodes['sidonie'].update( error: 'something happened' )
+				res = client.search
+				expect( res ).to be_a( Hash )
+				expect( res.length ).to be == manager.nodes.length
+				expect( res.values ).to all( be_a(Hash) )
+			end
+
+
+			it "can get a Hash of all nodes without user properties" do
 				res = client.search( options: { properties: nil } )
 				expect( res ).to be_a( Hash )
 				expect( res.length ).to be == manager.nodes.length
@@ -99,7 +108,7 @@ describe Arborist::Client do
 			end
 
 
-			it "can search a subset of properties for all 'up' nodes" do
+			it "can get a Hash of all nodes with a subset of properties" do
 				res = client.search( options: { properties: [:addresses, :status] })
 				expect( res ).to be_a( Hash )
 				expect( res.length ).to be == manager.nodes.length
@@ -108,7 +117,7 @@ describe Arborist::Client do
 			end
 
 
-			it "can search a subset of properties for all 'up' nodes matching specified criteria" do
+			it "can get a Hash of all nodes with a subset of properties that match specified criteria" do
 				res = client.search( criteria: {type: 'host'}, options: {properties: [:addresses, :status]} )
 				expect( res ).to be_a( Hash )
 				expect( res.length ).to be == manager.nodes.values.count {|n| n.type == 'host' }
@@ -116,7 +125,7 @@ describe Arborist::Client do
 			end
 
 
-			it "can search all node properties for 'up' nodes that don't match specified criteria" do
+			it "can get a Hash of all nodes with a subset of properties that don't match specified criteria" do
 				res = client.search(
 					options: {
 						properties: [:addresses, :status],
@@ -133,15 +142,14 @@ describe Arborist::Client do
 			end
 
 
-			it "can search all properties for all nodes regardless of their status" do
+			it "can get a Hash of nodes that exclude nodes that are down" do
 				# Down a node
 				manager.nodes['duir'].update( error: 'something happened' )
 
-				res = client.search( criteria: {type: 'host'}, options: {include_down: true} )
+				res = client.search( criteria: {type: 'host'}, options: {exclude_down: true} )
 
 				expect( res ).to be_a( Hash )
-				expect( res ).to include( 'duir' )
-				expect( res['duir']['status'] ).to eq( 'down' )
+				expect( res ).to_not include( 'duir' )
 			end
 
 

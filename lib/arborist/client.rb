@@ -86,9 +86,9 @@ class Arborist::Client
 
 	### Return a `search` request as a ZMQ message (a CZTop::Message) with the given
 	### attributes.
-	def make_search_request( criteria, include_down: false, properties: :all, exclude: {} )
+	def make_search_request( criteria, exclude_down: false, properties: :all, exclude: {} )
 		header = {}
-		header[ :include_down ] = true if include_down
+		header[ :exclude_down ] = true if exclude_down
 		header[ :return ] = properties if properties != :all
 
 		return Arborist::TreeAPI.request( :search, header, [ criteria, exclude ] )

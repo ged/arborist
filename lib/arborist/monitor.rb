@@ -159,7 +159,7 @@ class Arborist::Monitor
 
 		@positive_criteria = {}
 		@negative_criteria = {}
-		@include_down = false
+		@exclude_down = false
 		@node_properties = []
 
 		@exec_command = nil
@@ -206,7 +206,7 @@ class Arborist::Monitor
 	##
 	# Flag for whether the monitor will include downed hosts in its search. Defaults
 	# to +false+.
-	attr_predicate :include_down
+	attr_predicate :exclude_down
 
 	##
 	# The list of node properties to include when running the monitor.
@@ -338,7 +338,7 @@ class Arborist::Monitor
 	### for nodes it will run against.
 	def match( criteria )
 		self.positive_criteria.merge!( criteria )
-		@include_down = !self.include_down &&
+		@exclude_down = !self.exclude_down &&
 			Arborist::Node::UNREACHABLE_STATES.include?( self.positive_criteria[:status] )
 	end
 
@@ -352,9 +352,9 @@ class Arborist::Monitor
 
 	### Specify that the monitor should (or should not) include nodes which have been
 	### marked 'down'.
-	def include_down( flag=nil )
-		@include_down = flag unless flag.nil?
-		return @include_down
+	def exclude_down( flag=nil )
+		@exclude_down = flag unless flag.nil?
+		return @exclude_down
 	end
 
 

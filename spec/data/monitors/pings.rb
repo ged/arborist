@@ -59,17 +59,6 @@ Arborist::Monitor 'ping check' do
 	exec_callbacks( FPingWrapper )
 end
 
-Arborist::Monitor 'ping check downed hosts' do
-	every 40.seconds
-	splay 15.seconds
-	match type: 'host', status: 'down'
-	include_down true
-	use :addresses
-
-	exec 'fping', '-e', '-t', '150'
-	exec_callbacks( FPingWrapper )
-end
-
 Arborist::Monitor 'transient host pings' do
 	every 5.minutes
 	match type: 'host', tag: 'laptop'
