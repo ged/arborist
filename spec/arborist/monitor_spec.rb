@@ -20,6 +20,7 @@ describe Arborist::Monitor do
 	end
 	let( :leaf_node ) do
 		testing_node( 'leaf', 'branch' ) do
+			tags :one, :two
 			properties['pork'] = 'twice'
 		end
 	end
@@ -275,6 +276,30 @@ describe Arborist::Monitor do
 		end
 
 		mon.run( testing_nodes )
+	end
+
+
+	it "stringifies any Array properties with the default exec_input context" do
+		mon = described_class.new( "the description", :testing ) do
+			exec 'the_command'
+			handle_results {|*| }
+		end
+
+		child_stdin, parent_writer      = IO.pipe
+		parent_reader, child_stdout     = IO.pipe
+		parent_err_reader, child_stderr = IO.pipe
+
+		expect( IO ).to receive( :pipe ).and_return(
+			[ child_stdin, parent_writer ],
+			[ parent_reader, child_stdout ],
+			[ parent_err_reader, child_stderr ]
+		)
+
+		expect( parent_writer ).to receive( :puts ).with match( 'tags=one,two' )
+		expect( Process ).to receive( :spawn ).
+			with( 'the_command', out: child_stdout, in: child_stdin, err: child_stderr )
+
+		mon.run({ leaf: leaf_node.to_h })
 	end
 
 

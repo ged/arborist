@@ -66,7 +66,8 @@ class Arborist::Monitor
 			nodes.each do |(identifier, data)|
 				self.log.debug "Serializing node properties for %s" % [ identifier ]
 				prop_map = data.collect do |key, val|
-					"%s=%s" % [key, Shellwords.escape(val)]
+					val = val.join( ',' ) if val.is_a?( Array )
+					"%s=%s" % [ key, Shellwords.escape(val) ]
 				end
 
 				self.log.debug "  writing %d properties to %p" % [ prop_map.size, io ]
