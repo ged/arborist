@@ -196,6 +196,7 @@ module Arborist::CLI
 		self.pastel.alias_color( :disabled, :dark, :white )
 		self.pastel.alias_color( :quieted, :dark, :green )
 		self.pastel.alias_color( :acked, :yellow )
+		self.pastel.alias_color( :warn, :bold, :magenta )
 		self.pastel.alias_color( :highlight, :bold, :yellow )
 		self.pastel.alias_color( :search_hit, :black, :on_white )
 		self.pastel.alias_color( :prompt, :cyan )

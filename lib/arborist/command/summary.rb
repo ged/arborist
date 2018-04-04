@@ -35,10 +35,11 @@ module Arborist::CLI::Summary
 			nodes  = client.fetch
 
 			down     = get_status( nodes, 'down' )
+			warning  = get_status( nodes, 'warn' )
 			acked    = get_status( nodes, 'acked' )
 			disabled = get_status( nodes, 'disabled' )
 			quieted  = get_status( nodes, 'quieted' )
-			problems = ! ( down.size + acked.size + disabled.size ).zero?
+			problems = ! ( down.size + acked.size + disabled.size + warning.size ).zero?
 
 			prompt.say "Connected to: %s" % [ highlight_string(client.tree_api_url) ]
 			prompt.say "Status as of: %s" % [ hl.on_blue.bright_white(Time.now.to_s) ]
@@ -53,7 +54,7 @@ module Arborist::CLI::Summary
 
 			puts
 			if problems
-				output_problems( disabled, acked, down, quieted, options[:sort] )
+				output_problems( disabled, acked, down, quieted, warning, options[:sort] )
 			else
 				prompt.say success_string( "No problems found!" )
 			end
@@ -75,7 +76,7 @@ module Arborist::CLI::Summary
 
 	### Output all problems.
 	###
-	def output_problems( disabled, acked, down, quieted, sort )
+	def output_problems( disabled, acked, down, quieted, warning, sort )
 		unless disabled.size.zero?
 			prompt.say hl.headline( "Disabled Nodes" )
 			display_table( *format_acked(disabled, sort) )
@@ -84,6 +85,18 @@ module Arborist::CLI::Summary
 		unless acked.size.zero?
 			prompt.say hl.headline( "Acknowledged Outages" )
 			display_table( *format_acked(acked, sort) )
+			puts
+		end
+		unless warning.size.zero?
+			prompt.say hl.headline( "Warnings" )
+			header = [
+				highlight_string( 'identifier' ),
+				highlight_string( 'type' ),
+				highlight_string( 'when' ),
+				highlight_string( 'warnings' )
+			]
+
+			display_table( header, format_warn(warning, sort) )
 			puts
 		end
 		unless down.size.zero?
@@ -137,6 +150,20 @@ module Arborist::CLI::Summary
 				node[ 'type' ],
 				Time.parse( node[ 'status_changed' ] ).as_delta,
 				errors.join( "\n" )
+			]
+		end
+	end
+
+
+	### Prepare an array of nodes in a warning state.
+	def format_warn( nodes, sort_key )
+		return nodes.sort_by{|n| n[sort_key] }.each_with_object([]) do |node, acc|
+			warnings = node[ 'warnings' ].map{|err| "%s: %s" % [ err.first, err.last ]}
+			acc << [
+				hl.warn( node['identifier'] ),
+				node[ 'type' ],
+				Time.parse( node[ 'status_changed' ] ).as_delta,
+				warnings.join( "\n" )
 			]
 		end
 	end

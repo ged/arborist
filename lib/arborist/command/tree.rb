@@ -107,6 +107,8 @@ module Arborist::CLI::Tree
 		case node['status']
 		when 'down'
 			desc << errors_description( node )
+		when 'warn'
+			desc << warnings_description( node )
 		when 'quieted'
 			desc << quieted_reasons_description( node )
 		when 'acked'
@@ -130,6 +132,14 @@ module Arborist::CLI::Tree
 	def errors_description( node )
 		errors = node['errors'] or return ''
 		return '  ' + errors.map do |monid, error|
+			"%s: %s" % [ monid, error ]
+		end.join( '; ' )
+	end
+
+	### Return the warnings from the specified +node+ in a single line.
+	def warnings_description( node )
+		warnings = node['warnings'] or return ''
+		return '  ' + warnings.map do |monid, error|
 			"%s: %s" % [ monid, error ]
 		end.join( '; ' )
 	end
