@@ -221,10 +221,22 @@ class Arborist::Dependency
 	### Return an English description of why this dependency is not met. If it is
 	### met, returns +nil+.
 	def down_reason
-		ids = self.down_identifiers
-		subdeps = self.down_subdeps
+		parts = [
+			self.down_primary_reasons,
+			self.down_secondary_reasons
+		].compact
 
-		return nil if ids.empty? && subdeps.empty?
+		return nil if parts.empty?
+
+		return parts.join( '; ' )
+	end
+
+
+	### Return an English description of why any first tier dependencies are not met,
+	### or +nil+ if there are none.
+	def down_primary_reasons
+		ids = self.down_identifiers
+		return nil if ids.empty?
 
 		msg = nil
 		case self.behavior
@@ -245,8 +257,16 @@ class Arborist::Dependency
 		else
 			raise "Don't know how to build a description of down behavior for %p" % [ self.behavior ]
 		end
+	end
 
-		return msg
+
+	### Return an English description of why any subdependencies are not met,
+	### or +nil+ if there are none.
+	def down_secondary_reasons
+		subdeps = self.down_subdeps
+		return nil if subdeps.empty?
+
+		return subdeps.map( &:down_reason ).join( ' and ' )
 	end
 
 

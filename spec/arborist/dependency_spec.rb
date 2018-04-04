@@ -332,6 +332,27 @@ describe Arborist::Dependency do
 			expect( dep.down_reason ).to match( /node(1|2) \(and 1 other\) are unavailable as of/i )
 		end
 
+
+		it "can describe the reason if nodes in subdepedencies are down" do
+			dep.subdeps << described_class.on( :any, 'node4', 'node5' )
+
+			dep.mark_down( 'node1' )
+			dep.mark_down( 'node4' )
+			dep.mark_down( 'node5' )
+
+			expect( dep.down_reason ).to match( /node1.*node4.*node5/i )
+		end
+
+
+		it "can describe the reason if only nodes in subdepedencies are down" do
+			dep.subdeps << described_class.on( :any, 'node4', 'node5' )
+
+			dep.mark_down( 'node4' )
+			dep.mark_down( 'node5' )
+
+			expect( dep.down_reason ).to match( /node4.*node5/i )
+		end
+
 	end
 
 
