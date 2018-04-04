@@ -375,7 +375,7 @@ class Arborist::Monitor
 				@exec_block = runner.method( :run )
 				@node_properties |= runner.node_properties if runner.respond_to?( :node_properties )
 			else
-				@exec_command = command
+				@exec_command = command.map( &:to_s )
 			end
 
 			return
