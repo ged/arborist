@@ -4,14 +4,9 @@ ChangeLog
 Events.md
 History.md
 Manifest.txt
-Monitors.md
-Nodes.md
-Observers.md
-Protocol.md
 README.md
 Rakefile
 TODO.md
-Tutorial.md
 bin/arborist
 lib/arborist.rb
 lib/arborist/cli.rb
