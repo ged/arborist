@@ -168,7 +168,7 @@ class Arborist::MonitorRunner
 				err.class.name,
 				err.message
 			]
-			self.log.error( errmsg )
+			self.log.error "%s\n%s" % [ errmsg, err.backtrace.join("\n  ") ]
 			nodes.keys.each_with_object({}) do |id, results|
 				results[id] = { error: errmsg }
 			end
