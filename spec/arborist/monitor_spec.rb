@@ -164,11 +164,11 @@ describe Arborist::Monitor do
 			match status: 'down'
 		end
 
-		expect( mon.exclude_down? ).to be_truthy
+		expect( mon.exclude_down? ).to be_falsey
 	end
 
 
-	it "can specify that it will include hosts marked as 'down'" do
+	it "can specify that it will exclude hosts marked as 'down'" do
 		mon = described_class.new( "testing monitor", :testing ) do
 			exclude_down true
 		end

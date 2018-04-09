@@ -339,7 +339,7 @@ class Arborist::Monitor
 	### for nodes it will run against.
 	def match( criteria )
 		self.positive_criteria.merge!( criteria )
-		@exclude_down = !self.exclude_down &&
+		@exclude_down = self.exclude_down &&
 			Arborist::Node::UNREACHABLE_STATES.include?( self.positive_criteria[:status] )
 	end
 
