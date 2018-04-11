@@ -26,6 +26,10 @@ describe Arborist::Event::Node do
 	let( :event ) { described_class.new(node) }
 
 
+	it "serializes with an identifier, parent" do
+		expect( event.to_h ).to include( :identifier, :parent )
+	end
+
 
 	it "matches match-anything subscriptions" do
 		sub = Arborist::Subscription.new {}

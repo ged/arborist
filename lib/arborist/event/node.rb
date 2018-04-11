@@ -40,7 +40,10 @@ class Arborist::Event::Node < Arborist::Event
 
 	### Inject the node identifier into the generated hash.
 	def to_h
-		return super.merge( identifier: self.node.identifier )
+		return super.merge(
+			identifier: self.node.identifier,
+			parent:     self.node.parent
+		)
 	end
 
 end # module Arborist::Event::NodeMatching

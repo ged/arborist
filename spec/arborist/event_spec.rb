@@ -51,10 +51,10 @@ describe Arborist::Event do
 
 			result = ev.to_h
 
-			expect( result ).to include( 'type', 'data' )
+			expect( result ).to include( :type, :data )
 
-			expect( result['type'] ).to eq( 'test.event' )
-			expect( result['data'] ).to eq( payload )
+			expect( result[:type] ).to eq( 'test.event' )
+			expect( result[:data] ).to eq( payload )
 		end
 
 
