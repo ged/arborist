@@ -102,9 +102,8 @@ describe Arborist::Monitor::Socket do
 			expect( result ).to be_a( Hash )
 			expect( result ).to include( *service_nodes.map(&:identifier) )
 			expect( result.values ).to all( include(
-				tcp_socket_connect: a_hash_including(:time, :duration)
+				tcp_socket_connect: a_hash_including(:duration)
 			) )
-			expect( result.map {|_, res| res[:tcp_socket_connect][:time]} ).to all( be_a(String) )
 		end
 
 

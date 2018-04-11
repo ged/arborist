@@ -141,7 +141,7 @@ module Arborist::Monitor::Socket
 						res = sock.getpeername
 						self.log.debug "connected to %s" % [ identifier ]
 						results[ identifier ] = {
-							tcp_socket_connect: { time: now.iso8601, duration: now - start }
+							tcp_socket_connect: { duration: now - start }
 						}
 					rescue SocketError, SystemCallError => err
 						begin
@@ -279,7 +279,7 @@ module Arborist::Monitor::Socket
 					if ready.nil?
 						now = Time.now
 						results[ identifier ] = {
-							udp_socket_connect: { time: now.iso8601, duration: now - start }
+							udp_socket_connect: { duration: now - start }
 						}
 						self.log.debug "  connection successful"
 					else
