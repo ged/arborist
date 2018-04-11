@@ -1084,6 +1084,12 @@ describe Arborist::Node do
 			expect( node ).to_not match_criteria( status: 'down' )
 		end
 
+		it "can be matched with multiple statuses" do
+			expect( node ).to match_criteria( status: ['up','warn'] )
+			expect( node ).to_not match_criteria( status: 'down' )
+			expect( node ).to match_criteria( status: 'up' )
+		end
+
 
 		it "can be matched with its type" do
 			expect( node ).to match_criteria( type: 'testnode' )

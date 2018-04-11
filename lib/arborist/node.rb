@@ -691,15 +691,15 @@ class Arborist::Node
 	def match_criteria?( key, val )
 		return case key
 			when 'status'
-				self.status == val
+				Array( val ).include?( self.status )
 			when 'type'
-				self.log.debug "Checking node type %p against %p" % [ self.type, val ]
-				self.type == val
+				Array( val ).include?( self.type )
 			when 'parent'
 				self.parent == val
 			when 'tag' then @tags.include?( val.to_s )
 			when 'tags' then Array(val).all? {|tag| @tags.include?(tag) }
-			when 'identifier' then @identifier == val
+			when 'identifier'
+				Array( val ).include?( self.identifier )
 			when 'config'
 				val.all? {|ikey, ival| hash_matches(@config, ikey, ival) }
 			else
