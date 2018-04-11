@@ -26,8 +26,9 @@ describe Arborist::Event::Node do
 	let( :event ) { described_class.new(node) }
 
 
-	it "serializes with an identifier, parent" do
-		expect( event.to_h ).to include( :identifier, :parent )
+	it "serializes with useful metadata attached" do
+		expect( event.to_h ).to include( :identifier, :parent, :nodetype )
+		expect( event.to_h[:nodetype] ).to eq( 'testnode' )
 	end
 
 
