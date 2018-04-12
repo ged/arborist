@@ -49,6 +49,7 @@ hoespec = Hoe.spec 'arborist' do |spec|
 	spec.dependency 'gli', '~> 2.3'
 	spec.dependency 'tty', '~> 0.7'
 	spec.dependency 'tty-tree', '~> 0.1'
+	spec.dependency 'pry', '~> 0.11'
 
 	spec.dependency 'rspec', '~> 3.2', :developer
 	spec.dependency 'rspec-wait', '~> 0.0', :developer
