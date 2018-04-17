@@ -78,6 +78,12 @@ class Arborist::Observer::Action
 		else
 			self.block.call( event.dup )
 		end
+	rescue => err
+		self.log.error "Exception while running observer: %s: %s\n%s" % [
+			err.class.name,
+			err.message,
+			err.backtrace.join("\n  ")
+		]
 	ensure
 		self.event_history.clear
 	end

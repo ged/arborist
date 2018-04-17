@@ -47,6 +47,12 @@ describe Arborist::Observer::Action do
 	end
 
 
+	it "continues through a misbehaving action" do
+		action = described_class.new { raise "boom" }
+		expect { action.handle_event(event) }.to_not raise_exception
+	end
+
+
 	context "without any other criteria" do
 
 		before( :each ) do
