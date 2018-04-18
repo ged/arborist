@@ -25,5 +25,18 @@ describe Arborist::Node::Root do
 		expect( node.parent ).to be_nil
 	end
 
+
+	it "immediately transitions to up when re-enabled" do
+		expect( node ).to be_up
+
+		node.acknowledge(
+			message: 'METEOR COMING DISABLE ALERTS THAT WILL BE 100K KPLZTHX',
+			sender:  'SunGuard'
+		)
+		expect( node ).to be_disabled
+
+		node.unacknowledge
+		expect( node ).to be_up
+	end
 end
 

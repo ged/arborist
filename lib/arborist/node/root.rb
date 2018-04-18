@@ -51,9 +51,18 @@ class Arborist::Node::Root < Arborist::Node
 	end
 
 
-	### Ignore updates to the root node.
+	### Don't allow properties to be set on the root node.
 	def update( properties )
-		self.log.warn "Update to the root node ignored."
+		return super( {} )
+	end
+
+
+	### Callback for when a node goes from disabled to unknown.
+	### Override, so we immediately transition from unknown to up.
+	def on_node_enabled( transition )
+		super
+		events = self.update( {} ) # up!
+		self.publish_events( events )
 	end
 
 
