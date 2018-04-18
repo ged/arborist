@@ -174,12 +174,6 @@ class Arborist::MonitorRunner
 			end
 		end
 
-		# Attach monitor key.
-		#
-		results.each do |ident, properties|
-			properties['_monitor_key'] = monitor.key
-		end
-
 		return results
 	end
 

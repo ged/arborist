@@ -132,8 +132,8 @@ describe Arborist::MonitorRunner do
 
 			expect( runner ).to receive( :update ).
 				with({
-					"test1"=>{:ping=>{:rtt=>1}, "_monitor_key"=>:test},
-					"test2"=>{:ping=>{:rtt=>8}, "_monitor_key"=>:test}
+					"test1"=>{:ping=>{:rtt=>1}},
+					"test2"=>{:ping=>{:rtt=>8}}
 				})
 
 			runner.run_monitor( monitor )
@@ -159,8 +159,7 @@ describe Arborist::MonitorRunner do
 
 			expect( runner ).to receive( :update ).
 				with({ "test" => {
-					error: 'Exception while running "test monitor" monitor: RuntimeError: boom!',
-					 "_monitor_key" => :test
+					error: 'Exception while running "test monitor" monitor: RuntimeError: boom!'
 				}
 			})
 
