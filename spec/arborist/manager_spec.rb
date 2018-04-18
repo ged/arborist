@@ -1221,6 +1221,20 @@ describe Arborist::Manager do
 				expect( hdr['reason'] ).to match( /missing required ack sender/i )
 			end
 
+
+			it "propagates events from an acknowledgement up the node tree" do
+				expect( manager.root ).to receive( :publish_events ).
+					at_least( :once ).
+					and_call_original
+				expect( manager.nodes['duir'] ).to receive( :publish_events ).
+					at_least( :once ).
+					and_call_original
+
+				manager.handle_ack_request( { 'identifier' => 'sidonie' }, {
+					'message' => 'There will also be corn served.',
+					'sender'  =>  'Smoove-B'
+				})
+			end
 		end
 
 
@@ -1260,6 +1274,16 @@ describe Arborist::Manager do
 				expect( hdr['reason'] ).to match( /no identifier/i )
 			end
 
+
+			it "propagates events from an unack up the node tree" do
+				expect( manager.root ).to receive( :publish_events ).
+					at_least( :once ).
+					and_call_original
+				expect( manager.nodes['duir'] ).to receive( :publish_events ).
+					at_least( :once ).
+					and_call_original
+				manager.handle_unack_request( { 'identifier' => 'sidonie' }, nil )
+			end
 		end
 
 
@@ -1562,7 +1586,7 @@ describe Arborist::Manager do
 	end
 
 
-	describe "node updates and events" do
+	describe "node updates" do
 
 		let( :tree ) do
 			#                        router

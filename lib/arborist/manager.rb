@@ -862,7 +862,8 @@ class Arborist::Manager
 		self.log.debug "Acking the %s node: %p" % [ identifier, body ]
 
 		body = symbolify_keys( body )
-		node.acknowledge( **body )
+		events = node.acknowledge( **body )
+		self.propagate_events( node, events )
 
 		return Arborist::TreeAPI.successful_response( nil )
 	end
@@ -879,7 +880,8 @@ class Arborist::Manager
 
 		self.log.debug "Unacking the %s node: %p" % [ identifier, body ]
 
-		node.unacknowledge
+		events = node.unacknowledge
+		self.propagate_events( node, events )
 
 		return Arborist::TreeAPI.successful_response( nil )
 	end
