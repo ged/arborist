@@ -143,7 +143,7 @@ class Arborist::MonitorRunner
 					results = self.run_monitor_safely( monitor, nodes )
 
 					self.log.debug "  updating with results: %p" % [ results ]
-					self.update( results ) do
+					self.update( results, monitor.key ) do
 						self.log.debug "Updated %d via the '%s' monitor" %
 							[ results.length, monitor.description ]
 					end
@@ -192,9 +192,9 @@ class Arborist::MonitorRunner
 
 	### Create an update request using the runner's client, then queue the request up
 	### with the specified +block+ as the callback.
-	def update( nodemap, &block )
+	def update( nodemap, monitor_key, &block )
 		return if nodemap.empty?
-		update = self.client.make_update_request( nodemap )
+		update = self.client.make_update_request( nodemap, monitor_key: monitor_key )
 		self.queue_request( update, &block )
 	end
 

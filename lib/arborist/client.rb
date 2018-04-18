@@ -120,8 +120,8 @@ class Arborist::Client
 
 	### Return an `update` request as a zmq message (a CZTop::Message) with the given
 	### +data+.
-	def make_update_request( data )
-		return Arborist::TreeAPI.request( :update, nil, data )
+	def make_update_request( data, header={} )
+		return Arborist::TreeAPI.request( :update, header, data )
 	end
 
 

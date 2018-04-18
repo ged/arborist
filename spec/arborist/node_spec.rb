@@ -256,17 +256,17 @@ describe Arborist::Node do
 		it "groups errors from separate monitors by their key" do
 			expect( node ).to be_unknown
 
-			node.update( _monitor_key: 'MonitorTron2000', error: 'ded' )
-			node.update( _monitor_key: 'MonitorTron5000', error: 'moar ded' )
+			node.update( {error: 'ded'}, 'MonitorTron2000' )
+			node.update( {error: 'moar ded'}, 'MonitorTron5000' )
 			expect( node ).to be_down
 
 			expect( node.errors.length ).to eq( 2 )
-			node.update( _monitor_key: 'MonitorTron5000' )
+			node.update( {}, 'MonitorTron5000' )
 
 			expect( node ).to be_down
 			expect( node.errors.length ).to eq( 1 )
 
-			node.update( _monitor_key: 'MonitorTron2000' )
+			node.update( {}, 'MonitorTron2000' )
 			expect( node ).to be_up
 		end
 
@@ -400,7 +400,7 @@ describe Arborist::Node do
 
 			it "transitions to `up` status if all of its errors are cleared" do
 				expect {
-					node.update( error: nil, _monitor_key: 'moldovia' )
+					node.update( {error: nil}, 'moldovia' )
 				}.to change { node.status }.from( 'down' ).to( 'up' )
 			end
 
@@ -422,14 +422,14 @@ describe Arborist::Node do
 
 			it "transitions to `up` if its warnings are cleared" do
 				expect {
-					node.update( warning: nil, _monitor_key: 'beach' )
+					node.update( {warning: nil}, 'beach' )
 				}.to change { node.status }.from( 'warn' ).to( 'up' )
 			end
 
 
 			it "transitions to `down` if has an error set" do
 				expect {
-					node.update( error: "Shark warning.", _monitor_key: 'beach' )
+					node.update( {error: "Shark warning."}, 'beach' )
 				}.to change { node.status }.from( 'warn' ).to( 'down' )
 			end
 
@@ -460,16 +460,16 @@ describe Arborist::Node do
 
 			it "transitions to `up` status if its error is cleared" do
 				expect {
-					node.update( error: nil, _monitor_key: 'moldovia' )
+					node.update( {error: nil}, 'moldovia' )
 				}.to change { node.status }.from( 'acked' ).to( 'up' )
 			end
 
 
 			it "stays `up` if it is updated twice with an error key" do
-				node.update( error: nil, _monitor_key: 'moldovia' )
+				node.update( {error: nil}, 'moldovia' )
 
 				expect {
-					node.update( error: nil, _monitor_key: 'moldovia' ) # make sure it stays cleared
+					node.update( {error: nil}, 'moldovia' ) # make sure it stays cleared
 				}.to_not change { node.status }.from( 'up' )
 			end
 
@@ -543,7 +543,7 @@ describe Arborist::Node do
 
 			it "remains `quieted` even if updated with an error" do
 				expect {
-					node.update( error: "Internal error", _monitor_key: 'webservice' )
+					node.update( {error: "Internal error"}, 'webservice' )
 				}.to_not change { node.status }.from( 'quieted' )
 			end
 
@@ -1415,7 +1415,7 @@ describe Arborist::Node do
 
 
 		it "keeps its acked state" do
-			node.update( error: 'Batman whooped my ass.', _monitor_key: 'gotham' )
+			node.update( {error: 'Batman whooped my ass.'}, 'gotham' )
 			node.acknowledge( message: 'Moving the machine', sender: 'Me' )
 			expect( node ).to be_acked
 

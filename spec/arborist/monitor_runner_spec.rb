@@ -130,11 +130,13 @@ describe Arborist::MonitorRunner do
 			expect( monitor ).to receive( :run ).with( nodes ).
 				and_return( monitor_results )
 
-			expect( runner ).to receive( :update ).
-				with({
+			expect( runner ).to receive( :update ).with(
+				{
 					"test1"=>{:ping=>{:rtt=>1}},
 					"test2"=>{:ping=>{:rtt=>8}}
-				})
+				},
+				:test
+			)
 
 			runner.run_monitor( monitor )
 		end
@@ -157,14 +159,14 @@ describe Arborist::MonitorRunner do
 				with( {type: 'host'}, false, [:addresses], {} ).
 				and_yield( nodes )
 
-			expect( runner ).to receive( :update ).
-				with({ "test" => {
-					error: 'Exception while running "test monitor" monitor: RuntimeError: boom!'
-				}
-			})
+			expect( runner ).to receive( :update ).with(
+				{"test" => {error: 'Exception while running "test monitor" monitor: RuntimeError: boom!'}},
+				:test
+			)
 
 			runner.run_monitor( monitor )
 		end
+
 
 		it "skips the monitor execution if no nodes were returned in the search" do
 			monitor = Arborist::Monitor.new do

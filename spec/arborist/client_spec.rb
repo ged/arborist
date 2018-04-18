@@ -418,6 +418,27 @@ describe Arborist::Client do
 			expect( body['duir'] ).to eq( 'error' => 'Something happened.' )
 		end
 
+
+		it "can make a raw update request with headers" do
+			req = client.make_update_request(
+				{duir: {error: "Something happened."}},
+				{monitor_key: 'foom'}
+			)
+			expect( req ).to be_a( CZTop::Message )
+
+			header, body = Arborist::TreeAPI.decode( req )
+
+			expect( header ).to be_a( Hash )
+			expect( header ).to include( 'version', 'action', 'monitor_key' )
+			expect( header['version'] ).to eq( Arborist::Client::API_VERSION )
+			expect( header['action'] ).to eq( 'update' )
+			expect( header['monitor_key'] ).to eq( 'foom' )
+
+			expect( body ).to be_a( Hash )
+			expect( body ).to include( 'duir' )
+			expect( body['duir'] ).to eq( 'error' => 'Something happened.' )
+		end
+
 	end
 
 

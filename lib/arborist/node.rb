@@ -538,9 +538,9 @@ class Arborist::Node
 
 
 	### Update specified +properties+ for the node.
-	def update( new_properties )
+	def update( new_properties, monitor_key='_' )
 		self.last_contacted = Time.now
-		self.update_properties( new_properties )
+		self.update_properties( new_properties, monitor_key )
 
 		# Super to the state machine event method
 		super
@@ -561,9 +561,9 @@ class Arborist::Node
 
 
 	### Update the node's properties with those in +new_properties+ (a String-keyed Hash)
-	def update_properties( new_properties )
+	def update_properties( new_properties, monitor_key )
+		monitor_key ||= '_'
 		new_properties = stringify_keys( new_properties )
-		monitor_key = new_properties[ '_monitor_key' ] || '_'
 
 		self.log.debug "Updated via a %s monitor: %p" % [ monitor_key, new_properties ]
 		self.update_errors( monitor_key, new_properties.delete('error') )
