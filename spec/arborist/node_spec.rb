@@ -235,6 +235,24 @@ describe Arborist::Node do
 		end
 
 
+		it "remembers status time changes" do
+			expect( node.status_changed ).to eq( Time.at(0) )
+
+			time = Time.at( 1523900910 )
+			allow( Time ).to receive( :now ).and_return( time )
+
+			node.update( { error: 'boom' } )
+			expect( node ).to be_down
+			expect( node.status_changed ).to eq( time )
+			expect( node.status_last_changed ).to eq( Time.at(0) )
+
+
+			node.update( {} )
+			expect( node ).to be_up
+			expect( node.status_last_changed ).to eq( time )
+		end
+
+
 		it "groups errors from separate monitors by their key" do
 			expect( node ).to be_unknown
 
@@ -738,6 +756,7 @@ describe Arborist::Node do
 
 				old_node.status = 'down'
 				old_node.status_changed = Time.now - 400
+				old_node.status_last_changed = Time.now - 800
 				old_node.errors = "Host unreachable"
 				old_node.update(
 					ack: {
@@ -758,6 +777,7 @@ describe Arborist::Node do
 
 				expect( node.status ).to eq( old_node.status )
 				expect( node.status_changed ).to eq( old_node.status_changed )
+				expect( node.status_last_changed ).to eq( old_node.status_last_changed )
 				expect( node.errors ).to eq( old_node.errors )
 				expect( node.ack ).to eq( old_node.ack )
 				expect( node.properties ).to include( old_node.properties )
@@ -814,7 +834,7 @@ describe Arborist::Node do
 					:identifier,
 					:parent, :description, :tags, :properties, :ack, :status,
 					:last_contacted, :status_changed, :errors, :quieted_reasons,
-					:dependencies
+					:dependencies, :status_last_changed
 				)
 				expect( result[:identifier] ).to eq( 'foo' )
 				expect( result[:type] ).to eq( 'testnode' )
@@ -825,6 +845,7 @@ describe Arborist::Node do
 				expect( result[:ack] ).to be_nil
 				expect( result[:last_contacted] ).to eq( node.last_contacted.iso8601 )
 				expect( result[:status_changed] ).to eq( node.status_changed.iso8601 )
+				expect( result[:status_last_changed] ).to eq( node.status_last_changed.iso8601 )
 				expect( result[:errors] ).to be_a( Hash )
 				expect( result[:errors] ).to be_empty
 				expect( result[:dependencies] ).to be_a( Hash )
@@ -1286,7 +1307,6 @@ describe Arborist::Node do
 
 	describe "operational attribute modification" do
 
-
 		let( :node ) do
 			concrete_class.new( 'foo' ) do
 				parent 'bar'
@@ -1318,7 +1338,6 @@ describe Arborist::Node do
 			node.modify( tags: 'single' )
 			expect( node.tags ).to eq( %w[single] )
 		end
-
 	end
 
 

@@ -42,6 +42,7 @@ class Arborist::Node
 		description
 		dependencies
 		status_changed
+		status_last_changed
 		last_contacted
 		ack
 		errors
@@ -309,6 +310,7 @@ class Arborist::Node
 		# Primary state
 		@status          = 'unknown'
 		@status_changed  = Time.at( 0 )
+		@status_last_changed = Time.at( 0 )
 
 		# Attributes that govern state
 		@errors          = {}
@@ -356,6 +358,11 @@ class Arborist::Node
 	##
 	# The Time the node's status last changed.
 	attr_accessor :status_changed
+
+	##
+	# The previous Time the node's status changed, for duration
+	# calculations between states.
+	attr_accessor :status_last_changed
 
 	##
 	# The Hash of last errors encountered by a monitor attempting to update this
@@ -1035,6 +1042,7 @@ class Arborist::Node
 		@errors          = old_node.errors
 		@warnings        = old_node.warnings
 		@quieted_reasons = old_node.quieted_reasons
+		@status_last_changed = old_node.status_last_changed
 
 		# Only merge in downed dependencies.
 		old_node.dependencies.each_downed do |identifier, time|
@@ -1059,6 +1067,7 @@ class Arborist::Node
 			ack: self.ack ? self.ack.to_h : nil,
 			last_contacted: self.last_contacted ? self.last_contacted.iso8601 : nil,
 			status_changed: self.status_changed ? self.status_changed.iso8601 : nil,
+			status_last_changed: self.status_last_changed ? self.status_last_changed.iso8601 : nil,
 			errors: self.errors,
 			warnings: self.warnings,
 			dependencies: self.dependencies.to_h,
@@ -1099,6 +1108,7 @@ class Arborist::Node
 
 		@status          = hash[:status]
 		@status_changed  = Time.parse( hash[:status_changed] )
+		@status_last_changed = Time.parse( hash[:status_last_changed] )
 		@ack             = Arborist::Node::Ack.from_hash( hash[:ack] ) if hash[:ack]
 
 		@errors          = hash[:errors]
@@ -1225,6 +1235,7 @@ class Arborist::Node
 
 	### Update the last status change time.
 	def update_status_changed( transition )
+		self.status_last_changed = self.status_changed
 		self.status_changed = Time.now
 	end
 
