@@ -404,6 +404,13 @@ describe Arborist::Node do
 				}.to change { node.status }.from( 'down' ).to( 'up' )
 			end
 
+
+			it "transitions to `warn` status if errors are cleared but warnings remain" do
+				expect {
+					node.update( {error: nil, warning: 'squirt!'}, 'moldovia' )
+				}.to change { node.status }.from( 'down' ).to( 'warn' )
+			end
+
 		end
 
 

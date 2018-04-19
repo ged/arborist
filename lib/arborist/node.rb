@@ -125,7 +125,7 @@ class Arborist::Node
 		event :update do
 			transition [:down, :warn, :unknown, :acked] => :up, unless: :has_errors_or_warnings?
 			transition [:up, :warn, :unknown] => :down, if: :has_errors?
-			transition [:up, :unknown] => :warn, if: :has_only_warnings?
+			transition [:up, :down, :unknown] => :warn, if: :has_only_warnings?
 		end
 
 		event :acknowledge do
