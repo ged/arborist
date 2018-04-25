@@ -734,10 +734,12 @@ class Arborist::Manager
 			return Arborist::TreeAPI.error_response( 'client', "No such node %s." % [from] )
 		iter = self.enumerator_for( start_node )
 		deps = iter.inject( Set.new ) do |depset, node|
-			nsubs = node.node_subscribers
-			self.log.debug "Merging %d node subscribers from %s" % [ nsubs.length, node.identifier ]
-			depset | nsubs
+			identifiers = node.node_subscribers + [ node.identifier ]
+			self.log.debug "Merging %d node identifiers from %s" % [ identifiers.length, node.identifier ]
+			depset | identifiers
 		end
+
+		deps.delete( from )
 
 		return Arborist::TreeAPI.successful_response({ deps: deps.to_a })
 	end

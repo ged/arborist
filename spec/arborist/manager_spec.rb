@@ -1159,7 +1159,8 @@ describe Arborist::Manager do
 				expect( hdr ).to include( 'success' => true )
 				expect( body ).to be_a( Hash )
 				expect( body ).to include( 'deps' )
-				expect( body['deps'] ).to be_an( Array ).and( include('yevaud-cozy_frontend') )
+				expect( body['deps'] ).to_not include( 'sidonie' )
+				expect( body['deps'] ).to be_an( Array ).and( include('sidonie-ssh', 'yevaud-cozy_frontend') )
 			end
 
 		end
