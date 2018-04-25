@@ -988,7 +988,7 @@ class Arborist::Node
 	### Return a string describing the node's status.
 	def status_description
 		case self.status
-		when 'up', 'down'
+		when 'up', 'down', 'warn'
 			return "%s as of %s" % [ self.status.upcase, self.last_contacted ]
 		when 'acked'
 			return "ACKed %s" % [ self.acked_description ]
@@ -998,7 +998,7 @@ class Arborist::Node
 			reasons = self.quieted_reasons.values.join( ',' )
 			return "quieted: %s" % [ reasons ]
 		else
-			return "in an unknown state"
+			return "in an unhandled state"
 		end
 	end
 
