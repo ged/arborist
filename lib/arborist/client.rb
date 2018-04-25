@@ -40,6 +40,38 @@ class Arborist::Client
 
 
 	#
+	# Convenience methods
+	#
+
+
+	### Return dependencies of the given +identifier+ as an array.
+	def dependencies_of( identifier, partition: nil, properties: :all )
+		dependencies = self.deps( identifier: identifier )[ 'deps' ]
+		dependencies = self.search(
+			criteria: { identifier: dependencies },
+			options:  { properties: properties }
+		)
+
+		if partition
+			partition = partition.to_s
+			dependencies.keys.each{|id| dependencies[id]['identifier'] = id }
+			dependencies = dependencies.values.group_by do |node|
+				node[ partition ]
+			end
+		end
+
+		return dependencies
+	end
+
+
+	### Retreive a single node.
+	def fetch_node( identifier )
+		request = self.make_fetch_request( from: identifier, depth: 0 )
+		return self.send_tree_api_request( request ).first
+	end
+
+
+	#
 	# Protocol methods
 	#
 
@@ -95,8 +127,8 @@ class Arborist::Client
 	end
 
 
-	### Return the identifiers that have a secondary (i.e., not child-parent)
-	### dependency on the node with the specified +identifier+.
+	### Return the identifiers that have a dependency on the node with the
+	### specified +identifier+.
 	def deps( identifier: )
 		request = self.make_deps_request( identifier )
 		return self.send_tree_api_request( request )

@@ -47,6 +47,40 @@ describe Arborist::Client do
 		let( :manager ) { @manager }
 
 
+		describe "convenience API" do
+
+			it "can fetch a single node" do
+				res = client.fetch_node( 'duir' )
+				expect( res ).to be_a( Hash )
+				expect( res['identifier'] ).to eq( 'duir' )
+			end
+
+
+			it "has a convenience method for fetching dependencies" do
+				res = client.dependencies_of( 'sidonie' )
+				expect( res ).to be_a( Hash ).and include( 'sidonie-postgresql', 'sidonie-ssh' )
+			end
+
+
+			it "can pivot dependencies on node attributes" do
+				res = client.dependencies_of( 'sidonie', partition: 'type' )
+				expect( res ).to be_a( Hash )
+				expect( res['service'] ).to include(
+					a_hash_including( { 'identifier' => 'sidonie-ssh' } ),
+					a_hash_including( { 'identifier' => 'sidonie-postgresql' } )
+				)
+			end
+
+
+			it "can fetch a subset of node dependency attributes" do
+				res = client.dependencies_of( 'sidonie', properties: %w[ protocol type ] )
+				expect( res ).to be_a( Hash ).and include( 'sidonie-postgresql', 'sidonie-ssh' )
+				expect( res.values ).to all( include('protocol', 'type') )
+				expect( res.values.first ).to_not include( 'description' )
+			end
+		end
+
+
 		describe "protocol-level API" do
 
 			it "can fetch the status of the manager it's connected to" do
