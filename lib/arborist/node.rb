@@ -997,6 +997,8 @@ class Arborist::Node
 		when 'quieted'
 			reasons = self.quieted_reasons.values.join( ',' )
 			return "quieted: %s" % [ reasons ]
+		when 'unknown'
+			return "is in an 'unknown' state"
 		else
 			return "in an unhandled state"
 		end
