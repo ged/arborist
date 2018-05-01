@@ -208,7 +208,7 @@ module Arborist::CLI
 	### Load the config file using either arborist-base's config-loader if available, or
 	### fall back to DEFAULT_CONFIG_FILE
 	def self::load_config( global={} )
-		Arborist.load_config( global[:c] ) if global[:c]
+		Arborist.load_config( global[:c] )
 
 		# Set up the logging formatter
 		Loggability.format_with( :color ) if $stdout.tty?
