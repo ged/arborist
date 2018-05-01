@@ -601,12 +601,14 @@ class Arborist::Node
 		super()
 
 		events = self.pending_change_events.clone
+		events << self.make_delta_event unless self.update_delta.empty?
 		results = self.broadcast_events( *events )
 		self.log.debug ">>> Results from broadcast: %p" % [ results ]
 		events.concat( results )
 
 		return events
 	ensure
+		self.update_delta.clear
 		self.pending_change_events.clear
 	end
 
@@ -618,12 +620,14 @@ class Arborist::Node
 		super()
 
 		events = self.pending_change_events.clone
+		events << self.make_delta_event unless self.update_delta.empty?
 		results = self.broadcast_events( *events )
 		self.log.debug ">>> Results from broadcast: %p" % [ results ]
 		events.concat( results )
 
 		return events
 	ensure
+		self.update_delta.clear
 		self.pending_change_events.clear
 	end
 

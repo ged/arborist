@@ -1004,19 +1004,20 @@ describe Arborist::Node do
 		end
 
 
-		it "generates a node.acked event when a node is acked" do
+		it "generates a node.acked and node.delta event when a node is acked" do
 			node.update( error: 'ping failed ')
 			events = node.acknowledge(
 				message: "I have a poisonous friend. She's living in the house.",
 				sender: 'Seabound'
 			)
 
-			expect( events.size ).to eq( 1 )
+			expect( events.size ).to eq( 2 )
 
 			expect( events.first ).to be_a( Arborist::Event::NodeAcked )
+			expect( events.last ).to be_a( Arborist::Event::NodeDelta )
 			expect( events.first.payload ).to include( ack: a_hash_including(sender: 'Seabound') )
+			expect( events.last.payload ).to include( 'status' => ['down', 'acked'] )
 		end
-
 	end
 
 
