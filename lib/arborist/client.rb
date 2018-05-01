@@ -22,9 +22,6 @@ class Arborist::Client
 	def initialize( tree_api_url: nil, event_api_url: nil )
 		@tree_api_url  = tree_api_url  || Arborist.tree_api_url
 		@event_api_url = event_api_url || Arborist.event_api_url
-
-		@request_queue = nil
-		@event_subscriptions = nil
 	end
 
 
