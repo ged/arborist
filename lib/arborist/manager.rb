@@ -730,18 +730,32 @@ class Arborist::Manager
 		self.log.info "DEPS: %p" % [ header ]
 		from = header['from'] || '_'
 
-		start_node = self.nodes[ from ] or
-			return Arborist::TreeAPI.error_response( 'client', "No such node %s." % [from] )
-		iter = self.enumerator_for( start_node )
-		deps = iter.inject( Set.new ) do |depset, node|
-			identifiers = node.node_subscribers + [ node.identifier ]
-			self.log.debug "Merging %d node identifiers from %s" % [ identifiers.length, node.identifier ]
-			depset | identifiers
-		end
-
+		deps = self.merge_dependencies_from( from )
 		deps.delete( from )
 
 		return Arborist::TreeAPI.successful_response({ deps: deps.to_a })
+
+	rescue Arborist::ClientError => err
+		return Arborist::TreeAPI.error_response( 'client', err.message )
+	end
+
+
+	### Recurse into the children and secondary dependencies of the +from+ node and
+	### merge the identifiers of the traversed nodes into the +deps_set+.
+	def merge_dependencies_from( from, deps_set=Set.new )
+		return deps_set unless deps_set.add?( from )
+
+		start_node = self.nodes[ from ] or
+			raise Arborist::ClientError "No such node %s." % [ from ]
+
+		self.enumerator_for( start_node ).each do |subnode|
+			deps_set.add( subnode.identifier )
+			subnode.node_subscribers.each do |subdep|
+				self.merge_dependencies_from( subdep, deps_set )
+			end
+		end
+
+		return deps_set
 	end
 
 

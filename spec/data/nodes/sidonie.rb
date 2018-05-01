@@ -17,6 +17,7 @@ Arborist::Host 'sidonie' do
 	service 'ssh'
 	service 'demon-http', port: 6666, protocol: 'http'
 	service 'postgresql'
+	service 'iscsi', port: 860, protocol: 'udp'
 
 	service 'smtp'
 

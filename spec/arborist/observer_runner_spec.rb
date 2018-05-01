@@ -14,9 +14,11 @@ describe Arborist::ObserverRunner do
 	before( :each ) do
 		$emails = []
 		$texts = []
+		Arborist::Node::Root.reset
 	end
 
 	after( :each ) do
+		Arborist::Node::Root.reset
 		$emails.clear
 		$texts.clear
 	end
@@ -105,7 +107,12 @@ describe Arborist::ObserverRunner do
 			thr = Thread.new { runner.run }
 			wait( 3 ).for { runner }.to be_running
 
-			expect( @manager.subscriptions.length ).to eq( runner.subscriptions.length + 1 )
+			# Count the manager's subs that have external (UUID) keys.
+			expected_sub_count = @manager.subscriptions.count do |key, sub|
+				Loggability[ Arborist ].debug "Counting %p: %p" % [ key, sub ]
+				key =~ /\A\p{XDigit}{8}-\p{XDigit}{4}-/
+			end
+			expect( runner.subscriptions.length ).to eq( expected_sub_count )
 
 			runner.simulate_signal( :TERM )
 			thr.join( 2 )

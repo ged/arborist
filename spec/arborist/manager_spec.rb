@@ -510,7 +510,7 @@ describe Arborist::Manager do
 				expect( hdr ).to include( 'success' => true )
 
 				expect( body ).to be_a( Hash )
-				expect( body.length ).to eq( 16 )
+				expect( body.length ).to eq( 18 )
 
 				expect( body.values ).to all( be_a(Hash) )
 				expect( body.values ).to all( include('status', 'type') )
@@ -1160,7 +1160,8 @@ describe Arborist::Manager do
 				expect( body ).to be_a( Hash )
 				expect( body ).to include( 'deps' )
 				expect( body['deps'] ).to_not include( 'sidonie' )
-				expect( body['deps'] ).to be_an( Array ).and( include('sidonie-ssh', 'yevaud-cozy_frontend') )
+				expect( body['deps'] ).to be_an( Array ).
+					and( include('sidonie-ssh', 'yevaud-cozy_frontend', 'sandbox01-canary') )
 			end
 
 		end

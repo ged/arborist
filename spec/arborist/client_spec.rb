@@ -73,10 +73,25 @@ describe Arborist::Client do
 
 
 			it "can fetch a subset of node dependency attributes" do
-				res = client.dependencies_of( 'sidonie', properties: %w[ protocol type ] )
-				expect( res ).to be_a( Hash ).and include( 'sidonie-postgresql', 'sidonie-ssh' )
-				expect( res.values ).to all( include('protocol', 'type') )
-				expect( res.values.first ).to_not include( 'description' )
+				res = client.dependencies_of( 'sidonie', properties: %w[ description type ] )
+				expect( res ).to be_a( Hash ).and include(
+					'sandbox01',
+					'sandbox01-canary',
+					'sidonie-couchpotato',
+					'sidonie-demon-http',
+					'sidonie-http',
+					'sidonie-iscsi',
+					'sidonie-pms',
+					'sidonie-postgresql',
+					'sidonie-sabnzbd',
+					'sidonie-sickbeard',
+					'sidonie-smtp',
+					'sidonie-ssh',
+					'vhost01',
+					'yevaud-cozy_frontend'
+				)
+				expect( res.values ).to all( have_attributes(length: a_value_between(1, 2)) )
+				expect( res.values.map(&:keys) ).to all( contain_exactly 'type', 'description' )
 			end
 		end
 
@@ -106,14 +121,14 @@ describe Arborist::Client do
 			it "can fetch a depth-limited subtree of the node of the managed it's connected to" do
 				res = client.fetch( depth: 2 )
 				expect( res ).to be_an( Array )
-				expect( res.length ).to eq( 8 )
+				expect( res.length ).to eq( 9 )
 			end
 
 
 			it "can fetch a depth-limited subtree of the nodes of the manager it's connected to" do
 				res = client.fetch( from: 'duir', depth: 1 )
 				expect( res ).to be_an( Array )
-				expect( res.length ).to eq( 5 )
+				expect( res.length ).to eq( 6 )
 			end
 
 
