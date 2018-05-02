@@ -1,7 +1,6 @@
 .document
 .simplecov
 ChangeLog
-Events.md
 History.md
 Manifest.txt
 README.md
