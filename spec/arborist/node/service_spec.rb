@@ -121,6 +121,10 @@ describe Arborist::Node::Service do
 			described_class.new( 'ssh', host )
 		end
 
+		let( :node2 ) do
+			described_class.new( 'ntp', host ) { protocol 'udp' }
+		end
+
 
 		it "inherits its host's addresses" do
 			expect( node ).to match_criteria( address: '192.168.66.12' )
@@ -153,6 +157,7 @@ describe Arborist::Node::Service do
 
 		it "can be matched with a port" do
 			expect( node ).to match_criteria( port: 22 )
+			expect( node ).to match_criteria( port: [ 22, 123 ] )
 			expect( node ).to match_criteria( port: 'ssh' )
 			expect( node ).to_not match_criteria( port: 80 )
 			expect( node ).to_not match_criteria( port: 'www' )
@@ -163,6 +168,7 @@ describe Arborist::Node::Service do
 		it "can be matched with a protocol" do
 			expect( node ).to match_criteria( protocol: 'tcp' )
 			expect( node ).to_not match_criteria( protocol: 'udp' )
+			expect( node ).to match_criteria( protocol: [ 'udp', 'tcp' ] )
 		end
 
 
@@ -171,6 +177,9 @@ describe Arborist::Node::Service do
 			expect( node ).to match_criteria( app: 'ssh' )
 			expect( node ).to_not match_criteria( app_protocol: 'http' )
 			expect( node ).to_not match_criteria( app: 'http' )
+			expect( node ).to match_criteria( app: [ 'ntp', 'ssh' ] )
+			expect( node2 ).to match_criteria( app: [ 'ntp', 'ssh' ] )
+			expect( node2 ).to_not match_criteria( app: [ 'http' ] )
 		end
 
 	end

@@ -700,17 +700,18 @@ class Arborist::Node
 
 	### Returns +true+ if the node matches the specified +key+ and +val+ criteria.
 	def match_criteria?( key, val )
+		array_val = Array( val )
 		return case key
 			when 'status'
-				Array( val ).include?( self.status )
+				array_val.include?( self.status )
 			when 'type'
-				Array( val ).include?( self.type )
+				array_val.include?( self.type )
 			when 'parent'
-				self.parent == val
+				array_val.include?( self.parent )
 			when 'tag' then @tags.include?( val.to_s )
-			when 'tags' then Array(val).all? {|tag| @tags.include?(tag) }
+			when 'tags' then array_val.all? {|tag| @tags.include?(tag) }
 			when 'identifier'
-				Array( val ).include?( self.identifier )
+				array_val.include?( self.identifier )
 			when 'config'
 				val.all? {|ikey, ival| hash_matches(@config, ikey, ival) }
 			else

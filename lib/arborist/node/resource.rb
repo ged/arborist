@@ -85,7 +85,7 @@ class Arborist::Node::Resource < Arborist::Node
 				search_addr = IPAddr.new( val )
 				self.addresses.any? {|a| search_addr.include?(a) }
 			when 'category'
-				self.category == val
+				Array( val ).include?( self.category )
 			else
 				super
 			end

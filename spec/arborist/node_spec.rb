@@ -1128,7 +1128,9 @@ describe Arborist::Node do
 
 		it "can be matched with its parent" do
 			expect( node ).to match_criteria( parent: 'bar' )
+			expect( node ).to match_criteria( parent: [ 'bar', 'hooowat' ] )
 			expect( node ).to_not match_criteria( parent: 'hooowat' )
+			expect( node ).to_not match_criteria( parent: [ 'hooowat', 'wathoooo' ] )
 		end
 
 

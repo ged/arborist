@@ -58,6 +58,8 @@ describe Arborist::Node::Resource do
 
 		it "can be matched with a category" do
 			expect( node ).to match_criteria( category: 'disk' )
+			expect( node ).to match_criteria( category: [ 'chungwatch', 'disk' ] )
+			expect( node ).to_not match_criteria( category: [ 'chungwatch', 'snippersnapper' ] )
 			expect( node ).to_not match_criteria( category: 'processes' )
 		end
 	end

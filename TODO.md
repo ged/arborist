@@ -49,3 +49,7 @@
 * Add optional authentication support (ZAUTH)
 
 
+### Observers
+
+ * Flapping state detection
+
