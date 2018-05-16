@@ -134,6 +134,7 @@ class Arborist::Node::Service < Arborist::Node
 	def operational_values
 		return super.merge(
 			addresses: self.addresses.map( &:to_s ),
+			hostname: self.hostname,
 			port: self.port,
 			protocol: self.protocol,
 			app_protocol: self.app_protocol,

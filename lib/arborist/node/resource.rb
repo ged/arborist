@@ -36,7 +36,9 @@ class Arborist::Node::Resource < Arborist::Node
 	### monitor state.
 	def operational_values
 		return super.merge(
-			addresses: self.addresses.map( &:to_s )
+			addresses: self.addresses.map( &:to_s ),
+			hostname: self.hostname,
+			category: self.category
 		)
 	end
 
