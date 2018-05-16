@@ -68,6 +68,9 @@ module Arborist::CLI
 	desc "Don't actually do anything, just show what would happen."
 	switch [:n, 'dry-run']
 
+	desc "Enable ANSI colors."
+	switch :color, default_value: true
+
 	desc "Additional Ruby libs to require before doing anything."
 	flag [:r, 'requires'], type: Array
 
@@ -87,8 +90,8 @@ module Arborist::CLI
 		self.load_config( global )
 		self.set_logging_level( global[:l] ) if global[:l] # again; override config file
 
-		self.setup_pastel_aliases
 		self.setup_output( global )
+		self.setup_pastel_aliases
 
 		true
 	end
@@ -147,7 +150,7 @@ module Arborist::CLI
 	### Return the Pastel colorizer.
 	###
 	def self::pastel
-		@pastel ||= Pastel.new( enabled: $stdout.tty? )
+		@pastel ||= Pastel.new( enabled: $stdout.tty? && $COLOR )
 	end
 
 
@@ -226,6 +229,7 @@ module Arborist::CLI
 			$DRYRUN = false
 		end
 
+
 		if global[:verbose]
 			$VERBOSE = true
 			Loggability.level = :info
@@ -235,6 +239,8 @@ module Arborist::CLI
 			$DEBUG = true
 			Loggability.level = :debug
 		end
+
+		$COLOR = global[ :color ]
 	end
 
 
