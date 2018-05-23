@@ -18,6 +18,13 @@ class Arborist::Client
 	log_to :arborist
 
 
+	### Create and return a singleton instance with configured
+	### endpoints.
+	def self::instance
+		return @instance ||= new
+	end
+
+
 	### Create a new Client with the given API socket URIs.
 	def initialize( tree_api_url: nil, event_api_url: nil )
 		@tree_api_url  = tree_api_url  || Arborist.tree_api_url

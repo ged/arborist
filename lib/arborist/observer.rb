@@ -2,6 +2,7 @@
 #encoding: utf-8
 
 require 'arborist' unless defined?( Arborist )
+require 'arborist/client'
 
 
 # The Arborist entity responsible for observing changes to the tree and
@@ -121,6 +122,13 @@ class Arborist::Observer
 	### Register a summary action.
 	def summarize( options={}, &block )
 		@actions << Arborist::Observer::Summarize.new( options, &block )
+	end
+
+
+	### Return a client singleton for optional observer callbacks to the
+	### manager.
+	def client
+		return Arborist::Client.instance
 	end
 
 

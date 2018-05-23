@@ -9,6 +9,13 @@ describe Arborist::Client do
 
 	let( :client ) { described_class.new }
 
+	it "can return a singleton instance" do
+		one = described_class.instance
+		two = described_class.instance
+		expect( one ).to be_a( described_class )
+		expect( one ).to equal( two )
+	end
+
 	describe "synchronous API", :testing_manager do
 
 		before( :each ) do
