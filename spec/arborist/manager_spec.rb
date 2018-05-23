@@ -293,17 +293,13 @@ describe Arborist::Manager do
 		end
 
 
-		it "can replace an existing node" do
+		it "complains if adding a node that already exists" do
 			manager.add_node( node )
 			another_node = testing_node( 'italian_lessons' )
-			manager.add_node( another_node )
 
-			expect( manager.nodes ).to include( 'italian_lessons' )
-			expect( manager.nodes['italian_lessons'] ).to_not be( node )
-			expect( manager.nodes['italian_lessons'] ).to be( another_node )
-
-			expect( manager.nodecount ).to eq( 2 )
-			expect( manager.nodelist ).to include( '_', 'italian_lessons' )
+			expect {
+				manager.add_node( another_node )
+			}.to raise_error( Arborist::NodeError, /already present/ )
 		end
 
 
@@ -376,17 +372,6 @@ describe Arborist::Manager do
 
 			manager.add_node( new_node )
 			expect( manager.nodes['branch'].children ).to include( 'new' )
-		end
-
-
-		it "replaces a node in the tree when a node with an existing identifier is added" do
-			updated_node = testing_node( 'leaf' ) do
-				parent 'trunk'
-			end
-
-			manager.add_node( updated_node )
-			expect( manager.nodes['branch'].children ).to_not include( 'leaf' => leaf_node )
-			expect( manager.nodes['trunk'].children ).to include( 'leaf' => updated_node )
 		end
 
 

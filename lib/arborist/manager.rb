@@ -480,10 +480,8 @@ class Arborist::Manager
 	def add_node( node )
 		identifier = node.identifier
 
-		unless self.nodes[ identifier ].equal?( node )
-			self.remove_node( self.nodes[identifier] )
-			self.nodes[ identifier ] = node
-		end
+		raise Arborist::NodeError, "Node %p already present." % [ identifier ] if self.nodes[ identifier ]
+		self.nodes[ identifier ] = node
 
 		if self.tree_built?
 			self.link_node( node )

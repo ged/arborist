@@ -12,13 +12,10 @@
 
 ### Manager
 
-* Split #add_node up into adding and replacing, performing sanity checks for each.
-* Detect and error on identifier duplication during Manager startup
 
 ### Nodes
 
 * Allow 'address' host DSL to accept multiple addresses in one call
-* Ask a node (via tree-api or otherwise) what nodes it affects (immediate children, secondary dependents)
 
 ### Observers
 
