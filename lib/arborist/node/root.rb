@@ -52,7 +52,7 @@ class Arborist::Node::Root < Arborist::Node
 
 
 	### Don't allow properties to be set on the root node.
-	def update( properties )
+	def update( properties, monitor_key='_' )
 		return super( {} )
 	end
 

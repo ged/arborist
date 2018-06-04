@@ -6,6 +6,7 @@ hoe-deveiate
 loggability
 msgpack
 pluggability
+pry
 rdoc-generator-fivefish
 rspec-wait
 schedulability
