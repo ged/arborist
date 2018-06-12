@@ -13,12 +13,14 @@ require 'arborist/client'
 module Arborist::CLI::Tree
 	extend Arborist::CLI::Subcommand
 
-
 	desc 'Dump the node tree of the running manager'
 
 	command :tree do |cmd|
 		cmd.switch :raw,
 			desc: "Dump the node tree data as raw data instead of prettifying it.",
+			negatable: false
+		cmd.switch :path,
+			desc: "Include the parent path back to root, when using --from.",
 			negatable: false
 
 		cmd.flag [:f, :from],
@@ -31,7 +33,7 @@ module Arborist::CLI::Tree
 			arg_name: 'integer'
 
 		cmd.action do |globals, options, args|
-			client = Arborist::Client.new
+			client = Arborist::Client.instance
 
 			opts = { tree: true }
 			opts[ :from ]  = options[ :from ]  if options[ :from ]
@@ -53,7 +55,19 @@ module Arborist::CLI::Tree
 
 				root = nodes.first
 				root_data = {}
-				tree_data = { node_description(root) => root_data }
+
+				# Recursively fetch each parent node upwards to the
+				# Arborist root.
+				#
+				tree_data = if options[ :path ] && options[ :from ]
+					path_to_root = fetch_parents( root )
+					{ node_description( path_to_root.shift ) => build_path( path_to_root, root ) }
+
+				# Just display starting at the specified root.
+				#
+				else
+					{ node_description(root) => root_data }
+				end
 
 				root[ 'children' ].each_value do |node|
 					root_data[ node_description(node) ] = build_tree( node )
@@ -80,6 +94,37 @@ module Arborist::CLI::Tree
 			children << { node_description(child) => build_tree(child) }
 		end
 		return children
+	end
+
+
+	### Given a sorted array of +nodes+, reorganize it for TTY::Tree.
+	def build_path( nodes, root )
+		children = []
+		parent_node = nodes.shift
+		return children unless parent_node
+
+		if parent_node == root
+			children << { node_description(parent_node) => build_tree(parent_node) }
+		else
+			children << { node_description(parent_node) => build_path(nodes, root) }
+		end
+		return children
+	end
+
+
+	### Given a starting node, walk upwards through the tree until
+	### reaching the Arborist root node.  Returns an array of nodes,
+	### sorted root down.
+	def fetch_parents( start_node )
+		client = Arborist::Client.instance
+		path = [ start_node ]
+		parent = start_node[ 'parent' ]
+		while parent
+			parent_node = client.fetch_node( parent )
+			path << parent_node
+			parent = parent_node[ 'parent' ]
+		end
+		path.reverse!
 	end
 
 
