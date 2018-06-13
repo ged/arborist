@@ -1320,6 +1320,7 @@ describe Arborist::Node do
 		let( :node ) do
 			concrete_class.new( 'foo' ) do
 				parent 'bar'
+				config boop: false
 				description "The prototypical node"
 				tags :chunker, :hunky, :flippin, :hippo
 			end
@@ -1335,6 +1336,12 @@ describe Arborist::Node do
 		it "can change its description" do
 			node.modify( description: 'A different node' )
 			expect( node.description ).to eq( 'A different node' )
+		end
+
+
+		it "can change any custom configuration values" do
+			node.modify( config: { boop: true } )
+			expect( node.config ).to eq({ 'boop' => true })
 		end
 
 

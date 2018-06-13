@@ -409,13 +409,14 @@ class Arborist::Node
 
 	### Set one or more node +attributes+. This should be overridden by subclasses which
 	### wish to allow their operational attributes to be set/updated via the Tree API
-	### (+modify+ and +graft+). Supported attributes are: +parent+, +description+, and
-	### +tags+.
+	### (+modify+ and +graft+). Supported attributes are: +parent+, +description+,
+	### +tags+, and +config+.
 	def modify( attributes )
 		attributes = stringify_keys( attributes )
 
 		self.parent( attributes['parent'] )
 		self.description( attributes['description'] )
+		self.config( attributes['config'] )
 
 		if attributes['tags']
 			@tags.clear
