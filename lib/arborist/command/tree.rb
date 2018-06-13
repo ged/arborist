@@ -124,7 +124,7 @@ module Arborist::CLI::Tree
 			path << parent_node
 			parent = parent_node[ 'parent' ]
 		end
-		path.reverse!
+		return path.reverse
 	end
 
 
