@@ -37,6 +37,7 @@ lib/arborist/loader/file.rb
 lib/arborist/manager.rb
 lib/arborist/mixins.rb
 lib/arborist/monitor.rb
+lib/arborist/monitor/connection_batching.rb
 lib/arborist/monitor/socket.rb
 lib/arborist/monitor_runner.rb
 lib/arborist/node.rb
@@ -86,6 +87,7 @@ spec/data/monitors/web_services.rb
 spec/data/nodes/localhost.rb
 spec/data/nodes/sidonie.rb
 spec/data/nodes/sub/duir.rb
+spec/data/nodes/vhosts.rb
 spec/data/nodes/yevaud.rb
 spec/data/observers/auditor.rb
 spec/data/observers/webservices.rb
