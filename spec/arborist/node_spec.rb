@@ -1004,19 +1004,77 @@ describe Arborist::Node do
 		end
 
 
-		it "generates a node.acked and node.delta event when a node is acked" do
-			node.update( error: 'ping failed ')
+		it "includes the original ack in delta events" do
 			events = node.acknowledge(
 				message: "I have a poisonous friend. She's living in the house.",
 				sender: 'Seabound'
+			)
+			delta_event = events.find {|ev| ev.type == 'node.delta' }
+			expect( delta_event.payload ).to include( 'status' => ['up', 'disabled'] )
+			expect( delta_event.payload ).to include( 'ack' => [ nil, a_hash_including(sender: 'Seabound') ] )
+
+			events = node.unacknowledge
+			delta_event = events.find {|ev| ev.type == 'node.delta' }
+
+			expect( delta_event.payload ).to include( 'status' => ['disabled', 'unknown'] )
+			expect( delta_event.payload ).to include( 'ack' => [ a_hash_including(sender: 'Seabound'), nil ] )
+		end
+
+
+		it "generates a node.delta event when a node ack is updated" do
+			node.update( error: 'ping failed ')
+			node.acknowledge(
+				message: "The last one was dead. This one is on her way.",
+				sender: 'Average Trigram'
+			)
+
+			events = node.acknowledge(
+				message: "000100101011111",
+				sender: 'Robots'
+			)
+			expect( events.size ).to eq( 2 )
+
+			delta = events.last
+			expect( delta ).to be_a( Arborist::Event::NodeDelta )
+
+			expect( delta.payload ).
+				to include( 'ack' => [
+					a_hash_including(sender: 'Average Trigram'), a_hash_including(sender: 'Robots')
+				]
+			)
+		end
+
+
+		it "generates a node.acked and node.delta event when a node is acked" do
+			node.update( error: 'ping failed ')
+			events = node.acknowledge(
+				message: "The last one was dead. This one is on her way.",
+				sender: 'Average Trigram'
 			)
 
 			expect( events.size ).to eq( 2 )
 
 			expect( events.first ).to be_a( Arborist::Event::NodeAcked )
 			expect( events.last ).to be_a( Arborist::Event::NodeDelta )
-			expect( events.first.payload ).to include( ack: a_hash_including(sender: 'Seabound') )
+			expect( events.first.payload ).
+				to include( ack: a_hash_including(sender: 'Average Trigram') )
+			expect( events.last.payload ).
+				to include( 'ack' =>  [ nil, a_hash_including(sender: 'Average Trigram') ])
 			expect( events.last.payload ).to include( 'status' => ['down', 'acked'] )
+		end
+
+
+		it "generates a node.down and node.delta event when a node is unacked" do
+			node.update( error: 'ping failed ')
+			node.acknowledge(
+				message: "The humans are dead.  I poked one.  It's dead.",
+				sender: 'Jermaine and Brit'
+			)
+
+			events = node.unacknowledge
+			expect( events.last.payload ).
+				to include( 'ack' =>  [ a_hash_including(sender: 'Jermaine and Brit'), nil ])
+			expect( events.last.payload ).to include( 'status' => ['acked', 'down'] )
 		end
 	end
 

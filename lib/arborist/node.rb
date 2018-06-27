@@ -149,6 +149,8 @@ class Arborist::Node
 			transition :quieted => :unknown, unless: :has_quieted_reason?
 		end
 
+		before_transition [:acked, :disabled] => any, do: :save_previous_ack
+
 		after_transition any => :acked, do: :on_ack
 		after_transition :acked => :up, do: :on_ack_cleared
 		after_transition :down => :up, do: :on_node_up
@@ -316,6 +318,7 @@ class Arborist::Node
 		@errors          = {}
 		@warnings        = {}
 		@ack             = nil
+		@previous_ack    = nil
 		@last_contacted  = Time.at( 0 )
 		@quieted_reasons = {}
 
@@ -377,6 +380,10 @@ class Arborist::Node
 	##
 	# The acknowledgement currently in effect. Should be an instance of Arborist::Node::ACK
 	attr_accessor :ack
+
+	##
+	# The acknowledgement previously in effect (if any).
+	attr_accessor :previous_ack
 
 	##
 	# The Hash of changes tracked during an #update.
@@ -556,8 +563,7 @@ class Arborist::Node
 
 		return events
 	ensure
-		self.update_delta.clear
-		self.pending_change_events.clear
+		self.clear_transition_temp_vars
 	end
 
 
@@ -597,9 +603,9 @@ class Arborist::Node
 
 	### Acknowledge any current or future abnormal status for this node.
 	def acknowledge( **args )
-		self.ack = args
-
 		super()
+
+		self.ack = args
 
 		events = self.pending_change_events.clone
 		events << self.make_delta_event unless self.update_delta.empty?
@@ -609,16 +615,15 @@ class Arborist::Node
 
 		return events
 	ensure
-		self.update_delta.clear
-		self.pending_change_events.clear
+		self.clear_transition_temp_vars
 	end
 
 
 	### Clear any current acknowledgement.
 	def unacknowledge
-		self.ack = nil
-
 		super()
+
+		self.ack = nil
 
 		events = self.pending_change_events.clone
 		events << self.make_delta_event unless self.update_delta.empty?
@@ -628,8 +633,7 @@ class Arborist::Node
 
 		return events
 	ensure
-		self.update_delta.clear
-		self.pending_change_events.clear
+		self.clear_transition_temp_vars
 	end
 
 
@@ -659,6 +663,14 @@ class Arborist::Node
 
 			return newval
 		end
+	end
+
+
+	### Clear out the state used during a transition to track changes.
+	def clear_transition_temp_vars
+		self.previous_ack = nil
+		self.update_delta.clear
+		self.pending_change_events.clear
 	end
 
 
@@ -816,8 +828,7 @@ class Arborist::Node
 
 		return results
 	ensure
-		self.update_delta.clear
-		self.pending_change_events.clear
+		self.clear_transition_temp_vars
 	end
 
 
@@ -1161,6 +1172,26 @@ class Arborist::Node
 			self.log.info "Node %s ACK cleared explicitly" % [ self.identifier ]
 			@ack = nil
 		end
+
+		self.add_previous_ack_to_update_delta
+	end
+
+
+	### Save off the current acknowledgement so it can be used after transitions
+	### which unset it.
+	def save_previous_ack
+		self.log.debug "Saving previous ack: %p" % [ self.ack ]
+		self.previous_ack = self.ack
+	end
+
+
+	### Add the previous and current acknowledgement to the delta if either of them
+	### are set.
+	def add_previous_ack_to_update_delta
+		unless self.ack == self.previous_ack
+			self.log.debug "Adding previous ack to the update delta: %p" % [ self.previous_ack ]
+			self.update_delta[ 'ack' ] = [ self.previous_ack&.to_h, self.ack&.to_h ]
+		end
 	end
 
 
@@ -1264,8 +1295,8 @@ class Arborist::Node
 
 	### Callback for when an acknowledgement is cleared.
 	def on_ack_cleared( transition )
-		self.log.warn "ACK cleared for %s" % [ self.identifier ]
 		self.ack = nil
+		self.log.warn "ACK cleared for %s" % [ self.identifier ]
 	end
 
 
@@ -1311,6 +1342,7 @@ class Arborist::Node
 	### Callback for when a node goes from disabled to unknown
 	def on_node_enabled( transition )
 		self.log.warn "%s is %s" % [ self.identifier, self.status_description ]
+		self.ack = nil
 	end
 
 
