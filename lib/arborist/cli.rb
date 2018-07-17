@@ -2,7 +2,7 @@
 #encoding: utf-8
 
 require 'loggability'
-require 'tty'
+require 'tty/prompt'
 require 'pastel'
 require 'gli'
 

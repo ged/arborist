@@ -2,6 +2,7 @@
 #encoding: utf-8
 
 require 'time'
+require 'tty/table'
 
 require 'arborist/cli' unless defined?( Arborist::CLI )
 require 'arborist/client'
