@@ -555,11 +555,20 @@ describe Arborist::Node do
 			end
 
 
-			it "transitions to `unknown` if its reasons for being quieted are cleared" do
+			it "transitions to `unknown` if its parent transitions to up" do
 				up_event = Arborist::Event.create( :node_up, parent_node )
 
 				expect {
 					node.handle_event( up_event )
+				}.to change { node.status }.from( 'quieted' ).to( 'unknown' )
+			end
+
+
+			it "transitions to `unknown` if its parent transitions to warn" do
+				warn_event = Arborist::Event.create( :node_warn, parent_node )
+
+				expect {
+					node.handle_event( warn_event )
 				}.to change { node.status }.from( 'quieted' ).to( 'unknown' )
 			end
 

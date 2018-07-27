@@ -913,7 +913,7 @@ class Arborist::Node
 
 	### Handle a 'node.up' event received via broadcast.
 	def handle_node_up_event( event )
-		self.log.debug "Got a node.up event: %p" % [ event ]
+		self.log.debug "Got a node.%s event: %p" % [ event.type, event ]
 
 		self.dependencies.mark_up( event.node.identifier )
 		self.quieted_reasons.delete( :secondary ) if self.dependencies_up?
@@ -926,6 +926,7 @@ class Arborist::Node
 			self.quieted_reasons.delete( :primary )
 		end
 	end
+	alias_method :handle_node_warn_event, :handle_node_up_event
 
 
 
