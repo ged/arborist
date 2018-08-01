@@ -278,6 +278,7 @@ class Arborist::Manager
 	### Write out the state of all the manager's nodes to the state_file if one is
 	### configured.
 	def save_node_states
+		start_time = Time.now
 		path = self.class.state_file or return
 		self.log.info "Saving current node state to %s" % [ path ]
 		tmpfile = Tempfile.create(
@@ -289,6 +290,7 @@ class Arborist::Manager
 		tmpfile.close
 
 		File.rename( tmpfile.path, path.to_s )
+		self.log.debug "Saved state file in %0.1f seconds." % [ Time.now - start_time ]
 
 	rescue SystemCallError => err
 		self.log.error "%p while saving node state: %s" % [ err.class, err.message ]
