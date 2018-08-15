@@ -2,6 +2,8 @@
 #encoding: utf-8
 
 require 'pp'
+require 'json'
+require 'yaml'
 require 'msgpack'
 require 'tty-tree'
 
@@ -23,6 +25,9 @@ module Arborist::CLI::Tree
 			desc: "Include the parent path back to root, when using --from.",
 			negatable: false
 
+		cmd.flag :format,
+			desc: "When dumping the tree using --raw, serialize to this format.",
+			must_match: %w[ yaml json ]
 		cmd.flag [:f, :from],
 			type: String,
 			desc: "Start at a node other than the root.",
@@ -42,7 +47,14 @@ module Arborist::CLI::Tree
 			nodes = client.fetch( opts )
 
 			if options[:raw]
-				pp nodes.first
+				case options[:format]
+				when 'json'
+					puts JSON.dump( nodes.first )
+				when 'yaml'
+					puts YAML.dump( nodes.first )
+				else
+					pp nodes.first
+				end
 
 			else
 				status = client.status
