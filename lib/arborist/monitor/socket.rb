@@ -24,6 +24,11 @@ module Arborist::Monitor::Socket
 			Float( val )
 		end
 
+		##
+		# The number of socket connections to attempt simultaneously.
+		setting :batch_size, default: 150 do |val|
+			Integer( val )
+		end
 	end
 
 
@@ -55,8 +60,11 @@ module Arborist::Monitor::Socket
 		###
 		### +:timeout+
 		###   Set the number of seconds to wait for a connection for each node.
-		def initialize( timeout: Arborist::Monitor::Socket.default_timeout )
+		### +:batch_size+
+		###   The number of UDP connection attempts to perform simultaneously.
+		def initialize( timeout: Arborist::Monitor::Socket.default_timeout, batch_size: Arborist::Monitor::Socket.batch_size )
 			self.timeout = timeout
+			self.batch_size = batch_size
 		end
 
 
@@ -127,12 +135,6 @@ module Arborist::Monitor::Socket
 
 		log_to :arborist
 
-
-		# Defaults for instances of this monitor
-		DEFAULT_OPTIONS = {
-			timeout: 0.001
-		}
-
 		# Always request the node addresses and port.
 		USED_PROPERTIES = [ :addresses, :port ].freeze
 
@@ -153,8 +155,11 @@ module Arborist::Monitor::Socket
 		###
 		### +:timeout+
 		###   Set the number of seconds to wait for a connection for each node.
-		def initialize( timeout: Arborist::Monitor::Socket.default_timeout )
+		### +:batch_size+
+		###   The number of UDP connection attempts to perform simultaneously.
+		def initialize( timeout: Arborist::Monitor::Socket.default_timeout, batch_size: Arborist::Monitor::Socket.batch_size )
 			self.timeout = timeout
+			self.batch_size = batch_size
 		end
 
 
