@@ -56,7 +56,6 @@ hoespec = Hoe.spec 'arborist' do |spec|
 	spec.dependency 'simplecov', '~> 0.9', :developer
 	spec.dependency 'timecop', '~> 0.7', :developer
 	spec.dependency 'rdoc', '~> 5.1', :developer
-	spec.dependency 'rdoc', '~> 5.1', :developer
 	spec.dependency 'state_machines-graphviz', '~> 0.0', :developer
 
 	spec.require_ruby_version( '>=2.3.1' )

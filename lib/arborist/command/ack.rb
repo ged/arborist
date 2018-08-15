@@ -19,6 +19,9 @@ module Arborist::CLI::Ack
 		cmd.switch :clear, default: false,
 			desc: "Clear the ack instead of setting it.",
 			negatable: false
+		cmd.switch [ :k, 'keep-going' ], default: false,
+			desc: "Continue in the event of errors.",
+			negatable: false
 
 		cmd.flag [ :u, :user ],
 			desc: "The user to mark the nodes with."
@@ -46,12 +49,17 @@ module Arborist::CLI::Ack
 
 				identifiers.each do |id|
 					res[ id ] = unless_dryrun( "Acking #{id}...", true ) do
-						client.ack(
-							identifier: id,
-							message:    message,
-							sender:     userid,
-							via:        "command line"
-						)
+						begin
+							client.ack(
+								identifier: id,
+								message:    message,
+								sender:     userid,
+								via:        "command line"
+							)
+						rescue => err
+							raise unless options[ 'keep-going' ]
+							err.message
+						end
 					end
 				end
 			end
@@ -59,7 +67,7 @@ module Arborist::CLI::Ack
 			res.each_pair do |identifier, result|
 				prompt.say "%s: %s" % [
 					hl.bold.bright_blue( identifier ),
-					result == true ? "Okay." : hl.red( res.to_s )
+					result == true ? "Okay." : hl.red( res[identifier].to_s )
 				]
 			end
 		end
