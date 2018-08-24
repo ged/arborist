@@ -312,7 +312,8 @@ class Arborist::Client
 
 		header, body = Arborist::TreeAPI.decode( res )
 		unless header[ 'success' ]
-			raise "Arborist manager said: %s" % [ header['reason'] ]
+			exception = header['category'] == 'client' ? Arborist::ClientError : Arborist::ServerError
+			raise exception, "Arborist manager said: %s" % [ header['reason'] ]
 		end
 
 		return body
