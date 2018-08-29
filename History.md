@@ -1,3 +1,21 @@
+## v0.3.0 [2018-08-29] Michael Granger <ged@FaerieMUD.org>
+
+Enhancements:
+
+- Add a `run_once` command for testing monitors
+- Acking an already acked node transitions the node to disabled.
+- Add raw formatting for YAML and JSON to the tree command.
+- Optionally continue attempting to ack/clear nodes if some are
+  invalid.
+- Expose socket batch size to configurability.
+
+Fixes:
+
+- Use the proper exception when raising errors from the client,
+  instead of RuntimeError.
+
+
+
 ## v0.2.0 [2018-08-08] Michael Granger <ged@FaerieMUD.org>
 
 Breaking:
