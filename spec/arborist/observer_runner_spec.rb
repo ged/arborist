@@ -67,6 +67,7 @@ describe Arborist::ObserverRunner do
 	describe "a runner with loaded observers", :testing_manager do
 
 		before( :each ) do
+			@manager = nil
 			@manager_thread = Thread.new do
 				@manager = make_testing_manager()
 				Thread.current.abort_on_exception = true

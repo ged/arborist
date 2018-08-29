@@ -14,6 +14,7 @@ lib/arborist/command/ack.rb
 lib/arborist/command/client.rb
 lib/arborist/command/config.rb
 lib/arborist/command/reset.rb
+lib/arborist/command/run_once.rb
 lib/arborist/command/start.rb
 lib/arborist/command/summary.rb
 lib/arborist/command/tree.rb

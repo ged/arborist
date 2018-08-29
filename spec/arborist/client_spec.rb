@@ -19,6 +19,7 @@ describe Arborist::Client do
 	describe "synchronous API", :testing_manager do
 
 		before( :each ) do
+			@manager = nil
 			@manager_thread = Thread.new do
 				@manager = make_testing_manager()
 				Loggability[ Arborist ].info "Starting a testing manager: %p" % [ @manager ]
