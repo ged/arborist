@@ -36,6 +36,7 @@ class Arborist::Node::Host < Arborist::Node
 	### Create a new Host node.
 	def initialize( identifier, attributes={}, &block )
 		@addresses = []
+		@hostname = nil
 		super
 	end
 
