@@ -129,8 +129,8 @@ class Arborist::Node
 		end
 
 		event :acknowledge do
-			transition any - [:down, :acked] => :disabled
-			transition [:down, :acked] => :acked
+			transition any - [:down] => :disabled
+			transition :down => :acked
 		end
 
 		event :unacknowledge do
@@ -156,7 +156,7 @@ class Arborist::Node
 		after_transition :down => :up, do: :on_node_up
 		after_transition :up => :warn, do: :on_node_warn
 		after_transition [:unknown, :warn, :up] => :down, do: :on_node_down
-		after_transition [:unknown, :warn, :up] => :disabled, do: :on_node_disabled
+		after_transition [:acked, :unknown, :warn, :up] => :disabled, do: :on_node_disabled
 		after_transition any => :quieted, do: :on_node_quieted
 		after_transition :disabled => :unknown, do: :on_node_enabled
 		after_transition :quieted => :unknown, do: :on_node_unquieted
@@ -1324,6 +1324,8 @@ class Arborist::Node
 
 	### Callback for when a node goes from up to disabled
 	def on_node_disabled( transition )
+		self.errors.clear
+		self.warnings.clear
 		self.log.warn "%s is %s" % [ self.identifier, self.status_description ]
 	end
 

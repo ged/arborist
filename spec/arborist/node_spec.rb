@@ -454,21 +454,28 @@ describe Arborist::Node do
 
 			let( :node ) do
 				obj = super()
-				obj.status = 'acked'
+				obj.status = 'down'
 				obj.errors['moldovia'] = 'Something is wrong | he falls | betraying the trust | "\
 					"there is a disaster in his life.'
-				obj.acknowledge( message: "Leitmotiv", sender: 'ged' )
+				obj.acknowledge( message: "Leitmotiv", sender: 'ged' )  # ack!
 				obj
 			end
 
 
 			it_behaves_like "a reachable node"
 
-
 			it "transitions to `up` status if its error is cleared" do
 				expect {
 					node.update( {error: nil}, 'moldovia' )
 				}.to change { node.status }.from( 'acked' ).to( 'up' )
+			end
+
+
+			it "transitions to `disabled` status if its acked twice" do
+				expect {
+					node.acknowledge( message: "Leitmotiv", sender: 'ged' )
+				}.to change { node.status }.from( 'acked' ).to( 'disabled' )
+				expect( node.errors ).to be_empty
 			end
 
 
