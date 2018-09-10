@@ -22,7 +22,7 @@ module Arborist::CLI::Summary
 
 	desc 'Summarize known problems'
 
-	command :summary do |cmd|
+	command [ :summary, :status ] do |cmd|
 
 		cmd.flag [:s, :sort],
 			type: String,
