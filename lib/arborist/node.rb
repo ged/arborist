@@ -46,6 +46,7 @@ class Arborist::Node
 		last_contacted
 		ack
 		errors
+		warnings
 		quieted_reasons
 		config
 	]
