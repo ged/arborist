@@ -27,8 +27,10 @@ describe Arborist::Event::Node do
 
 
 	it "serializes with useful metadata attached" do
-		expect( event.to_h ).to include( :identifier, :parent, :nodetype )
+		expect( event.to_h ).to include( :identifier, :parent, :nodetype, :flapping )
 		expect( event.to_h[:nodetype] ).to eq( 'testnode' )
+		expect( event.to_h[:parent] ).to eq( 'bar' )
+		expect( event.to_h[:flapping] ).to eq( false )
 	end
 
 

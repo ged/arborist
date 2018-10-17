@@ -41,9 +41,10 @@ class Arborist::Event::Node < Arborist::Event
 	### Inject useful node metadata into the generated hash.
 	def to_h
 		return super.merge(
-			identifier: self.node.identifier,
-			parent:     self.node.parent,
-			nodetype:   self.node.type
+			identifier:  self.node.identifier,
+			parent:      self.node.parent,
+			nodetype:    self.node.type,
+			flapping:    self.node.flapping?
 		)
 	end
 

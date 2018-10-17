@@ -7,8 +7,10 @@ require 'time'
 require 'pathname'
 require 'state_machines'
 
+require 'configurability'
 require 'loggability'
 require 'pluggability'
+
 require 'arborist' unless defined?( Arborist )
 require 'arborist/mixins'
 require 'arborist/exceptions'
@@ -23,6 +25,7 @@ class Arborist::Node
 	        Arborist::HashUtilities
 	extend Loggability,
 	       Pluggability,
+	       Configurability,
 	       Arborist::MethodUtilities
 
 
@@ -68,6 +71,17 @@ class Arborist::Node
 
 	# Search for plugins in lib/arborist/node directories in loaded gems
 	plugin_prefixes 'arborist/node'
+
+
+	# Configurability API
+	configurability( 'arborist.node' ) do
+
+		# How many status entries to keep in a ring buffer
+		setting :status_history_size, default: 0
+
+		# How many status transitions in the history constitutes flapping
+		setting :flap_threshold, default: 0
+	end
 
 
 	##
@@ -167,6 +181,9 @@ class Arborist::Node
 		after_transition any => any, do: :update_status_changed
 
 		after_transition do: :add_status_to_update_delta
+
+		after_transition do: :record_status_history
+		after_failure do: :record_status_history
 	end
 
 
@@ -309,11 +326,15 @@ class Arborist::Node
 		@source          = nil
 		@children        = {}
 		@dependencies    = Arborist::Dependency.new( :all )
+		@flap_threshold  = nil
+		@flapping        = false
+		@status_history_size = nil
 
 		# Primary state
 		@status          = 'unknown'
 		@status_changed  = Time.at( 0 )
 		@status_last_changed = Time.at( 0 )
+		@status_history  = []
 
 		# Attributes that govern state
 		@errors          = {}
@@ -408,6 +429,14 @@ class Arborist::Node
 	# type of dependency it came from (either :primary or :secondary).
 	attr_reader :quieted_reasons
 
+	##
+	# An array of statuses, retained after an update.
+	attr_reader :status_history
+
+	##
+	# The current flapping state of this node.
+	attr_predicate_accessor :flapping
+
 
 	### Set the source of the node to +source+, which should be a valid URI.
 	def source=( source )
@@ -499,6 +528,22 @@ class Arborist::Node
 	def config( new_config=nil )
 		@config.merge!( stringify_keys( new_config ) ) if new_config
 		return @config
+	end
+
+
+	### Get or set the number of entries to store for the status
+	### history.
+	def status_history_size( new_size=nil )
+		@status_history_size = new_size if new_size
+		return @status_history_size || Arborist::Node.status_history_size || 0
+	end
+
+
+	### Get or set the number of transitions in the status
+	### history to determine if a node is considering 'flapping'.
+	def flap_threshold( new_count=nil )
+		@flap_threshold = new_count if new_count
+		return @flap_threshold || Arborist::Node.flap_threshold || 0
 	end
 
 
@@ -1060,6 +1105,8 @@ class Arborist::Node
 		@ack             = old_node.ack.dup if old_node.ack
 		@last_contacted  = old_node.last_contacted
 		@status_changed  = old_node.status_changed
+		@status_history  = old_node.status_history
+		@flapping        = old_node.flapping?
 		@errors          = old_node.errors
 		@warnings        = old_node.warnings
 		@quieted_reasons = old_node.quieted_reasons
@@ -1089,6 +1136,8 @@ class Arborist::Node
 			last_contacted: self.last_contacted ? self.last_contacted.iso8601 : nil,
 			status_changed: self.status_changed ? self.status_changed.iso8601 : nil,
 			status_last_changed: self.status_last_changed ? self.status_last_changed.iso8601 : nil,
+			status_history: self.status_history,
+			flapping: self.flapping?,
 			errors: self.errors,
 			warnings: self.warnings,
 			dependencies: self.dependencies.to_h,
@@ -1130,6 +1179,8 @@ class Arborist::Node
 		@status          = hash[:status]
 		@status_changed  = Time.parse( hash[:status_changed] )
 		@status_last_changed = Time.parse( hash[:status_last_changed] )
+		@status_history  = hash[:status_history]
+		@flapping        = hash[:flapping]
 		@ack             = Arborist::Node::Ack.from_hash( hash[:ack] ) if hash[:ack]
 
 		@errors          = hash[:errors]
@@ -1164,6 +1215,23 @@ class Arborist::Node
 	#########
 	protected
 	#########
+
+	### Detects if this node is considered 'flapping', returning +true+ if so.
+	def check_flapping
+		return false if self.flap_threshold.zero?
+
+		runs = self.status_history.each_cons( 2 ).count do |status_1, status_2|
+			status_1 != status_2
+		end
+
+		self.log.debug "Observed %d changes in %d samples." % [
+			runs,
+			self.status_history.size
+		]
+
+		return runs >= self.flap_threshold
+	end
+
 
 	### Ack the node with the specified +ack_data+, which should contain
 	def ack=( ack_data )
@@ -1354,6 +1422,30 @@ class Arborist::Node
 	### deltas for the #update event.
 	def add_status_to_update_delta( transition )
 		self.update_delta[ 'status' ] = [ transition.from, transition.to ]
+	end
+
+
+	### Add a flap change to the delta event.
+	def add_flap_to_update_delta( from, to )
+		return if from == to
+		self.update_delta[ 'flapping' ] = [ from, to ]
+	end
+
+
+	### Retain the status in the node's history.
+	###
+	def record_status_history
+		retain = self.status_history_size
+		return if retain.zero?
+
+		pre_state = self.flapping?
+		self.status_history << self.status
+		self.flapping = self.check_flapping
+
+		current_size = self.status_history.size
+		self.status_history.slice!( 0, current_size - retain ) if current_size >= retain
+
+		self.add_flap_to_update_delta( pre_state, self.flapping? )
 	end
 
 

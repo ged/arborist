@@ -253,6 +253,36 @@ describe Arborist::Node do
 		end
 
 
+		it "stores a history of its status" do
+			node.status_history_size( 3 )
+
+			node.update( {} )
+			node.update( {} )
+			node.update( { warning: 'whoopsie' } )
+			node.update( {} )
+
+			expect( node.status_history ).to eq( ['up', 'warn', 'up'] )
+		end
+
+
+		it "knows if its status is transitioning frequently" do
+			node.status_history_size( 10 )
+			node.flap_threshold( 3 )
+
+			7.times{ node.update( {} ) }
+			node.update( { error: 'boooM!' } )
+			node.update( { warning: 'whoopsie' } )
+			node.update( {} )
+
+			expect( node ).to be_flapping
+
+			node.flap_threshold( 4 )
+			node.update( {} )
+
+			expect( node ).to_not be_flapping
+		end
+
+
 		it "groups errors from separate monitors by their key" do
 			expect( node ).to be_unknown
 
@@ -795,12 +825,16 @@ describe Arborist::Node do
 				)
 				old_node.last_contacted = Time.now - 28
 				old_node.dependencies.mark_down( 'svchost-postgres' )
+				old_node.status_history << 'up'
+				old_node.flapping = true
 
 				node.restore( old_node )
 
 				expect( node.status ).to eq( old_node.status )
 				expect( node.status_changed ).to eq( old_node.status_changed )
 				expect( node.status_last_changed ).to eq( old_node.status_last_changed )
+				expect( node.status_history ).to eq( old_node.status_history )
+				expect( node.flapping? ).to eq( old_node.flapping? )
 				expect( node.errors ).to eq( old_node.errors )
 				expect( node.ack ).to eq( old_node.ack )
 				expect( node.properties ).to include( old_node.properties )
@@ -873,6 +907,8 @@ describe Arborist::Node do
 				expect( result[:errors] ).to be_empty
 				expect( result[:dependencies] ).to be_a( Hash )
 				expect( result[:quieted_reasons] ).to be_a( Hash )
+				expect( result[:status_history] ).to eq( node.status_history )
+				expect( result[:flapping] ).to eq( node.flapping? )
 
 				expect( result[:children] ).to be_empty
 			end

@@ -19,12 +19,13 @@ class Arborist::Observer::Action
 	### Create a new Action that will call the specified +block+ +during+ the given schedule,
 	### but only +after+ the specified number of events have arrived +within+ the given
 	### time threshold.
-	def initialize( within: 0, after: 1, during: nil, &block )
+	def initialize( within: 0, after: 1, during: nil, ignore_flapping: false, &block )
 		raise ArgumentError, "Action requires a block" unless block
 
 		@block           = block
 		@time_threshold  = within
 		@schedule        = Schedulability::Schedule.parse( during ) if during
+		@ignore_flapping = ignore_flapping
 
 		if within.zero?
 			@count_threshold = after
@@ -59,6 +60,11 @@ class Arborist::Observer::Action
 	attr_reader	:schedule
 
 	##
+	# Take no action if the node the event belongs to is in a flapping
+	# state.
+	attr_reader	:ignore_flapping
+
+	##
 	# The Hash of recent events, keyed by their arrival time.
 	attr_reader :event_history
 
@@ -66,7 +72,7 @@ class Arborist::Observer::Action
 	### Call the action for the specified +event+.
 	def handle_event( event )
 		self.record_event( event )
-		self.call_block( event ) if self.should_run?
+		self.call_block( event ) if self.should_run? && ! self.flapping?( event )
 	end
 
 
@@ -104,6 +110,13 @@ class Arborist::Observer::Action
 	### action's schedule.
 	def should_run?
 		return self.time_threshold_exceeded? && self.count_threshold_exceeded?
+	end
+
+
+	### Returns +true+ if this observer respects the flapping state of
+	### a node, and the generated event is attached to a flapping node.
+	def flapping?( event )
+		return self.ignore_flapping && event[ 'flapping' ]
 	end
 
 
